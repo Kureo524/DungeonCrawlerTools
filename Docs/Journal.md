@@ -120,14 +120,52 @@ Le jeu prend une direction « type Soul Knight » : des salles en grille regroup
 ### Import automatique des sprites
 `ArtImportPostprocessor` configure toute image déposée dans `Assets/_Project/Art` : sprite unique, filtre Point (pixel art net), 32 px par unité, sans compression ni mipmaps. Il signale aussi les fichiers qui ne suivent pas la convention `SPR_`. Le menu `Tools > Art > Reconfigurer tous les sprites` réapplique ces réglages.
 
+## Étape 6 : une seule fenêtre, des graphiques et une passe de finition
+
+### Forge Studio : tous les outils dans une fenêtre
+Demande : regrouper les outils. Les quatre fenêtres séparées sont remplacées par **Forge Studio** (`Studio/ForgeStudioWindow`) :
+- **Barre latérale** regroupée par thème (Vue d'ensemble, Contenu, Monde, Équipe technique), avec une icône tirée des sprites du jeu, le nombre d'éléments et un point rouge en cas d'erreur. L'état de validation global est en bas.
+- **En-tête** de section (icône, titre, rôle) et bouton **? Aide**, qui ouvre le mode d'emploi dans un panneau latéral au lieu d'un onglet.
+- **Navigation directe** : un clic sur un problème du tableau de bord ouvre l'outil concerné sur l'élément fautif (`IToolHost.Reveal`).
+- Le menu **Tools** garde une entrée par outil, qui ouvre Forge Studio sur la bonne section.
+- Les outils ne dépendent plus d'une fenêtre précise mais de l'interface `IToolHost`. La fenêtre reste ainsi interchangeable, et les tests peuvent construire chaque outil isolément.
+
+### Tableau de bord
+- **Avancement de la production** : anneaux de progression par rapport aux objectifs du GDD (40 objets, 12 ennemis, 3 boss, 20 tables, 30 salles, 20 niveaux). Ils sont réglables dans Limites (dev).
+- **Santé des données** : nombre d'erreurs et d'avertissements, part d'assets valides, problèmes par règle, liste des problèmes à corriger en priorité (cliquables).
+- **Répartition** : objets par rareté, salles par type, salles par biome, courbe de PV du joueur.
+
+### Graphiques (`Common/Charts`)
+Composants dessinés avec `Painter2D` (UI Toolkit). Règles de visualisation appliquées :
+- **Palette catégorielle validée** pour le daltonisme et le contraste, en version claire et sombre selon le thème de l'éditeur, avec un ordre des couleurs fixe. Les couleurs de **statut** (erreur, avertissement, valide) sont réservées aux états et toujours accompagnées d'une icône ou d'un texte.
+- **Jamais deux échelles sur un graphique.** PV, dégâts et XP n'ont pas le même ordre de grandeur, donc ils sont affichés en **petits graphiques côte à côte**.
+- Infobulle au survol sur chaque courbe (ligne de repère et toutes les valeurs), chaque segment et chaque barre. Légende dès deux séries. Anneaux limités à 6 segments, le reste étant regroupé dans « Autres ».
+- **Animations** : tracé progressif à la première apparition, barres qui glissent vers leur nouvelle valeur, fondu entre sections, survols animés (transitions USS).
+
+Où on les trouve :
+- **Progression** : courbes PV, dégâts et XP par niveau, avec les baisses marquées en rouge.
+- **Ennemis** : courbes par étage comparées à la moyenne des ennemis du même rang, pour repérer les pics de difficulté.
+- **Objets** : jauge du prix dans la plage autorisée par la rareté, et puissance de chaque bonus par rapport au maximum.
+- **Tables de butin** et **Biomes** : anneau de chance par rareté (bonus de biome inclus) et barres par objet avec icône. Pour les biomes, s'ajoute la répartition des apparitions d'ennemis.
+
+### Problèmes corrigés
+| Problème | Cause | Correction |
+|---|---|---|
+| `NullReferenceException` en ajoutant une ligne après avoir ancré ou déplacé la fenêtre | Unity détache puis rattache l'interface sans la reconstruire ; le code prenait ce détachement pour une fermeture et détruisait la copie de travail | Les copies de travail et les abonnements sont libérés à la **fermeture réelle** de la fenêtre (`OnDestroy` → `Closing`). Test de non-régression avec une vraie fenêtre et un ancrage simulé |
+| Abonnements aux événements de l'éditeur laissés actifs après fermeture | Désabonnement confié au détachement de l'interface, qui n'a pas toujours lieu | Désabonnement explicite à la fermeture |
+| Tests automatiques bloqués | Boîtes de dialogue modales attendant un clic en mode batch | `ForgeDialogs` : en mode batch, aucune fenêtre modale, réponse prudente journalisée ; les tests abandonnent les modifications avant de fermer |
+
 ## Tests
 
-`Assets/_Project/Tests/Editor` contient **29 tests EditMode**. **Résultat actuel : 29/29.**
+`Assets/_Project/Tests/Editor` contient **34 tests EditMode**. **Résultat actuel : 34/34.**
 - Nommage : conversion des noms, préfixe des boss.
 - Règles de contenu : objet manquant, bonus trop élevé, progression qui baisse, probabilités de butin.
 - Salles : salle neuve correcte, ennemi hors biome, pose sur un mur refusée, entrée murée refusée, ennemi inaccessible, boss hors salle de boss, redimensionnement sans perte, salle sans biome.
 - Copie de travail : un objet invalide **n'est pas créé** ; un objet valide est créé avec le bon nom et au bon endroit.
-- Construction de chaque fenêtre d'outil, y compris le Room Editor avec de vraies données temporaires, pour détecter les exceptions sans ouvrir Unity.
+- Construction de chaque outil et du tableau de bord, y compris l'éditeur de salles avec de vraies données temporaires, pour détecter les exceptions sans ouvrir Unity.
+- **Vraie fenêtre Forge Studio** : ouverture de chaque section, et ajout de lignes après un ancrage simulé (régression du `NullReferenceException`).
+
+Remarque : les tests qui ouvrent une vraie fenêtre ont besoin d'un affichage. On lance donc Unity en `-batchmode` **sans** `-nographics`.
 
 ## Prochaines étapes
 - Plan des étages : assembler les salles, vérifier les portes compatibles, les salles atteignables depuis l'entrée et le boss unique par étage.
