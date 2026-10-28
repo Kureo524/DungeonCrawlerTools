@@ -193,8 +193,8 @@ namespace TheDungeon.Editor.Common
             var warning = row.Q<Label>("warning");
             var hasError = assetsWithErrors.Contains(asset);
             var hasWarning = assetsWithWarnings.Contains(asset);
-            warning.text = hasError || hasWarning ? "!" : string.Empty;
-            warning.style.color = hasError ? new Color(0.86f, 0.27f, 0.27f) : new Color(0.94f, 0.67f, 0.24f);
+            warning.EnableInClassList("forge-list-item__warning--error", hasError);
+            warning.EnableInClassList("forge-list-item__warning--warning", !hasError && hasWarning);
             row.tooltip = asset.name + (hasError ? "\nContient des erreurs." : hasWarning ? "\nContient des avertissements." : string.Empty);
         }
 

@@ -43,6 +43,7 @@ namespace TheDungeon.Editor.Studio
         VisualElement contentHost;
         VisualElement helpDrawer;
         Image headerIcon;
+        Label headerTrail;
         Label headerTitle;
         Label headerSubtitle;
         Button helpButton;
@@ -185,8 +186,12 @@ namespace TheDungeon.Editor.Studio
 
             var brand = new VisualElement();
             brand.AddToClassList("forge-sidebar__brand");
-            brand.Add(ForgeUI.Label("FORGE", "forge-sidebar__logo"));
-            brand.Add(ForgeUI.Label("Outils de production · The Dungeon", "forge-sidebar__tagline"));
+            var mark = ForgeUI.Label("F", "forge-sidebar__mark");
+            brand.Add(mark);
+            var names = new VisualElement();
+            names.Add(ForgeUI.Label("Forge Studio", "forge-sidebar__logo"));
+            names.Add(ForgeUI.Label("The Dungeon · outils de production", "forge-sidebar__tagline"));
+            brand.Add(names);
             sidebar.Add(brand);
 
             var scroll = new ScrollView();
@@ -199,7 +204,7 @@ namespace TheDungeon.Editor.Studio
             }
             sidebar.Add(scroll);
 
-            var play = ForgeUI.Button("▶  Jouer", "Lance le jeu avec toutes les données actuelles (Tools > Jouer).",
+            var play = ForgeUI.Button("▶   Jouer", "Lance le jeu avec toutes les données actuelles (Tools > Jouer).",
                 TheDungeon.Editor.Play.GameLauncher.PlayFromStart, "forge-play-button");
             sidebar.Add(play);
 
@@ -244,12 +249,14 @@ namespace TheDungeon.Editor.Studio
             var titles = new VisualElement();
             titles.style.flexGrow = 1;
             titles.style.flexShrink = 1;
+            headerTrail = ForgeUI.Label(string.Empty, "forge-breadcrumb");
+            titles.Add(headerTrail);
             headerTitle = ForgeUI.Label(string.Empty, "forge-title");
             headerSubtitle = ForgeUI.Label(string.Empty, "forge-subtitle");
             titles.Add(headerTitle);
             titles.Add(headerSubtitle);
             header.Add(titles);
-            helpButton = ForgeUI.Button("? Aide", "Affiche ou masque le mode d'emploi de cet outil.", () =>
+            helpButton = ForgeUI.Button("Aide", "Affiche ou masque le mode d'emploi de cet outil.", () =>
             {
                 helpVisible = !helpVisible;
                 RefreshHelp();
@@ -280,6 +287,7 @@ namespace TheDungeon.Editor.Studio
             foreach (var (navId, item) in navItems)
                 item.EnableInClassList("forge-nav--active", navId == section.Id);
             headerIcon.sprite = LoadIcon(section.IconSprite);
+            headerTrail.text = $"Forge Studio  /  {section.Group}";
             headerTitle.text = section.Title;
             headerSubtitle.text = section.Subtitle;
             RefreshHelp();
@@ -311,7 +319,7 @@ namespace TheDungeon.Editor.Studio
             helpDrawer.Clear();
             helpDrawer.style.display = helpVisible ? DisplayStyle.Flex : DisplayStyle.None;
             helpButton.EnableInClassList("forge-help-toggle--active", helpVisible);
-            helpButton.text = helpVisible ? "✕ Fermer l'aide" : "? Aide";
+            helpButton.text = helpVisible ? "Fermer l'aide" : "Aide";
             if (helpVisible && section != null)
                 helpDrawer.Add(ForgeHelp.Build(section.HelpFile));
         }
@@ -346,8 +354,8 @@ namespace TheDungeon.Editor.Studio
             var errorCount = issues.Count(i => i.Severity == Severity.Error);
             var warningCount = issues.Count - errorCount;
             sidebarStatus.text = errorCount == 0 && warningCount == 0
-                ? "<color=#0ca30c>✔</color>  Toutes les données sont valides"
-                : $"<color=#d03b3b>✖</color> {errorCount} erreur(s)    <color=#fab219>⚠</color> {warningCount} avert.";
+                ? "<color=#3fb950>●</color>  Toutes les données sont valides"
+                : $"<color=#f85149>●</color> {errorCount} erreur(s)     <color=#d29922>●</color> {warningCount} avertissement(s)";
         }
 
         static Sprite LoadIcon(string name)

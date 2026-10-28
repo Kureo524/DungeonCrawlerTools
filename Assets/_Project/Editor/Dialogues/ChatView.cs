@@ -119,7 +119,7 @@ namespace TheDungeon.Editor.Dialogues
             bubble.AddToClassList("forge-chat__bubble");
             bubble.EnableInClassList("forge-chat__bubble--selected", selected);
             if (node.speaker == DialogueSpeaker.Npc)
-                bubble.style.backgroundColor = new Color(npc.Color.r, npc.Color.g, npc.Color.b, 0.28f);
+                bubble.style.backgroundColor = new Color(npc.Color.r, npc.Color.g, npc.Color.b, 0.12f);
 
             var meta = new VisualElement();
             meta.AddToClassList("forge-chat__meta");

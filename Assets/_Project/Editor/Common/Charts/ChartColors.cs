@@ -32,7 +32,8 @@ namespace TheDungeon.Editor.Common.Charts
         /// <summary>Gris neutre pour « Rien », « Autres » et les séries de comparaison.</summary>
         public static Color Neutral => IsDark ? new Color(0.55f, 0.55f, 0.53f) : new Color(0.6f, 0.6f, 0.58f);
 
-        public static Color Surface => IsDark ? new Color(0.22f, 0.22f, 0.22f) : new Color(0.78f, 0.78f, 0.78f);
+        /// <summary>Fond des cartes (même valeur que --forge-surface dans la feuille de style).</summary>
+        public static Color Surface => IsDark ? Hex("#232326") : Hex("#ffffff");
         public static Color Grid => IsDark ? new Color(1f, 1f, 1f, 0.07f) : new Color(0f, 0f, 0f, 0.09f);
         public static Color Axis => IsDark ? new Color(1f, 1f, 1f, 0.22f) : new Color(0f, 0f, 0f, 0.25f);
         public static Color Track => IsDark ? new Color(1f, 1f, 1f, 0.08f) : new Color(0f, 0f, 0f, 0.1f);

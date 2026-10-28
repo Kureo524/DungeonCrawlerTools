@@ -9,11 +9,14 @@ namespace TheDungeon.Editor.Common
     /// <summary>Petits constructeurs d'éléments d'interface partagés par tous les outils.</summary>
     public static class ForgeUI
     {
+        /// <summary>Feuille de style commune + classe de thème (les couleurs suivent le thème clair ou sombre de l'éditeur).</summary>
         public static void ApplyStyle(VisualElement root)
         {
             var sheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(DungeonPaths.StyleSheet);
             if (sheet != null)
                 root.styleSheets.Add(sheet);
+            root.AddToClassList("forge-theme");
+            root.AddToClassList(EditorGUIUtility.isProSkin ? "forge-theme--dark" : "forge-theme--light");
         }
 
         public static Label Label(string text, string className = null)
@@ -24,11 +27,14 @@ namespace TheDungeon.Editor.Common
             return label;
         }
 
-        public static VisualElement Section(string title, VisualElement parent)
+        /// <summary>Carte de section : titre, description facultative, puis contenu.</summary>
+        public static VisualElement Section(string title, VisualElement parent, string description = null)
         {
             var section = new VisualElement();
             section.AddToClassList("forge-section");
             section.Add(Label(title, "forge-section-title"));
+            if (!string.IsNullOrEmpty(description))
+                section.Add(Label(description, "forge-section-description"));
             parent.Add(section);
             return section;
         }
@@ -85,12 +91,19 @@ namespace TheDungeon.Editor.Common
             return new Toggle(label) { bindingPath = bindingPath, tooltip = tooltip };
         }
 
-        /// <summary>Pastille de couleur (rareté, statut…).</summary>
+        /// <summary>Pastille teintée (rareté, statut…) : fond très léger, point et texte de la couleur.</summary>
         public static VisualElement Badge(string text, Color color, string tooltip = null)
         {
-            var badge = Label(text, "forge-badge");
-            badge.style.backgroundColor = color;
-            badge.tooltip = tooltip;
+            var badge = new VisualElement { tooltip = tooltip };
+            badge.AddToClassList("forge-badge");
+            badge.style.backgroundColor = new Color(color.r, color.g, color.b, 0.14f);
+            badge.style.borderTopColor = badge.style.borderBottomColor = badge.style.borderLeftColor = badge.style.borderRightColor =
+                new Color(color.r, color.g, color.b, 0.35f);
+            var dot = new VisualElement();
+            dot.AddToClassList("forge-badge__dot");
+            dot.style.backgroundColor = color;
+            badge.Add(dot);
+            badge.Add(Label(text, "forge-badge__text"));
             return badge;
         }
 
