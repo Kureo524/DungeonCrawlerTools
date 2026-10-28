@@ -1,0 +1,11 @@
+{
+    "name": "TheDungeon.Editor",
+    "rootNamespace": "TheDungeon.Editor",
+    "references": [
+        "TheDungeon.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "autoReferenced": false
+}
