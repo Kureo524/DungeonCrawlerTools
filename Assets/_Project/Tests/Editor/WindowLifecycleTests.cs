@@ -28,7 +28,7 @@ namespace TheDungeon.Editor.Tests
             try
             {
                 foreach (var id in new[] { ForgeStudioWindow.Home, ForgeStudioWindow.Items, ForgeStudioWindow.Enemies, ForgeStudioWindow.LootTables,
-                             ForgeStudioWindow.Progression, ForgeStudioWindow.Biomes, ForgeStudioWindow.Rooms, ForgeStudioWindow.Floors, ForgeStudioWindow.Settings })
+                             ForgeStudioWindow.Progression, ForgeStudioWindow.Biomes, ForgeStudioWindow.Rooms, ForgeStudioWindow.Floors, ForgeStudioWindow.Dialogues, ForgeStudioWindow.Settings })
                 {
                     Step($"section {id}");
                     window.ShowSection(id);

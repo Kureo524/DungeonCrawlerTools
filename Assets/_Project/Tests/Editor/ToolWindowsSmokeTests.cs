@@ -1,3 +1,4 @@
+using System.Linq;
 using NUnit.Framework;
 using TheDungeon.Editor.Biomes;
 using TheDungeon.Editor.Common;
@@ -36,6 +37,42 @@ namespace TheDungeon.Editor.Tests
         [Test] public void BiomesTab_Builds() => AssertBuilds(w => new BiomesTab(w).Build());
         [Test] public void RoomsTab_Builds() => AssertBuilds(w => new RoomsTab(w).Build());
         [Test] public void FloorsTab_Builds() => AssertBuilds(w => new TheDungeon.Editor.Floors.FloorsTab(w).Build());
+        [Test] public void DialoguesTab_Builds() => AssertBuilds(w => new TheDungeon.Editor.Dialogues.DialoguesTab(w).Build());
+
+        /// <summary>Personnage réel (créé puis supprimé) : les trois vues se construisent et la barre de saisie ajoute une réplique.</summary>
+        [Test]
+        public void Dialogues_WithRealData_Builds()
+        {
+            var created = new System.Collections.Generic.List<Object>();
+            try
+            {
+                Commit<TheDungeon.Data.NpcData>("Zz Smoke Npc", so =>
+                {
+                    var first = TheDungeon.Editor.Dialogues.DialogueEditing.AddNode(so, TheDungeon.Data.DialogueSpeaker.Npc, "Bonjour.");
+                    TheDungeon.Editor.Dialogues.DialogueEditing.AddChoice(so, first, "Salut.", -1, 4);
+                }, created);
+
+                AssertBuilds(w =>
+                {
+                    var root = new TheDungeon.Editor.Dialogues.DialoguesTab(w).Build();
+                    ClickAll(root, "Arbre");
+                    ClickAll(root, "Aperçu en jeu");
+                    ClickAll(root, "Conversation");
+                    var composer = root.Q<TextField>(className: "forge-composer__input");
+                    Assert.IsNotNull(composer, "Barre de saisie introuvable.");
+                    composer.value = "Une nouvelle réplique.";
+                    ClickAll(root, "Envoyer");
+                    StringAssert.Contains("Une nouvelle réplique.", string.Join("|", root.Query<Label>(className: "forge-chat__text").ToList().Select(l => l.text)));
+                    return root;
+                });
+            }
+            finally
+            {
+                for (var i = created.Count - 1; i >= 0; i--)
+                    UnityEditor.AssetDatabase.DeleteAsset(UnityEditor.AssetDatabase.GetAssetPath(created[i]));
+            }
+        }
+
         [Test] public void Dashboard_Builds() => AssertBuilds(w => new DashboardView(w).Build());
         [Test] public void Settings_Builds() => AssertBuilds(_ => SettingsView.Build());
 
@@ -116,7 +153,7 @@ namespace TheDungeon.Editor.Tests
         [Test]
         public void HelpFiles_Exist()
         {
-            foreach (var help in new[] { "Dashboard", "ContentDatabase", "BiomePresets", "RoomEditor", "Floors", "Settings" })
+            foreach (var help in new[] { "Dashboard", "ContentDatabase", "Dialogues", "BiomePresets", "RoomEditor", "Floors", "Settings" })
                 Assert.IsNotNull(UnityEditor.AssetDatabase.LoadAssetAtPath<TextAsset>($"{DungeonPaths.Help}/{help}.md"), help);
         }
     }
