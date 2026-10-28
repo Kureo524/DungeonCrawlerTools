@@ -14,8 +14,10 @@ namespace TheDungeon.Data
     }
 
     [CreateAssetMenu(menuName = "The Dungeon/Loot Table", fileName = "LT_NewTable")]
-    public class LootTable : ScriptableObject
+    public class LootTable : ScriptableObject, IDisplayNamed
     {
+        [SerializeField, Tooltip("Nom de la table, visible uniquement dans les outils.")]
+        string displayName;
         [SerializeField, Tooltip("Objets possibles et leur poids.")]
         List<LootEntry> entries = new();
         [SerializeField, Range(0f, 1f), Tooltip("Chance qu'un tirage donne un objet (sinon rien).")]
@@ -27,6 +29,7 @@ namespace TheDungeon.Data
         [SerializeField, Tooltip("Dernier étage où cette table peut être utilisée.")]
         int maxFloor = 3;
 
+        public string DisplayName => displayName;
         public IReadOnlyList<LootEntry> Entries => entries;
         public float DropChance => dropChance;
         public int Rolls => rolls;
@@ -44,24 +47,40 @@ namespace TheDungeon.Data
             }
         }
 
-        /// <summary>Probabilité qu'un tirage donne cet objet précis.</summary>
-        public float GetProbability(LootEntry entry)
+        /// <summary>Poids effectif d'une ligne, éventuellement multiplié selon la rareté (bonus de biome).</summary>
+        public static float EffectiveWeight(LootEntry entry, Func<Rarity, float> rarityMultiplier = null)
         {
-            var total = TotalWeight;
-            return total == 0 ? 0f : dropChance * Mathf.Max(0, entry.weight) / total;
+            var weight = Mathf.Max(0, entry.weight);
+            if (rarityMultiplier != null && entry.item != null)
+                return weight * Mathf.Max(0f, rarityMultiplier(entry.item.Rarity));
+            return weight;
         }
 
-        public ItemData Roll(System.Random random)
+        /// <summary>Probabilité qu'un tirage donne cet objet précis.</summary>
+        public float GetProbability(LootEntry entry, Func<Rarity, float> rarityMultiplier = null)
         {
-            var total = TotalWeight;
-            if (total == 0 || random.NextDouble() > dropChance)
+            var total = 0f;
+            foreach (var other in entries)
+                total += EffectiveWeight(other, rarityMultiplier);
+            return total <= 0f ? 0f : dropChance * EffectiveWeight(entry, rarityMultiplier) / total;
+        }
+
+        public ItemData Roll(System.Random random, Func<Rarity, float> rarityMultiplier = null)
+        {
+            if (random.NextDouble() > dropChance)
                 return null;
 
-            var pick = random.Next(total);
+            var total = 0f;
+            foreach (var entry in entries)
+                total += EffectiveWeight(entry, rarityMultiplier);
+            if (total <= 0f)
+                return null;
+
+            var pick = (float)random.NextDouble() * total;
             foreach (var entry in entries)
             {
-                pick -= Mathf.Max(0, entry.weight);
-                if (pick < 0)
+                pick -= EffectiveWeight(entry, rarityMultiplier);
+                if (pick < 0f)
                     return entry.item;
             }
             return null;

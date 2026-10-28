@@ -25,7 +25,7 @@ namespace TheDungeon.Data
     }
 
     [CreateAssetMenu(menuName = "The Dungeon/Item", fileName = "ITM_NewItem")]
-    public class ItemData : ScriptableObject
+    public class ItemData : ScriptableObject, IDisplayNamed
     {
         [SerializeField, Tooltip("Nom affiché au joueur.")]
         string displayName;

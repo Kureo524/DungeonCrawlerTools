@@ -54,6 +54,15 @@ namespace TheDungeon.Data
         Pit
     }
 
+    public enum RoomType
+    {
+        Start,
+        Combat,
+        Treasure,
+        Shop,
+        Boss
+    }
+
     [Flags]
     public enum Doors
     {

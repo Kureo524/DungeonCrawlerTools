@@ -3,7 +3,7 @@ using UnityEngine;
 namespace TheDungeon.Data
 {
     [CreateAssetMenu(menuName = "The Dungeon/Enemy", fileName = "ENM_NewEnemy")]
-    public class EnemyData : ScriptableObject
+    public class EnemyData : ScriptableObject, IDisplayNamed
     {
         [SerializeField, Tooltip("Nom affiché au joueur.")]
         string displayName;
