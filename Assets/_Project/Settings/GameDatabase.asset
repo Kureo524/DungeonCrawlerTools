@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f1ddda83b424bc8191cc17b2584947c, type: 3}
+  m_Name: GameDatabase
+  m_EditorClassIdentifier: TheDungeon.Runtime::TheDungeon.Game.GameDatabase
+  floors:
+  - {fileID: 11400000, guid: 415b219cc258f1d19a7335ad3884d33c, type: 2}
+  progression: {fileID: 11400000, guid: b6bacdab289e4aa478163dd74103d07f, type: 2}
+  npcs:
+  - {fileID: 11400000, guid: d1fd88eddd302b6d3938c2d249454b7b, type: 2}
+  rooms:
+  - {fileID: 11400000, guid: a053528e4637bb62a96ec651ffa8b982, type: 2}
+  - {fileID: 11400000, guid: d638cef78c5caf2e0844014dac9279c9, type: 2}
+  - {fileID: 11400000, guid: d4177dc2067cb693dafceec65ff73329, type: 2}
+  - {fileID: 11400000, guid: 7025ac932a7dc8a6fabf0e70dfbaf37f, type: 2}
+  - {fileID: 11400000, guid: 0163afcd5213becf19133c1609d8f170, type: 2}
+  - {fileID: 11400000, guid: 83182d7fb7b59cac4959bbe66b83eb06, type: 2}
+  - {fileID: 11400000, guid: 7855619b502bf76aa8be0c73fdb973c1, type: 2}
+  - {fileID: 11400000, guid: 0fce6787b423c230888278a2437f784e, type: 2}
+  - {fileID: 11400000, guid: 2a0211d7df9f42c37a3f2e07497288a8, type: 2}
+  - {fileID: 11400000, guid: e4e463b70abf9eba9a9b9dbbcd4a48bf, type: 2}
+  - {fileID: 11400000, guid: cc9387ce6985593ebb1d595dfb8e682a, type: 2}
+  rarityColors:
+  - rarity: 0
+    color: {r: 0.75, g: 0.75, b: 0.75, a: 1}
+  - rarity: 1
+    color: {r: 0.35, g: 0.8, b: 0.35, a: 1}
+  - rarity: 2
+    color: {r: 0.3, g: 0.55, b: 1, a: 1}
+  - rarity: 3
+    color: {r: 0.7, g: 0.35, b: 0.95, a: 1}
+  - rarity: 4
+    color: {r: 1, g: 0.6, b: 0.1, a: 1}
+  player: {fileID: 21300000, guid: 01c48024983221b1e959c97ae00e9750, type: 3}
+  chestClosed: {fileID: 21300000, guid: d55979e55df1ee422b31d280ca455023, type: 3}
+  chestOpen: {fileID: 21300000, guid: 66728bcf34cda2d8785c49d05443e015, type: 3}
+  doorClosed: {fileID: 21300000, guid: 51aa0bc640ba3a7ba88f0bc154b4c3c3, type: 3}
+  portal: {fileID: 21300000, guid: 51ddd8faa9e8c8f099eed085f8901f3d, type: 3}
+  gold: {fileID: 21300000, guid: d269559f98e7ce70fbd7aa18e7ee5016, type: 3}
+  pedestal: {fileID: 21300000, guid: 53fd61b659e844c3e894d41d8d5136e2, type: 3}

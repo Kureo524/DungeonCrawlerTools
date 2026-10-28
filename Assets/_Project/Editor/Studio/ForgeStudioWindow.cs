@@ -199,6 +199,10 @@ namespace TheDungeon.Editor.Studio
             }
             sidebar.Add(scroll);
 
+            var play = ForgeUI.Button("▶  Jouer", "Lance le jeu avec toutes les données actuelles (Tools > Jouer).",
+                TheDungeon.Editor.Play.GameLauncher.PlayFromStart, "forge-play-button");
+            sidebar.Add(play);
+
             sidebarStatus = new Label { enableRichText = true, tooltip = "État de validation de tout le projet. Cliquez pour ouvrir le tableau de bord." };
             sidebarStatus.AddToClassList("forge-sidebar__status");
             sidebarStatus.RegisterCallback<ClickEvent>(_ => ShowSection(Home));

@@ -82,6 +82,18 @@ namespace TheDungeon.Editor.Common
         /// <summary>Asset enregistré correspondant à la copie de travail, ou null s'il n'est pas encore créé.</summary>
         protected T Original => session?.Original;
 
+        /// <summary>Avant un test en jeu : seule la version enregistrée est jouée. Renvoie false si l'utilisateur annule.</summary>
+        protected bool ConfirmPlaySavedVersion()
+        {
+            if (session == null || session.IsNew)
+            {
+                ForgeLists.Notify($"Validez d'abord ce {Noun} pour pouvoir le tester.");
+                return false;
+            }
+            return !session.IsDirty || ForgeDialogs.Confirm("Modifications non validées",
+                "Le test utilise la version enregistrée : les modifications en cours n'en feront pas partie.", "Tester quand même", "Annuler");
+        }
+
         public VisualElement Build()
         {
             root = new TwoPaneSplitView(0, ListWidth, TwoPaneSplitViewOrientation.Horizontal) { viewDataKey = $"forge-split-{typeof(T).Name}" };

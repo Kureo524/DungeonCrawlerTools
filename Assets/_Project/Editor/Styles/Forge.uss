@@ -1732,3 +1732,21 @@
     border-left-color: var(--forge-critical);
     background-color: rgba(208, 59, 59, 0.15);
 }
+
+/* ---------- Jouer ---------- */
+
+.forge-play-button {
+    height: 30px;
+    margin: 6px 8px 0 8px;
+    border-radius: 15px;
+    -unity-font-style: bold;
+    color: rgb(255, 255, 255);
+    background-color: rgba(12, 163, 12, 0.7);
+    transition-property: background-color, scale;
+    transition-duration: 0.12s;
+}
+
+.forge-play-button:hover {
+    background-color: rgba(12, 163, 12, 0.9);
+    scale: 1.03 1.03;
+}

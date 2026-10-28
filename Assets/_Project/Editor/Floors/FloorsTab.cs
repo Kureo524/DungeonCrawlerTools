@@ -103,6 +103,14 @@ namespace TheDungeon.Editor.Floors
                 ForgeUI.Button("Générer le plan", "Remplace le plan actuel (annulable avec Ctrl+Z).", Generate, "forge-button--primary"),
                 ForgeUI.Button("Vider le plan", "Retire toutes les salles du plan.", () => Edit(() => FloorEditing.Clear(floor)), "forge-button--danger")));
 
+            var test = ForgeUI.Button("▶  Tester cet étage", "Lance le jeu directement sur cet étage (version enregistrée).", () =>
+            {
+                if (ConfirmPlaySavedVersion())
+                    TheDungeon.Editor.Play.GameLauncher.PlayFloor(Original.FloorNumber);
+            }, "forge-play-button");
+            test.style.alignSelf = Align.FlexStart;
+            container.Add(test);
+
             var editor = new VisualElement();
             editor.AddToClassList("forge-room-editor");
             container.Add(editor);

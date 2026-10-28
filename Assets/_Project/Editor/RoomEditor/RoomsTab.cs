@@ -165,6 +165,13 @@ namespace TheDungeon.Editor.RoomEditor
                     return true;
                 }));
 
+            var test = ForgeUI.Button("▶  Tester cette salle", "Lance le jeu dans cette salle seule (version enregistrée) : ennemis, coffres, décors.", () =>
+            {
+                if (ConfirmPlaySavedVersion())
+                    TheDungeon.Editor.Play.GameLauncher.PlayRoom(Original);
+            }, "forge-play-button");
+            properties.Add(test);
+
             var tools = ForgeUI.Section("Actions rapides", properties);
             tools.Add(ForgeUI.Button("Murs sur le contour", "Remet un mur sur tout le contour, entrées comprises restées ouvertes.", () => Apply(() => RoomEditing.WallBorder(room))));
             tools.Add(ForgeUI.Button("Tout réinitialiser", "Sol partout, murs sur le contour, aucun élément posé.", () =>
