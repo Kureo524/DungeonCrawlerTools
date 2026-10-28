@@ -59,7 +59,7 @@ namespace TheDungeon.Editor.Common
                            + (users.Count > 8 ? $"\n… et {users.Count - 8} autre(s)" : string.Empty)
                            + "\nCes données deviendront invalides.";
 
-            if (!EditorUtility.DisplayDialog("Supprimer", message, "Supprimer", "Annuler"))
+            if (!ForgeDialogs.Confirm("Supprimer", message, "Supprimer", "Annuler"))
                 return false;
             return AssetDatabase.MoveAssetToTrash(AssetDatabase.GetAssetPath(asset));
         }

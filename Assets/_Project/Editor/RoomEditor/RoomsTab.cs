@@ -35,8 +35,9 @@ namespace TheDungeon.Editor.RoomEditor
         SliderInt heightSlider;
         readonly Dictionary<Doors, Toggle> doorToggles = new();
         double lastNotification;
+        bool closingHooked;
 
-        public RoomsTab(ForgeToolWindow window) : base(window)
+        public RoomsTab(IToolHost window) : base(window)
         {
         }
 
@@ -86,7 +87,7 @@ namespace TheDungeon.Editor.RoomEditor
         protected override bool CanCreate(out string reason)
         {
             reason = "Une salle appartient toujours à un biome, et aucun preset de biome valide n'existe.\n\n" +
-                     "Créez-en un (ou corrigez-en un) dans Tools > Biome Presets.";
+                     "Créez-en un (ou corrigez-en un) dans Forge Studio > Biomes.";
             return ValidBiomes().Count > 0;
         }
 
@@ -168,7 +169,7 @@ namespace TheDungeon.Editor.RoomEditor
             tools.Add(ForgeUI.Button("Murs sur le contour", "Remet un mur sur tout le contour, entrées comprises restées ouvertes.", () => Apply(() => RoomEditing.WallBorder(room))));
             tools.Add(ForgeUI.Button("Tout réinitialiser", "Sol partout, murs sur le contour, aucun élément posé.", () =>
             {
-                if (EditorUtility.DisplayDialog("Réinitialiser la salle", "Effacer toute la salle ? (annulable avec Ctrl+Z)", "Réinitialiser", "Annuler"))
+                if (ForgeDialogs.Confirm("Réinitialiser la salle", "Effacer toute la salle ? (annulable avec Ctrl+Z)", "Réinitialiser", "Annuler"))
                     Apply(() => RoomEditing.Reset(room));
             }));
             var zoom = new SliderInt("Zoom", 16, 48) { value = 32, showInputField = false, tooltip = "Taille des cases à l'écran." };
@@ -200,8 +201,13 @@ namespace TheDungeon.Editor.RoomEditor
 
             palette.SetBiome(asset.Biome);
             biomePicker.TrackPropertyValue(serializedObject.FindProperty("biome"), _ => palette.SetBiome(draft.Biome));
-            container.RegisterCallback<AttachToPanelEvent>(_ => Undo.undoRedoPerformed += OnUndoRedo);
-            container.RegisterCallback<DetachFromPanelEvent>(_ => Undo.undoRedoPerformed -= OnUndoRedo);
+            Undo.undoRedoPerformed -= OnUndoRedo;
+            Undo.undoRedoPerformed += OnUndoRedo;
+            if (!closingHooked)
+            {
+                closingHooked = true;
+                Window.Closing += () => Undo.undoRedoPerformed -= OnUndoRedo;
+            }
         }
 
         Toggle DoorToggle(Doors side, string label)

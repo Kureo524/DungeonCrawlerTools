@@ -12,10 +12,10 @@ namespace TheDungeon.Editor.Common
     /// Onglet « liste à gauche, fiche à droite » commun aux outils de contenu.
     /// Les modifications portent sur une copie de travail : rien n'est créé ni modifié avant « Valider ».
     /// </summary>
-    public abstract class AssetListTab<T> where T : ScriptableObject
+    public abstract class AssetListTab<T> : IAssetNavigable where T : ScriptableObject
     {
         protected ForgeDesignLimits Limits => ForgeDesignLimits.Instance;
-        protected ForgeToolWindow Window { get; }
+        protected IToolHost Window { get; }
 
         readonly List<T> filtered = new();
         readonly HashSet<Object> assetsWithErrors = new();
@@ -33,7 +33,7 @@ namespace TheDungeon.Editor.Common
         IVisualElementScheduledItem pendingRefresh;
         DraftSession<T> session;
 
-        protected AssetListTab(ForgeToolWindow window)
+        protected AssetListTab(IToolHost window)
         {
             Window = window;
         }
@@ -94,14 +94,13 @@ namespace TheDungeon.Editor.Common
             right.Add(footer);
             root.Add(right);
 
-            root.RegisterCallback<AttachToPanelEvent>(_ => EditorApplication.projectChanged += OnProjectChanged);
-            root.RegisterCallback<DetachFromPanelEvent>(_ =>
+            // Abonnements liés à la vie de la fenêtre, pas au détachement de l'interface (qui survient aussi à l'ancrage).
+            EditorApplication.projectChanged += OnProjectChanged;
+            Window.Closing += () =>
             {
                 EditorApplication.projectChanged -= OnProjectChanged;
-                session?.Dispose();
-                session = null;
-                Window.SetUnsaved(this, false);
-            });
+                CloseSession();
+            };
 
             Reload();
             return root;
@@ -184,6 +183,16 @@ namespace TheDungeon.Editor.Common
             row.tooltip = asset.name + (hasError ? "\nContient des erreurs." : hasWarning ? "\nContient des avertissements." : string.Empty);
         }
 
+        /// <summary>Affiche un asset précis (depuis le tableau de bord ou un autre outil).</summary>
+        public void Reveal(Object asset)
+        {
+            if (asset is not T typed || typed == session?.Original)
+                return;
+            if (search != null && !string.IsNullOrEmpty(search.value))
+                search.value = string.Empty;
+            TryOpen(() => DraftSession<T>.Edit(typed));
+        }
+
         void OnProjectChanged()
         {
             // L'asset en cours d'édition a été supprimé depuis l'extérieur.
@@ -259,9 +268,10 @@ namespace TheDungeon.Editor.Common
         {
             if (session == null || !session.IsDirty)
                 return true;
-            var choice = EditorUtility.DisplayDialogComplex("Modifications non validées",
+            // En mode batch, les modifications en attente sont abandonnées (aucune boîte modale).
+            var choice = ForgeDialogs.Choose("Modifications non validées",
                 $"« {GetLabel(session.Draft)} » contient des modifications non validées.",
-                "Valider", "Rester ici", "Abandonner les modifications");
+                "Valider", "Rester ici", "Abandonner les modifications", batchAnswer: 2);
             return choice switch
             {
                 0 => Commit(),
@@ -395,7 +405,7 @@ namespace TheDungeon.Editor.Common
         {
             if (!CanCreate(out var reason))
             {
-                EditorUtility.DisplayDialog($"Impossible de créer un {Noun}", reason, "OK");
+                ForgeDialogs.Inform($"Impossible de créer un {Noun}", reason);
                 return;
             }
             TryOpen(() =>

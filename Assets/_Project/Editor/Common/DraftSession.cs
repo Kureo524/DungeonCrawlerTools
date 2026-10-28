@@ -45,6 +45,8 @@ namespace TheDungeon.Editor.Common
                 nameProperty.stringValue = displayName;
                 serialized.ApplyModifiedPropertiesWithoutUndo();
             }
+            // Sans champ « nom » (ex : progression), le nom proposé sert de base au nom du fichier.
+            draft.name = NamingConvention.ToPascalCase(displayName);
             draft.name = NamingConvention.GetExpectedName(draft);
             return new DraftSession<T>(null, draft);
         }
