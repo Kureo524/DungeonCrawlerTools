@@ -14,12 +14,13 @@ Menu **Tools > Forge Studio**. Chaque outil est aussi accessible directement dep
 |---|---|---|
 | **Tableau de bord** | Avancement face aux objectifs du GDD, état des 4 règles de cohérence du GDD, santé des données, répartition du contenu | Validation, Équilibrage |
 | **Objets / Ennemis / Tables de butin / Progression** | Création et édition du contenu, avec graphiques (courbes par étage et par niveau, probabilités de butin) | Création de contenu, Équilibrage |
+| **Dialogues** | PNJ et arbres de dialogue écrits comme une messagerie, vue en arbre, aperçu jouable avec joueur simulé, export texte | Création de contenu, Validation |
 | **Biomes** | Presets : visuels, ennemis, décors, coffres, bonus de butin | Création de contenu |
 | **Salles** | Salles dessinées sur une grille avec la palette du biome | Création de contenu, Automatisation |
 | **Étages** | Plan de chaque étage (3 × 10 salles), générateur de plans, contrôle des portes, de l'accessibilité et du boss unique | Création de contenu, Automatisation, Validation |
 | **Limites (dev)** | Bornes imposées aux designers et objectifs de production | Configuration |
 | *(automatique)* Import des sprites | Configuration des images déposées dans `Assets/_Project/Art` | Automatisation |
-| *(à venir)* Dialogues, Build | — | Création de contenu, Pipeline |
+| *(à venir)* Build | — | Pipeline |
 
 Principes communs :
 - **Navigation** à gauche, avec le nombre d'éléments par outil et un point rouge s'il y a des erreurs. En bas, l'état de validation global.
@@ -59,4 +60,4 @@ Unity -batchmode -projectPath . -runTests -testPlatform EditMode -testResults re
 - [Docs/Journal.md](Docs/Journal.md) : avancement, choix techniques et raisons.
 
 ## Crédits
-Sprites : *Dungeon Crawl Stone Soup* tiles (licence **CC0**, domaine public), via [OpenGameArt](https://opengameart.org/content/dungeon-crawl-32x32-tiles). Licence complète : `Assets/_Project/Art/LICENSE_DungeonCrawl_CC0.txt`.
+Sprites (objets, ennemis, biomes, portraits de PNJ) : *Dungeon Crawl Stone Soup* tiles (licence **CC0**, domaine public), via [OpenGameArt](https://opengameart.org/content/dungeon-crawl-32x32-tiles). Licence complète : `Assets/_Project/Art/LICENSE_DungeonCrawl_CC0.txt`.

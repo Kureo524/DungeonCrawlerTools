@@ -167,7 +167,7 @@ Comparaison du GDD avec les outils existants :
 | Ennemis : stats, évolution par étage, comportement, table de butin | Ennemis |
 | Items, tables de butin, progression 1 à 20 | Objets, Tables de butin, Progression |
 | **3 étages × 10 salles**, portes compatibles, salles atteignables depuis l'entrée, un boss par étage | **Étages (nouveau)** |
-| Dialogues | à venir |
+| Dialogues | Dialogues (étape 8) |
 
 ### Outil Étages
 Il couvre **trois des quatre règles de cohérence du GDD**.
@@ -185,13 +185,47 @@ Une carte par règle de cohérence du GDD, chacune marquée respectée ou non, a
 3. exactement un boss par étage ;
 4. convention de nommage.
 
+## Étape 8 : outil Dialogues
+
+GDD : **25 PNJ, environ 150 répliques, arbres de dialogue avec conditions et conséquences**. Demande : un outil visuel en apparence de messagerie, avec un aperçu du rendu.
+
+### Données (`NpcData`, runtime)
+- Un **PNJ** = nom, rôle, portrait, couleur, étage, et son arbre : des **répliques** (qui parle, texte, suite) et les **réponses du joueur** (texte, réplique où elle mène, conditions, effets).
+- **Conditions** : niveau minimum ou maximum, objet possédé ou non, marqueur d'histoire actif ou inactif, or minimum, étage minimum. **Effets** : activer ou désactiver un marqueur, donner ou reprendre un objet, de l'or, de l'XP, soigner.
+- **Débuts alternatifs** : un autre accueil selon l'état du jeu (ex : quête déjà acceptée).
+- Les liens sont des **identifiants attribués automatiquement** : le designer ne les saisit jamais. Supprimer une réplique redirige vers « Fin » tout ce qui y menait.
+- Stockage en **ScriptableObject** comme l'impose le sujet. Pour relire hors d'Unity, un bouton **Copier le script** produit une version texte (Markdown).
+- La logique d'exécution (`DialogueLogic` : début, réponses disponibles, application des effets) est dans le **runtime**. Le jeu et l'aperçu de l'outil utilisent le même code, via l'interface `IDialogueState`.
+
+### Outil (`Forge Studio > Dialogues`), trois vues
+1. **Conversation façon messagerie** :
+   - bulles du PNJ à gauche avec son portrait, réponses du joueur en pastilles à droite, narration centrée ;
+   - conditions (violet), effets (orange) et destination de chaque réponse en étiquettes ;
+   - clic sur une pastille : saut à la suite ;
+   - **barre de saisie** : on tape la réplique puis Entrée, elle est créée et reliée à la suite de la bulle sélectionnée. Une « réponse du joueur » s'ajoute comme choix, puis la saisie repasse sur le PNJ pour écrire sa réaction. On écrit donc un arbre au rythme d'une discussion ;
+   - panneau de droite : qui parle, texte avec compteur de caractères, suite, réponses avec leurs conditions et effets (champ adapté à chaque type, marqueurs existants proposés pour éviter les fautes de frappe).
+2. **Arbre** : une colonne par étape depuis le début, liens colorés (suite, réponse, réponse conditionnelle), boucles dessinées sous les boîtes, étiquettes DÉBUT et FIN, répliques inaccessibles encadrées en orange.
+3. **Aperçu en jeu** :
+   - boîte de dialogue (portrait, plaque de nom, texte qui s'écrit lettre par lettre, réponses numérotées) sur un fond aux couleurs du biome de l'étage ;
+   - **joueur simulé** (niveau, or, étage, marqueurs, inventaire) pour tester chaque branche ;
+   - option pour afficher les réponses verrouillées avec leur raison ;
+   - **journal** des répliques, choix et effets appliqués.
+
+### Validation (`DialogueRule`)
+- Liens vers des répliques supprimées, textes vides, longueur conseillée dépassée.
+- Conditions et effets incomplets, objets cités inexistants (règle du GDD « tout objet cité existe », étendue aux dialogues).
+- **Marqueur testé mais activé nulle part** : la condition ne serait jamais remplie, typiquement à cause d'une faute de frappe.
+- Répliques inaccessibles, conversation sans fin, réponses toutes conditionnelles (risque de blocage).
+- Le tableau de bord suit l'avancement **PNJ x/25** et **répliques x/150**.
+
 ## Tests
 
-`Assets/_Project/Tests/Editor` contient **42 tests EditMode**. **Résultat actuel : 42/42.**
+`Assets/_Project/Tests/Editor` contient **54 tests EditMode**. **Résultat actuel : 54/54.**
 - Nommage : conversion des noms, préfixe des boss.
 - Règles de contenu : objet manquant, bonus trop élevé, progression qui baisse, probabilités de butin.
 - Salles : salle neuve correcte, ennemi hors biome, pose sur un mur refusée, entrée murée refusée, ennemi inaccessible, boss hors salle de boss, redimensionnement sans perte, salle sans biome.
 - Étages : plan correct, porte dans le vide, portes incompatibles, salle inaccessible, étage sans boss ; le générateur produit un plan entièrement relié avec un seul boss, et explique un échec.
+- Dialogues : identifiants et début automatiques, enchaînement de la saisie messagerie, suppression qui répare les liens, réponse conditionnelle masquée puis disponible, effets appliqués, début alternatif, marqueur jamais activé, réplique inaccessible, export texte. Construction des trois vues avec un vrai personnage et envoi d'une réplique par la barre de saisie.
 - Copie de travail : un objet invalide **n'est pas créé** ; un objet valide est créé avec le bon nom et au bon endroit.
 - Construction de chaque outil et du tableau de bord, y compris l'éditeur de salles avec de vraies données temporaires, pour détecter les exceptions sans ouvrir Unity.
 - **Vraie fenêtre Forge Studio** : ouverture de chaque section, et ajout de lignes après un ancrage simulé (régression du `NullReferenceException`).
