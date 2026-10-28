@@ -18,7 +18,7 @@ namespace TheDungeon.Editor.Tests
         public void TearDown() => TestData.Destroy(limits);
 
         ValidationContext Context(ItemData[] items = null, LootTable[] tables = null, PlayerProgression[] progressions = null) =>
-            new(items ?? new ItemData[0], new EnemyData[0], tables ?? new LootTable[0], new RoomData[0], new FloorData[0],
+            new(items ?? new ItemData[0], new EnemyData[0], tables ?? new LootTable[0], new BiomeData[0], new RoomData[0], new FloorData[0],
                 progressions ?? new PlayerProgression[0], limits);
 
         [Test]

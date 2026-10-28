@@ -1,0 +1,97 @@
+using NUnit.Framework;
+using TheDungeon.Editor.Biomes;
+using TheDungeon.Editor.Common;
+using TheDungeon.Editor.ContentDatabase;
+using TheDungeon.Editor.RoomEditor;
+using UnityEngine;
+using UnityEngine.UIElements;
+
+namespace TheDungeon.Editor.Tests
+{
+    /// <summary>Construit l'interface de chaque outil pour détecter les exceptions sans ouvrir de fenêtre.</summary>
+    public class ToolWindowsSmokeTests
+    {
+        static void AssertBuilds<TWindow>(System.Func<TWindow, VisualElement> build) where TWindow : ForgeToolWindow
+        {
+            var window = ScriptableObject.CreateInstance<TWindow>();
+            try
+            {
+                var root = build(window);
+                Assert.IsNotNull(root);
+                Assert.Greater(root.childCount, 0);
+            }
+            finally
+            {
+                Object.DestroyImmediate(window);
+            }
+        }
+
+        [Test] public void ItemsTab_Builds() => AssertBuilds<ContentDatabaseWindow>(w => new ItemsTab(w).Build());
+        [Test] public void EnemiesTab_Builds() => AssertBuilds<ContentDatabaseWindow>(w => new EnemiesTab(w).Build());
+        [Test] public void LootTablesTab_Builds() => AssertBuilds<ContentDatabaseWindow>(w => new LootTablesTab(w).Build());
+        [Test] public void ProgressionTab_Builds() => AssertBuilds<ContentDatabaseWindow>(w => new ProgressionTab(w).Build());
+        [Test] public void BiomesTab_Builds() => AssertBuilds<BiomePresetsWindow>(w => new BiomesTab(w).Build());
+        [Test] public void RoomsTab_Builds() => AssertBuilds<RoomEditorWindow>(w => new RoomsTab(w).Build());
+
+        /// <summary>Crée de vraies données temporaires (validées) pour construire l'éditeur de salle complet, puis les supprime.</summary>
+        [Test]
+        public void RoomEditor_WithRealData_Builds()
+        {
+            var created = new System.Collections.Generic.List<Object>();
+            try
+            {
+                var floorSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{DungeonPaths.Art}/Biomes/Crypt/SPR_CryptFloor.png");
+                Assert.IsNotNull(floorSprite, "Les sprites du biome Crypte doivent être importés.");
+
+                var enemy = Commit<TheDungeon.Data.EnemyData>("Zz Smoke Enemy", _ => { }, created);
+                var biome = Commit<TheDungeon.Data.BiomeData>("Zz Smoke Biome", so =>
+                {
+                    so.FindProperty("floorSprites").arraySize = 1;
+                    so.FindProperty("floorSprites").GetArrayElementAtIndex(0).objectReferenceValue = floorSprite;
+                    so.FindProperty("wallSprite").objectReferenceValue = floorSprite;
+                    so.FindProperty("pitSprite").objectReferenceValue = floorSprite;
+                    so.FindProperty("enemies").arraySize = 1;
+                    so.FindProperty("enemies").GetArrayElementAtIndex(0).FindPropertyRelative("enemy").objectReferenceValue = enemy;
+                    so.FindProperty("enemies").GetArrayElementAtIndex(0).FindPropertyRelative("spawnWeight").intValue = 5;
+                }, created);
+                Commit<TheDungeon.Data.RoomData>("Zz Smoke Room", so =>
+                {
+                    so.FindProperty("biome").objectReferenceValue = biome;
+                    so.FindProperty("roomType").enumValueIndex = (int)TheDungeon.Data.RoomType.Combat;
+                    so.FindProperty("doors").intValue = (int)TheDungeon.Data.Doors.West;
+                    RoomEditing.Reset(so);
+                    RoomEditing.PlaceEnemy(so, new Vector2Int(5, 5), enemy, 10);
+                }, created);
+
+                AssertBuilds<RoomEditorWindow>(w => new RoomsTab(w).Build());
+                AssertBuilds<BiomePresetsWindow>(w => new BiomesTab(w).Build());
+            }
+            finally
+            {
+                for (var i = created.Count - 1; i >= 0; i--)
+                    UnityEditor.AssetDatabase.DeleteAsset(UnityEditor.AssetDatabase.GetAssetPath(created[i]));
+            }
+        }
+
+        static T Commit<T>(string name, System.Action<UnityEditor.SerializedObject> setup, System.Collections.Generic.List<Object> created)
+            where T : ScriptableObject
+        {
+            var session = DraftSession<T>.CreateNew(name);
+            var serialized = new UnityEditor.SerializedObject(session.Draft);
+            setup(serialized);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            var errors = session.TryCommit();
+            Assert.IsEmpty(errors, $"{name} : " + string.Join(" / ", errors.ConvertAll(e => e.Message)));
+            created.Add(session.Original);
+            session.Dispose();
+            return (T)session.Original;
+        }
+
+        [Test]
+        public void HelpFiles_Exist()
+        {
+            foreach (var help in new[] { "ContentDatabase", "BiomePresets", "RoomEditor", "Settings" })
+                Assert.IsNotNull(UnityEditor.AssetDatabase.LoadAssetAtPath<TextAsset>($"{DungeonPaths.Help}/{help}.md"), help);
+        }
+    }
+}
