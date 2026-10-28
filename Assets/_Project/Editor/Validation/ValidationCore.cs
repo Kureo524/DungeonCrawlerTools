@@ -4,6 +4,7 @@ using System.Linq;
 using TheDungeon.Data;
 using TheDungeon.Editor.Common;
 using UnityEditor;
+using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace TheDungeon.Editor.Validation
@@ -42,6 +43,7 @@ namespace TheDungeon.Editor.Validation
         public IReadOnlyList<ItemData> Items { get; }
         public IReadOnlyList<EnemyData> Enemies { get; }
         public IReadOnlyList<LootTable> LootTables { get; }
+        public IReadOnlyList<BiomeData> Biomes { get; }
         public IReadOnlyList<RoomData> Rooms { get; }
         public IReadOnlyList<FloorData> Floors { get; }
         public IReadOnlyList<PlayerProgression> Progressions { get; }
@@ -49,25 +51,41 @@ namespace TheDungeon.Editor.Validation
 
         public ValidationContext(
             IReadOnlyList<ItemData> items, IReadOnlyList<EnemyData> enemies, IReadOnlyList<LootTable> lootTables,
-            IReadOnlyList<RoomData> rooms, IReadOnlyList<FloorData> floors, IReadOnlyList<PlayerProgression> progressions,
-            ForgeDesignLimits limits)
+            IReadOnlyList<BiomeData> biomes, IReadOnlyList<RoomData> rooms, IReadOnlyList<FloorData> floors,
+            IReadOnlyList<PlayerProgression> progressions, ForgeDesignLimits limits)
         {
             Items = items;
             Enemies = enemies;
             LootTables = lootTables;
+            Biomes = biomes;
             Rooms = rooms;
             Floors = floors;
             Progressions = progressions;
             Limits = limits;
         }
 
-        public static ValidationContext FromProject() => new(
-            AssetFactory.LoadAll<ItemData>(), AssetFactory.LoadAll<EnemyData>(), AssetFactory.LoadAll<LootTable>(),
-            AssetFactory.LoadAll<RoomData>(), AssetFactory.LoadAll<FloorData>(), AssetFactory.LoadAll<PlayerProgression>(),
-            ForgeDesignLimits.Instance);
+        public static ValidationContext FromProject() => FromProject(null, null);
+
+        /// <summary>Données du projet, où la copie de travail remplace l'asset d'origine (ou s'ajoute s'il est nouveau).</summary>
+        public static ValidationContext FromProject(Object original, Object draft) => new(
+            Load<ItemData>(original, draft), Load<EnemyData>(original, draft), Load<LootTable>(original, draft),
+            Load<BiomeData>(original, draft), Load<RoomData>(original, draft), Load<FloorData>(original, draft),
+            Load<PlayerProgression>(original, draft), ForgeDesignLimits.Instance);
+
+        static List<T> Load<T>(Object original, Object draft) where T : Object
+        {
+            var assets = AssetFactory.LoadAll<T>();
+            if (draft is T typedDraft)
+            {
+                if (original is T typedOriginal)
+                    assets.Remove(typedOriginal);
+                assets.Add(typedDraft);
+            }
+            return assets;
+        }
 
         public IEnumerable<Object> AllAssets() =>
-            Items.Cast<Object>().Concat(Enemies).Concat(LootTables).Concat(Rooms).Concat(Floors).Concat(Progressions);
+            Items.Cast<Object>().Concat(Enemies).Concat(LootTables).Concat(Biomes).Concat(Rooms).Concat(Floors).Concat(Progressions);
     }
 
     /// <summary>
@@ -89,6 +107,8 @@ namespace TheDungeon.Editor.Validation
 
     public static class ValidationRunner
     {
+        const string ReferenceRuleName = "Références";
+
         static List<ValidationRule> rules;
 
         public static IReadOnlyList<ValidationRule> Rules => rules ??= TypeCache.GetTypesDerivedFrom<ValidationRule>()
@@ -108,12 +128,55 @@ namespace TheDungeon.Editor.Validation
                     issues.Add(issue);
                 }
             }
+            issues.AddRange(PropagateInvalidReferences(context, issues));
             return issues.OrderBy(issue => issue.Severity).ThenBy(issue => issue.Context != null ? issue.Context.name : string.Empty).ToList();
         }
 
-        public static List<ValidationIssue> RunFor(Object asset)
+        public static List<ValidationIssue> RunFor(Object asset) =>
+            Run(ValidationContext.FromProject()).Where(issue => issue.Context == asset).ToList();
+
+        /// <summary>
+        /// Une donnée qui utilise une donnée en erreur (ex : un ennemi avec une table de butin invalide)
+        /// est elle-même en erreur. Répété jusqu'à stabilité pour suivre les chaînes de références.
+        /// </summary>
+        static List<ValidationIssue> PropagateInvalidReferences(ValidationContext context, List<ValidationIssue> issues)
         {
-            return Run(ValidationContext.FromProject()).Where(issue => issue.Context == asset).ToList();
+            var invalid = new HashSet<Object>(issues.Where(i => i.Severity == Severity.Error && i.Context != null).Select(i => i.Context));
+            var references = context.AllAssets().ToDictionary(asset => asset, ReferencesOf);
+            var added = new List<ValidationIssue>();
+
+            bool changed;
+            do
+            {
+                changed = false;
+                foreach (var (asset, targets) in references)
+                {
+                    if (invalid.Contains(asset))
+                        continue;
+                    var broken = targets.FirstOrDefault(invalid.Contains);
+                    if (broken == null)
+                        continue;
+                    added.Add(new ValidationIssue(Severity.Error, $"Utilise « {broken.name} », qui contient des erreurs. Corrigez-le ou choisissez-en un autre.", asset)
+                        { RuleName = ReferenceRuleName });
+                    invalid.Add(asset);
+                    changed = true;
+                }
+            } while (changed);
+            return added;
+        }
+
+        /// <summary>Données du jeu référencées par un asset (sprites et autres assets ignorés).</summary>
+        static List<Object> ReferencesOf(Object asset)
+        {
+            var result = new List<Object>();
+            var iterator = new SerializedObject(asset).GetIterator();
+            while (iterator.NextVisible(true))
+            {
+                if (iterator.propertyType == SerializedPropertyType.ObjectReference &&
+                    iterator.objectReferenceValue is ScriptableObject target && target != asset)
+                    result.Add(target);
+            }
+            return result;
         }
     }
 }

@@ -7,12 +7,20 @@ namespace TheDungeon.Editor.Validation
     public sealed class NamingRule : ValidationRule
     {
         public override string Name => "Convention de nommage";
-        public override string Description => "Chaque asset s'appelle PRÉFIXE_NomEnPascalCase (ITM_, ENM_, BOSS_, LT_, RM_, FLR_, PRG_).";
+        public override string Description => "Chaque asset s'appelle PRÉFIXE_NomEnPascalCase (ITM_, ENM_, BOSS_, LT_, BIO_, RM_, FLR_, PRG_) et son nom est unique.";
 
         public override IEnumerable<ValidationIssue> Run(ValidationContext context)
         {
-            foreach (var asset in context.AllAssets())
+            var all = context.AllAssets().ToList();
+            foreach (var asset in all)
             {
+                if (asset is TheDungeon.Data.IDisplayNamed named && string.IsNullOrWhiteSpace(named.DisplayName))
+                    yield return Error("Le nom est vide.", asset);
+
+                var expectedName = NamingConvention.GetExpectedName(asset);
+                if (all.Any(other => other != asset && NamingConvention.GetExpectedName(other) == expectedName))
+                    yield return Error($"Un autre élément porte déjà le nom « {expectedName} ». Choisissez un nom différent.", asset);
+
                 if (NamingConvention.IsValid(asset) && asset.name == NamingConvention.GetExpectedName(asset))
                     continue;
                 var expected = NamingConvention.GetExpectedName(asset);
@@ -32,8 +40,6 @@ namespace TheDungeon.Editor.Validation
             var limits = context.Limits;
             foreach (var item in context.Items)
             {
-                if (string.IsNullOrWhiteSpace(item.DisplayName))
-                    yield return Error("L'objet n'a pas de nom affiché.", item);
                 if (item.Icon == null)
                     yield return Warning("L'objet n'a pas d'icône : il sera invisible dans l'inventaire.", item);
                 if (string.IsNullOrWhiteSpace(item.Description))
@@ -50,20 +56,12 @@ namespace TheDungeon.Editor.Validation
                     if (stat.value == 0)
                         yield return Warning($"Le bonus {stat.stat} vaut 0 : il ne sert à rien.", item);
                 }
-                if (item.Stats.GroupBy(stat => stat.stat).Any(group => group.Count() > 1))
-                    yield return Warning("La même statistique apparaît plusieurs fois : regroupez les bonus.", item);
+                foreach (var duplicate in item.Stats.GroupBy(stat => stat.stat).Where(group => group.Count() > 1))
+                    yield return Warning($"La statistique {duplicate.Key} apparaît {duplicate.Count()} fois : regroupez ces bonus en une seule ligne.", item);
                 if (item.Stats.Count > limits.maxStatsPerItem)
                     yield return Error($"Trop de bonus de stats ({item.Stats.Count}, max {limits.maxStatsPerItem}).", item);
                 if (item.Effects.Count > limits.maxEffectsPerItem)
                     yield return Error($"Trop d'effets ({item.Effects.Count}, max {limits.maxEffectsPerItem}).", item);
-            }
-
-            foreach (var group in context.Items.Where(i => !string.IsNullOrWhiteSpace(i.DisplayName)).GroupBy(i => i.DisplayName.Trim().ToLowerInvariant()))
-            {
-                if (group.Count() < 2)
-                    continue;
-                foreach (var item in group)
-                    yield return Warning($"Plusieurs objets s'appellent « {item.DisplayName} ».", item);
             }
         }
     }
@@ -78,8 +76,6 @@ namespace TheDungeon.Editor.Validation
             var limits = context.Limits;
             foreach (var enemy in context.Enemies)
             {
-                if (string.IsNullOrWhiteSpace(enemy.DisplayName))
-                    yield return Error("L'ennemi n'a pas de nom affiché.", enemy);
                 if (enemy.Sprite == null)
                     yield return Warning("L'ennemi n'a pas de visuel.", enemy);
                 if (enemy.LootTable == null)
