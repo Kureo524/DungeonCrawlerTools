@@ -10,14 +10,20 @@ Workshop B3 (La Horde). Outils intégrés à l'éditeur **Unity** pour produire 
 ## Les outils (menu `Tools`)
 | Outil | Famille | État |
 |---|---|---|
-| **Content Database** : objets, ennemis, tables de butin, progression du joueur | Création de contenu, Automatisation | ✅ Première version |
-| **Room Editor** : salles et plan des étages | Création de contenu, Automatisation | ⏳ À venir |
-| **Validator** : rapport de cohérence lisible par un designer | Validation et qualité | 🟡 Noyau de règles en place |
+| **Content Database** : objets, ennemis, tables de butin, progression du joueur | Création de contenu, Automatisation | ✅ |
+| **Biome Presets** : visuels, ennemis, décors, coffres et bonus de butin d'un biome | Création de contenu | ✅ |
+| **Room Editor** : salles dessinées sur une grille avec la palette du biome | Création de contenu, Automatisation | ✅ Salles (plan des étages à venir) |
+| **Import automatique des sprites** (`Assets/_Project/Art`) | Automatisation | ✅ |
+| **Validator** : rapport de cohérence lisible par un designer | Validation et qualité | 🟡 Règles en place, fenêtre de rapport à venir |
 | **Balancing** : courbes de progression et de butin | Équilibrage et debug | ⏳ À venir |
 | **Build** : build bloqué si les données sont invalides | Pipeline | ⏳ À venir |
 | **Settings (dev)** : limites imposées aux designers | (configuration) | ✅ |
 
-Chaque outil est une fenêtre dockable, comme Inspector ou Game. Chaque champ affiche une infobulle au survol, et chaque outil a un onglet **Help** qui donne le mode d'emploi pas à pas.
+Principes communs à tous les outils :
+- Chaque outil est une fenêtre dockable, comme Inspector ou Game.
+- Chaque élément affiche une infobulle au survol, et chaque outil a un onglet **Help** qui donne le mode d'emploi pas à pas.
+- **Rien n'est créé ni modifié sans validation.** On travaille sur une copie, et le bouton **Valider** en bas de la fenêtre n'enregistre que si les données ne contiennent aucune erreur.
+- Les listes de choix ne proposent que des éléments **valides**.
 
 ## Organisation du projet
 ```
@@ -26,9 +32,12 @@ Assets/_Project/
 ├─ Editor/         Code des outils (assembly TheDungeon.Editor, éditeur uniquement, absent du build)
 │  ├─ Common/      Socle partagé : fenêtre de base, nommage, création d'assets, limites
 │  ├─ ContentDatabase/
+│  ├─ Biomes/
+│  ├─ RoomEditor/
 │  ├─ Validation/  Règles de cohérence (une classe par règle)
 │  ├─ Help/        Textes de l'onglet Help (Markdown, modifiables sans recompiler)
 │  └─ Styles/      Feuille de style commune (USS)
+├─ Art/            Sprites CC0 (configurés automatiquement à l'import)
 ├─ Data/           Contenu produit par les outils (rangé automatiquement)
 ├─ Settings/       ForgeDesignLimits.asset (limites fixées par les développeurs)
 └─ Tests/Editor/   Tests automatiques (EditMode)
@@ -44,3 +53,6 @@ Unity -batchmode -projectPath . -runTests -testPlatform EditMode -testResults re
 
 ## Documentation
 - [Docs/Journal.md](Docs/Journal.md) : avancement, choix techniques et raisons.
+
+## Crédits
+Sprites : *Dungeon Crawl Stone Soup* tiles (licence **CC0**, domaine public), via [OpenGameArt](https://opengameart.org/content/dungeon-crawl-32x32-tiles). Licence complète : `Assets/_Project/Art/LICENSE_DungeonCrawl_CC0.txt`.
