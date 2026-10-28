@@ -18,6 +18,7 @@ namespace TheDungeon.Editor.Studio
         readonly IToolHost host;
         readonly Dictionary<string, ProgressRing> rings = new();
 
+        VisualElement gddRules;
         Label errorsValue;
         Label warningsValue;
         Label validValue;
@@ -47,8 +48,14 @@ namespace TheDungeon.Editor.Studio
             AddRing(progress, "bosses", "Boss", ForgeStudioWindow.Enemies);
             AddRing(progress, "loot", "Tables de butin", ForgeStudioWindow.LootTables);
             AddRing(progress, "rooms", "Salles", ForgeStudioWindow.Rooms);
+            AddRing(progress, "floors", "Étages", ForgeStudioWindow.Floors);
             AddRing(progress, "levels", "Niveaux du joueur", ForgeStudioWindow.Progression);
             scroll.Add(progress);
+
+            scroll.Add(ForgeUI.Label("Règles de cohérence du GDD", "forge-dashboard__heading"));
+            gddRules = new VisualElement();
+            gddRules.AddToClassList("forge-card-grid");
+            scroll.Add(gddRules);
 
             scroll.Add(ForgeUI.Label("Santé des données", "forge-dashboard__heading"));
             var health = new VisualElement();
@@ -130,6 +137,49 @@ namespace TheDungeon.Editor.Studio
             return card;
         }
 
+        /// <summary>Les 4 règles de cohérence du GDD, chacune vérifiée directement sur les données.</summary>
+        void RefreshGddRules(ValidationContext context, List<ValidationIssue> issues)
+        {
+            gddRules.Clear();
+            var missingEnemies = context.Rooms.Sum(r => r.Enemies.Count(e => e.enemy == null));
+            var missingItems = context.LootTables.Sum(t => t.Entries.Count(e => e.item == null));
+            GddRule("Ennemis et objets cités existent",
+                missingEnemies + missingItems == 0 ? "Toutes les références sont valides." : $"{missingEnemies} ennemi(s) et {missingItems} objet(s) manquants.",
+                missingEnemies + missingItems == 0, ForgeStudioWindow.Rooms);
+
+            var floorIssues = issues.Where(i => i.RuleName == "Étages" && i.Severity == Severity.Error).ToList();
+            var doorIssues = floorIssues.Count(i => i.Message.Contains("porte", StringComparison.OrdinalIgnoreCase));
+            var accessIssues = floorIssues.Count(i => i.Message.Contains("atteignable") || i.Message.Contains("entrée"));
+            GddRule("Portes compatibles, salles atteignables",
+                context.Floors.Count == 0 ? "Aucun étage pour l'instant." :
+                doorIssues + accessIssues == 0 ? "Toutes les salles sont reliées et accessibles." : $"{doorIssues} porte(s) incompatible(s), {accessIssues} problème(s) d'accès.",
+                context.Floors.Count > 0 && doorIssues + accessIssues == 0, ForgeStudioWindow.Floors);
+
+            var wrongBoss = context.Floors.Count(f => FloorGraph.BossCount(FloorGraph.Map(f.Rooms).Values) != 1);
+            GddRule("Exactement un boss par étage",
+                context.Floors.Count == 0 ? "Aucun étage pour l'instant." :
+                wrongBoss == 0 ? $"Les {context.Floors.Count} étage(s) ont un boss." : $"{wrongBoss} étage(s) sans boss ou avec plusieurs.",
+                context.Floors.Count > 0 && wrongBoss == 0, ForgeStudioWindow.Floors);
+
+            var naming = issues.Count(i => i.RuleName == "Convention de nommage");
+            GddRule("Convention de nommage",
+                naming == 0 ? "Tous les assets respectent PRÉFIXE_Nom." : $"{naming} asset(s) mal nommé(s) (correction automatique disponible).",
+                naming == 0, ForgeStudioWindow.Home);
+        }
+
+        void GddRule(string title, string detail, bool ok, string section)
+        {
+            var card = new VisualElement { tooltip = "Cliquez pour ouvrir l'outil concerné." };
+            card.AddToClassList("forge-card");
+            card.AddToClassList("forge-card--clickable");
+            card.AddToClassList("forge-stat");
+            card.AddToClassList(ok ? "forge-stat--good" : "forge-stat--critical");
+            card.Add(ForgeUI.Label($"<b>{(ok ? "✔" : "✖")}  {title}</b>", "forge-stat__title"));
+            card.Add(ForgeUI.Label(detail, "forge-hint"));
+            card.RegisterCallback<ClickEvent>(_ => host.ShowSection(section));
+            gddRules.Add(card);
+        }
+
         public void Refresh()
         {
             if (errorsValue == null)
@@ -147,6 +197,8 @@ namespace TheDungeon.Editor.Studio
             rings["bosses"].SetValue(bosses.Count, limits.targetBosses, Errors(bosses));
             rings["loot"].SetValue(context.LootTables.Count, limits.targetLootTables, Errors(context.LootTables));
             rings["rooms"].SetValue(context.Rooms.Count, limits.targetRooms, Errors(context.Rooms));
+            rings["floors"].SetValue(context.Floors.Count, limits.floorCount, Errors(context.Floors));
+            RefreshGddRules(context, issues);
             var progression = context.Progressions.FirstOrDefault();
             rings["levels"].SetValue(progression != null ? progression.Levels.Count : 0, limits.maxLevel, Errors(context.Progressions));
 

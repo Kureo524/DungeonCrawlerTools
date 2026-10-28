@@ -5,6 +5,7 @@ using TheDungeon.Data;
 using TheDungeon.Editor.Biomes;
 using TheDungeon.Editor.Common;
 using TheDungeon.Editor.ContentDatabase;
+using TheDungeon.Editor.Floors;
 using TheDungeon.Editor.RoomEditor;
 using TheDungeon.Editor.Validation;
 using UnityEditor;
@@ -27,6 +28,7 @@ namespace TheDungeon.Editor.Studio
         public const string Progression = "progression";
         public const string Biomes = "biomes";
         public const string Rooms = "rooms";
+        public const string Floors = "floors";
         public const string Settings = "settings";
 
         [SerializeField] string currentSection = Home;
@@ -71,6 +73,9 @@ namespace TheDungeon.Editor.Studio
         [MenuItem("Tools/Salles", priority = 41)]
         static void OpenRooms() => Open(Rooms);
 
+        [MenuItem("Tools/Étages", priority = 42)]
+        static void OpenFloors() => Open(Floors);
+
         [MenuItem("Tools/Limites (dev)", priority = 100)]
         static void OpenSettings() => Open(Settings);
 
@@ -112,6 +117,8 @@ namespace TheDungeon.Editor.Studio
                 "BiomePresets", "SPR_SwampTree", typeof(BiomeData), () => new BiomesTab(this));
             yield return Content(Rooms, "Monde", "Salles", "Salles dessinées sur une grille avec la palette de leur biome.",
                 "RoomEditor", "SPR_DoorClosed", typeof(RoomData), () => new RoomsTab(this));
+            yield return Content(Floors, "Monde", "Étages", "Plan de chaque étage : salles reliées par leurs portes, entrée et boss.",
+                "Floors", "SPR_DoorOpen", typeof(FloorData), () => new FloorsTab(this));
             yield return new ForgeSection(Settings, "Équipe technique", "Limites (dev)",
                 "Bornes imposées aux outils et objectifs de production du GDD. Réservé aux développeurs.", "Settings", "SPR_Key", null,
                 SettingsView.Build);

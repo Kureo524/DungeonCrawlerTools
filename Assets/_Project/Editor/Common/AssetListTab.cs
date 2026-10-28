@@ -79,6 +79,9 @@ namespace TheDungeon.Editor.Common
 
         protected T Draft => session?.Draft;
 
+        /// <summary>Asset enregistré correspondant à la copie de travail, ou null s'il n'est pas encore créé.</summary>
+        protected T Original => session?.Original;
+
         public VisualElement Build()
         {
             root = new TwoPaneSplitView(0, ListWidth, TwoPaneSplitViewOrientation.Horizontal) { viewDataKey = $"forge-split-{typeof(T).Name}" };

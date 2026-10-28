@@ -1101,3 +1101,89 @@
 .forge-help-bullet {
     margin-left: 10px;
 }
+
+/* ---------- Étages ---------- */
+
+.forge-floor-side {
+    width: 230px;
+    flex-shrink: 0;
+    margin-right: 10px;
+}
+
+.forge-floor-side .forge-palette-scroll {
+    width: auto;
+    max-height: 420px;
+    margin-right: 0;
+}
+
+.forge-floor-room {
+    flex-direction: row;
+    align-items: center;
+    margin: 2px 0;
+    padding: 4px;
+    border-width: 2px;
+    border-color: rgba(0, 0, 0, 0);
+    border-radius: 6px;
+    background-color: var(--forge-card);
+    transition-property: background-color, border-color, translate;
+    transition-duration: 0.12s;
+}
+
+.forge-floor-room:hover {
+    background-color: var(--forge-card-hover);
+    translate: 2px 0;
+}
+
+.forge-floor-room--selected {
+    border-color: var(--forge-accent);
+    background-color: var(--forge-accent-soft);
+}
+
+.forge-floor-room--placed {
+    opacity: 0.55;
+}
+
+.forge-floor-room__mini {
+    width: 44px;
+    height: 32px;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+.forge-floor-room__detail {
+    font-size: 10px;
+    opacity: 0.65;
+}
+
+.forge-floor__board {
+    position: relative;
+    border-radius: 6px;
+    background-color: rgba(0, 0, 0, 0.12);
+}
+
+.forge-floor__labels {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.forge-floor__room-name {
+    position: absolute;
+    font-size: 10px;
+    -unity-font-style: bold;
+    overflow: hidden;
+    white-space: nowrap;
+    padding: 0;
+    margin: 0;
+}
+
+.forge-floor__tag {
+    position: absolute;
+    padding: 0 5px;
+    border-radius: 6px;
+    font-size: 8px;
+    -unity-font-style: bold;
+    color: rgb(255, 255, 255);
+}
