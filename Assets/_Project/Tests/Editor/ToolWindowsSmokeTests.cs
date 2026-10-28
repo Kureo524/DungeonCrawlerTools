@@ -35,6 +35,7 @@ namespace TheDungeon.Editor.Tests
         [Test] public void ProgressionTab_Builds() => AssertBuilds(w => new ProgressionTab(w).Build());
         [Test] public void BiomesTab_Builds() => AssertBuilds(w => new BiomesTab(w).Build());
         [Test] public void RoomsTab_Builds() => AssertBuilds(w => new RoomsTab(w).Build());
+        [Test] public void FloorsTab_Builds() => AssertBuilds(w => new TheDungeon.Editor.Floors.FloorsTab(w).Build());
         [Test] public void Dashboard_Builds() => AssertBuilds(w => new DashboardView(w).Build());
         [Test] public void Settings_Builds() => AssertBuilds(_ => SettingsView.Build());
 
@@ -115,7 +116,7 @@ namespace TheDungeon.Editor.Tests
         [Test]
         public void HelpFiles_Exist()
         {
-            foreach (var help in new[] { "Dashboard", "ContentDatabase", "BiomePresets", "RoomEditor", "Settings" })
+            foreach (var help in new[] { "Dashboard", "ContentDatabase", "BiomePresets", "RoomEditor", "Floors", "Settings" })
                 Assert.IsNotNull(UnityEditor.AssetDatabase.LoadAssetAtPath<TextAsset>($"{DungeonPaths.Help}/{help}.md"), help);
         }
     }

@@ -9,10 +9,11 @@ using UnityEngine.UIElements;
 namespace TheDungeon.Editor.Tests
 {
     /// <summary>
-    /// Ouvre la vraie fenêtre Forge Studio. Régression : ancrer ou déplacer une fenêtre détache puis rattache
+    /// Ouvre la vraie fenêtre Forge Studio (classe nommée pour passer après les tests qui créent des assets).
+    /// Régression : ancrer ou déplacer une fenêtre détache puis rattache
     /// son interface ; les boutons doivent continuer à fonctionner ensuite.
     /// </summary>
-    public class ToolWindowLifecycleTests
+    public class WindowLifecycleTests
     {
         [UnityTest]
         public IEnumerator Biomes_SurvivesDocking() => DockThenAddRows(ForgeStudioWindow.Biomes);
@@ -27,7 +28,7 @@ namespace TheDungeon.Editor.Tests
             try
             {
                 foreach (var id in new[] { ForgeStudioWindow.Home, ForgeStudioWindow.Items, ForgeStudioWindow.Enemies, ForgeStudioWindow.LootTables,
-                             ForgeStudioWindow.Progression, ForgeStudioWindow.Biomes, ForgeStudioWindow.Rooms, ForgeStudioWindow.Settings })
+                             ForgeStudioWindow.Progression, ForgeStudioWindow.Biomes, ForgeStudioWindow.Rooms, ForgeStudioWindow.Floors, ForgeStudioWindow.Settings })
                 {
                     Step($"section {id}");
                     window.ShowSection(id);
