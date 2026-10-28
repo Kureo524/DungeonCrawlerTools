@@ -3,6 +3,7 @@ using TheDungeon.Editor.Biomes;
 using TheDungeon.Editor.Common;
 using TheDungeon.Editor.ContentDatabase;
 using TheDungeon.Editor.RoomEditor;
+using TheDungeon.Editor.Studio;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -11,9 +12,9 @@ namespace TheDungeon.Editor.Tests
     /// <summary>Construit l'interface de chaque outil pour détecter les exceptions sans ouvrir de fenêtre.</summary>
     public class ToolWindowsSmokeTests
     {
-        static void AssertBuilds<TWindow>(System.Func<TWindow, VisualElement> build) where TWindow : ForgeToolWindow
+        static void AssertBuilds(System.Func<ForgeStudioWindow, VisualElement> build)
         {
-            var window = ScriptableObject.CreateInstance<TWindow>();
+            var window = ScriptableObject.CreateInstance<ForgeStudioWindow>();
             try
             {
                 var root = build(window);
@@ -22,16 +23,20 @@ namespace TheDungeon.Editor.Tests
             }
             finally
             {
+                // Sans cela, Unity ouvrirait sa boîte « modifications non enregistrées » et bloquerait le test.
+                window.DiscardAllUnsaved();
                 Object.DestroyImmediate(window);
             }
         }
 
-        [Test] public void ItemsTab_Builds() => AssertBuilds<ContentDatabaseWindow>(w => new ItemsTab(w).Build());
-        [Test] public void EnemiesTab_Builds() => AssertBuilds<ContentDatabaseWindow>(w => new EnemiesTab(w).Build());
-        [Test] public void LootTablesTab_Builds() => AssertBuilds<ContentDatabaseWindow>(w => new LootTablesTab(w).Build());
-        [Test] public void ProgressionTab_Builds() => AssertBuilds<ContentDatabaseWindow>(w => new ProgressionTab(w).Build());
-        [Test] public void BiomesTab_Builds() => AssertBuilds<BiomePresetsWindow>(w => new BiomesTab(w).Build());
-        [Test] public void RoomsTab_Builds() => AssertBuilds<RoomEditorWindow>(w => new RoomsTab(w).Build());
+        [Test] public void ItemsTab_Builds() => AssertBuilds(w => new ItemsTab(w).Build());
+        [Test] public void EnemiesTab_Builds() => AssertBuilds(w => new EnemiesTab(w).Build());
+        [Test] public void LootTablesTab_Builds() => AssertBuilds(w => new LootTablesTab(w).Build());
+        [Test] public void ProgressionTab_Builds() => AssertBuilds(w => new ProgressionTab(w).Build());
+        [Test] public void BiomesTab_Builds() => AssertBuilds(w => new BiomesTab(w).Build());
+        [Test] public void RoomsTab_Builds() => AssertBuilds(w => new RoomsTab(w).Build());
+        [Test] public void Dashboard_Builds() => AssertBuilds(w => new DashboardView(w).Build());
+        [Test] public void Settings_Builds() => AssertBuilds(_ => SettingsView.Build());
 
         /// <summary>Crée de vraies données temporaires (validées) pour construire l'éditeur de salle complet, puis les supprime.</summary>
         [Test]
@@ -63,8 +68,15 @@ namespace TheDungeon.Editor.Tests
                     RoomEditing.PlaceEnemy(so, new Vector2Int(5, 5), enemy, 10);
                 }, created);
 
-                AssertBuilds<RoomEditorWindow>(w => new RoomsTab(w).Build());
-                AssertBuilds<BiomePresetsWindow>(w => new BiomesTab(w).Build());
+                Debug.Log("[ForgeTest] construction RoomsTab");
+                AssertBuilds(w => new RoomsTab(w).Build());
+                Debug.Log("[ForgeTest] construction BiomesTab");
+                AssertBuilds(w =>
+                {
+                    var root = new BiomesTab(w).Build();
+                    ClickAll(root, "+ Ajouter");
+                    return root;
+                });
             }
             finally
             {
@@ -73,14 +85,27 @@ namespace TheDungeon.Editor.Tests
             }
         }
 
+        /// <summary>Simule un clic sur chaque bouton portant ce texte.</summary>
+        static void ClickAll(VisualElement root, string text)
+        {
+            var buttons = root.Query<Button>().Where(b => b.text == text).ToList();
+            Assert.IsNotEmpty(buttons, $"Aucun bouton « {text} ».");
+            var field = typeof(Clickable).GetField("clicked", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            foreach (var button in buttons)
+                ((System.Action)field!.GetValue(button.clickable))?.Invoke();
+        }
+
         static T Commit<T>(string name, System.Action<UnityEditor.SerializedObject> setup, System.Collections.Generic.List<Object> created)
             where T : ScriptableObject
         {
+            Debug.Log($"[ForgeTest] {name} : préparation");
             var session = DraftSession<T>.CreateNew(name);
             var serialized = new UnityEditor.SerializedObject(session.Draft);
             setup(serialized);
             serialized.ApplyModifiedPropertiesWithoutUndo();
+            Debug.Log($"[ForgeTest] {name} : validation");
             var errors = session.TryCommit();
+            Debug.Log($"[ForgeTest] {name} : enregistré");
             Assert.IsEmpty(errors, $"{name} : " + string.Join(" / ", errors.ConvertAll(e => e.Message)));
             created.Add(session.Original);
             session.Dispose();
@@ -90,7 +115,7 @@ namespace TheDungeon.Editor.Tests
         [Test]
         public void HelpFiles_Exist()
         {
-            foreach (var help in new[] { "ContentDatabase", "BiomePresets", "RoomEditor", "Settings" })
+            foreach (var help in new[] { "Dashboard", "ContentDatabase", "BiomePresets", "RoomEditor", "Settings" })
                 Assert.IsNotNull(UnityEditor.AssetDatabase.LoadAssetAtPath<TextAsset>($"{DungeonPaths.Help}/{help}.md"), help);
         }
     }
