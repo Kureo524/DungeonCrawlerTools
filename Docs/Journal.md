@@ -218,14 +218,56 @@ GDD : **25 PNJ, environ 150 répliques, arbres de dialogue avec conditions et co
 - Répliques inaccessibles, conversation sans fin, réponses toutes conditionnelles (risque de blocage).
 - Le tableau de bord suit l'avancement **PNJ x/25** et **répliques x/150**.
 
+## Étape 9 : le jeu jouable
+
+Le sujet demande un « runtime minimal » qui charge le contenu. On va plus loin : un **jeu jouable** du genre (dungeon crawler en vue du dessus, salles verrouillées pendant les combats), construit **uniquement à partir des données des outils**.
+
+### Chargement des données
+- `GameDatabase` (asset dans `Settings/`) rassemble étages, progression, PNJ, salles, couleurs de rareté et sprites communs. Elle est **remplie automatiquement** par `GameLauncher` avant chaque partie, même lancée avec le bouton Play d'Unity, et avant chaque build (`IPreprocessBuildWithReport`). Le designer n'a jamais à la tenir à jour.
+- Scène `Scenes/Game.unity` : créée, ou réparée, par **Tools > Jeu > Créer ou réparer la scène de jeu**, puis ajoutée aux scènes du build.
+
+### Construction du monde (`FloorBuilder`)
+- Chaque salle est peinte dans des tilemaps (sol, murs, trous) avec les sprites de son biome.
+- Chaque case du plan d'étage devient un emplacement assez grand pour la plus grande salle plus un couloir. Les salles y sont **centrées de façon à aligner leurs portes** : `FloorLayout`, couvert par un test.
+- Les portes reliées sont jointes par un couloir. Une porte qui ne mène nulle part est murée, ce qui rend le jeu robuste même sur des données imparfaites.
+- Les trous sont sur un calque à part : ils bloquent la marche mais pas les projectiles.
+
+### Partie (`DungeonGame`)
+- **Salles** : entrer dans une salle de combat fait apparaître ses ennemis (animation d'apparition, sans attaque immédiate) et **verrouille les portes** jusqu'à la victoire.
+- **Ennemis** : une IA par comportement défini dans l'outil Ennemis :
+  - corps à corps : poursuite ;
+  - distance : garde ses distances et tire ;
+  - charge : annonce puis fonce ;
+  - invocateur : appelle des ennemis du biome ;
+  - tourelle : salves en cercle.
+  Les stats sont calculées pour l'étage. Les boss sont deux fois plus grands, avec des salves supplémentaires.
+- **Joueur** : stats de la **progression** (PV et dégâts par niveau, XP pour monter), plus les bonus de l'équipement ramassé. L'arme équipée applique ses **effets** (poison, brûlure, étourdissement, vol de vie), avec une chance de coup critique.
+- **Butin** : tables de butin des ennemis et des coffres, avec les **conditions d'apparition** (étages de la table) et les **bonus de rareté du biome**. Les objets sont équipés automatiquement s'ils sont meilleurs, et le **prix** des objets sert dans la boutique.
+- **PNJ** : placés dans les salles calmes de leur étage. Leurs dialogues utilisent la **même logique que l'aperçu de l'outil** (`DialogueLogic`), appliquée à l'état réel de la partie.
+- **Boss** vaincu : un portail mène à l'étage suivant ; après le dernier, c'est la victoire.
+- **Interface** : barres de vie et d'XP, or, équipement, mini-carte des salles découvertes, barre du boss, chiffres de dégâts, inventaire, boîte de dialogue, écrans titre, pause, game over et victoire.
+
+### Outils de test rapide (famille « Équilibrage et debug »)
+- **▶ Jouer** dans la barre latérale de Forge Studio, **▶ Tester cet étage** dans Étages, **▶ Tester cette salle** dans Salles.
+- Les données invalides sont signalées avant le lancement. Le test utilise la version enregistrée, et l'outil prévient si des modifications ne sont pas encore validées.
+
+### Vérification
+Un script de vérification, exécuté uniquement sur une **copie** du projet, a :
+1. créé un petit donjon (salles de départ, combat, boutique et boss, quatre comportements d'ennemis, coffre, PNJ) ;
+2. lancé une vraie partie et l'a pilotée : entrée en salle de combat, portes verrouillées, ennemis vaincus, XP et butin, coffre, dialogue, boss (qui inflige bien des dégâts), portail, victoire ;
+3. pris des captures du rendu.
+
+Aucune erreur. L'interface (dessinée en IMGUI) n'apparaît pas sur les captures de caméra : elle reste à vérifier en jouant.
+
 ## Tests
 
-`Assets/_Project/Tests/Editor` contient **54 tests EditMode**. **Résultat actuel : 54/54.**
+`Assets/_Project/Tests/Editor` contient **59 tests EditMode**. **Résultat actuel : 59/59.**
 - Nommage : conversion des noms, préfixe des boss.
 - Règles de contenu : objet manquant, bonus trop élevé, progression qui baisse, probabilités de butin.
 - Salles : salle neuve correcte, ennemi hors biome, pose sur un mur refusée, entrée murée refusée, ennemi inaccessible, boss hors salle de boss, redimensionnement sans perte, salle sans biome.
 - Étages : plan correct, porte dans le vide, portes incompatibles, salle inaccessible, étage sans boss ; le générateur produit un plan entièrement relié avec un seul boss, et explique un échec.
 - Dialogues : identifiants et début automatiques, enchaînement de la saisie messagerie, suppression qui répare les liens, réponse conditionnelle masquée puis disponible, effets appliqués, début alternatif, marqueur jamais activé, réplique inaccessible, export texte. Construction des trois vues avec un vrai personnage et envoi d'une réplique par la barre de saisie.
+- Jeu : portes alignées entre salles de tailles différentes, montée de niveau qui rend la vie, équipement du meilleur objet, défense (au moins 1 dégât), effets d'un choix de dialogue appliqués à la partie.
 - Copie de travail : un objet invalide **n'est pas créé** ; un objet valide est créé avec le bon nom et au bon endroit.
 - Construction de chaque outil et du tableau de bord, y compris l'éditeur de salles avec de vraies données temporaires, pour détecter les exceptions sans ouvrir Unity.
 - **Vraie fenêtre Forge Studio** : ouverture de chaque section, et ajout de lignes après un ancrage simulé (régression du `NullReferenceException`).

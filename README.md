@@ -20,6 +20,7 @@ Menu **Tools > Forge Studio**. Chaque outil est aussi accessible directement dep
 | **Étages** | Plan de chaque étage (3 × 10 salles), générateur de plans, contrôle des portes, de l'accessibilité et du boss unique | Création de contenu, Automatisation, Validation |
 | **Limites (dev)** | Bornes imposées aux designers et objectifs de production | Configuration |
 | *(automatique)* Import des sprites | Configuration des images déposées dans `Assets/_Project/Art` | Automatisation |
+| **▶ Jouer / Tester cet étage / Tester cette salle** | Lancement du jeu sur tout le donjon, un étage ou une salle | Équilibrage et debug |
 | *(à venir)* Build | — | Pipeline |
 
 Principes communs :
@@ -29,10 +30,34 @@ Principes communs :
 - Les listes de choix ne proposent que des éléments **valides**.
 - **Graphiques interactifs** : survol pour lire les valeurs, palette lisible par les daltoniens, en thème clair comme en sombre.
 
+## Jouer
+Le jeu est un dungeon crawler en vue du dessus, construit **entièrement à partir des données produites par les outils** : étages, salles, biomes, ennemis, butin, progression et dialogues.
+
+- **Forge Studio > ▶ Jouer** (ou **Tools > Jouer**) : partie complète depuis l'étage 1.
+- **Étages > ▶ Tester cet étage** et **Salles > ▶ Tester cette salle** : lancement direct sur l'élément en cours d'édition.
+- Ou ouvrir `Assets/_Project/Scenes/Game.unity` et appuyer sur Play. La base de jeu est mise à jour automatiquement avant chaque partie et chaque build.
+
+| Commande | Clavier / souris | Manette |
+|---|---|---|
+| Se déplacer | ZQSD / WASD / flèches | Stick gauche |
+| Viser, tirer | Souris, clic gauche | Stick droit, gâchette droite |
+| Esquive | Espace | B |
+| Interagir (coffre, PNJ, boutique, portail) | E | A |
+| Consommable | F | Y |
+| Inventaire / Pause | I / Échap | Select / Start |
+
+Déroulement :
+1. Entrer dans une salle de combat fait apparaître ses ennemis et **ferme les portes** jusqu'à la victoire.
+2. Les ennemis lâchent XP, or et butin (tables de butin, bonus de rareté du biome, conditions d'étage). Les coffres s'ouvrent avec E, et la boutique vend des objets à leur prix.
+3. Les PNJ de l'étage attendent dans les salles calmes et jouent leurs dialogues, avec conditions et effets appliqués à la partie.
+4. Le boss de l'étage vaincu ouvre un **portail** vers l'étage suivant. Après le dernier étage, c'est la victoire.
+
 ## Organisation du projet
 ```
 Assets/_Project/
-├─ Runtime/        Code du jeu (assembly TheDungeon.Runtime) : données ScriptableObject
+├─ Runtime/        Code du jeu (assembly TheDungeon.Runtime) : données ScriptableObject (Data/),
+│                  logique des dialogues (Dialogue/) et jeu (Game/)
+├─ Scenes/         Game.unity : scène du jeu
 ├─ Editor/         Code des outils (assembly TheDungeon.Editor, éditeur uniquement, absent du build)
 │  ├─ Studio/      Fenêtre Forge Studio, tableau de bord, limites
 │  ├─ Common/      Socle partagé : copie de travail, sélecteurs, nommage, limites, graphiques (Charts/)
