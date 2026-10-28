@@ -1,6 +1,8 @@
 {
     "name": "TheDungeon.Runtime",
     "rootNamespace": "TheDungeon",
-    "references": [],
+    "references": [
+        "Unity.InputSystem"
+    ],
     "autoReferenced": true
 }
