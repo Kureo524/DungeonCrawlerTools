@@ -12,6 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 72d06a244bfdb495496c983d77e0261c, type: 3}
   m_Name: ForgeDesignLimits
   m_EditorClassIdentifier: TheDungeon.Editor::TheDungeon.Editor.Common.ForgeDesignLimits
+  targetItems: 40
+  targetEnemies: 12
+  targetBosses: 3
+  targetLootTables: 20
+  targetRooms: 30
   floorCount: 3
   roomsPerFloor: 10
   floorGridSize: {x: 6, y: 6}
@@ -25,6 +30,16 @@ MonoBehaviour:
   maxChestsPerRoom: 3
   roomDifficulty:
     min: 1
+    max: 5
+  maxBiomeEnemies: 12
+  maxBiomeProps: 12
+  maxBiomeLootTables: 6
+  maxBiomeFloorVariants: 4
+  biomeSpawnWeight:
+    min: 1
+    max: 100
+  biomeRarityBoost:
+    min: 0
     max: 5
   rarities:
   - rarity: 0

@@ -1,9 +1,9 @@
-# Room Editor
+# Salles
 
 Dessinez les salles du donjon sur une grille, comme dans un jeu de type Soul Knight : terrain, entrées, ennemis, coffres et décors. Tout le contenu proposé vient du **biome** de la salle.
 
 ## Créer une salle
-- Un **preset de biome valide** est obligatoire (Tools > Biome Presets). Sans biome, le bouton **+ Nouveau** explique quoi faire.
+- Un **preset de biome valide** est obligatoire (Forge Studio > Biomes). Sans biome, le bouton **+ Nouveau** explique quoi faire.
 - Le filtre **biome** en haut de la liste sert aussi de biome par défaut pour la nouvelle salle.
 - La salle est créée seulement au clic sur **Valider et créer**, si elle ne contient aucune erreur.
 

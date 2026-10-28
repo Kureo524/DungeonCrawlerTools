@@ -1,11 +1,11 @@
-# Content Database
+# Contenu : objets, ennemis, butin, progression
 
 Cet outil regroupe tout le contenu « fiche » du jeu : **objets**, **ennemis**, **tables de butin** et **progression du joueur**. Vous n'avez jamais besoin d'ouvrir un dossier ni de créer un fichier à la main.
 
 ## Créer un élément
 - Choisissez l'onglet (Objets, Ennemis, Tables de butin).
 - Cliquez sur **+ Nouveau** et remplissez la fiche à droite. Survolez un champ pour afficher son explication.
-- Cliquez sur **Valider et créer** en bas de la fenêtre. L'élément n'est créé que s'il ne contient **aucune erreur**. Il est alors nommé (`ITM_`, `ENM_`, `BOSS_`, `LT_`) et rangé automatiquement.
+- Cliquez sur **Valider et créer** en bas de l'outil. L'élément n'est créé que s'il ne contient **aucune erreur**. Il est alors nommé (`ITM_`, `ENM_`, `BOSS_`, `LT_`) et rangé automatiquement.
 
 ## Le bouton Valider
 - Toute modification se fait sur une **copie de travail** : le vrai fichier ne change qu'au clic sur **Valider et enregistrer**.
@@ -20,6 +20,13 @@ Cet outil regroupe tout le contenu « fiche » du jeu : **objets**, **ennemis**,
 - Les listes de choix (table de butin d'un ennemi, objets d'une table) ne proposent que des éléments **valides**.
 - Une nouvelle ligne de bonus prend automatiquement une statistique pas encore utilisée.
 - Toute modification s'annule avec **Ctrl+Z**.
+
+## Lire les graphiques
+- **Objets** : la jauge « Position du prix » montre la plage autorisée par la rareté (zone verte) et le prix de l'objet (repère vert dans la plage, rouge en dehors). Les barres « Puissance des bonus » comparent chaque bonus au maximum de la rareté.
+- **Ennemis** : trois petits graphiques (PV, dégâts, XP) montrent l'évolution sur les étages. La courbe grise est la moyenne des autres ennemis du même rang : un ennemi bien au-dessus est un pic de difficulté.
+- **Tables de butin** : l'anneau donne la chance d'obtenir un objet de chaque rareté ; les barres détaillent chaque objet.
+- **Progression** : PV, dégâts et XP par niveau. Un point **rouge** signale un niveau où la valeur baisse.
+- Survolez une courbe, un segment ou une barre pour lire les valeurs exactes.
 
 ## Lire les problèmes
 - Un **!** rouge ou orange dans la liste signale un élément à corriger.

@@ -1,6 +1,7 @@
 using System.Linq;
 using TheDungeon.Data;
 using TheDungeon.Editor.Common;
+using TheDungeon.Editor.Common.Charts;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -11,7 +12,7 @@ namespace TheDungeon.Editor.ContentDatabase
     /// <summary>Tableau des niveaux du joueur, avec génération à partir d'une formule et validation avant enregistrement.</summary>
     public sealed class ProgressionTab
     {
-        readonly ForgeToolWindow window;
+        readonly IToolHost window;
 
         // Paramètres du générateur (valeurs de départ raisonnables, modifiables dans l'onglet).
         int baseHealth = 50;
@@ -25,12 +26,15 @@ namespace TheDungeon.Editor.ContentDatabase
         ScrollView content;
         ValidationFooter footer;
         VisualElement table;
+        LineChart healthChart;
+        LineChart damageChart;
+        LineChart xpChart;
         IssuesPanel issuesPanel;
         DraftSession<PlayerProgression> session;
         SerializedObject serializedObject;
         IVisualElementScheduledItem pendingRefresh;
 
-        public ProgressionTab(ForgeToolWindow window)
+        public ProgressionTab(IToolHost window)
         {
             this.window = window;
         }
@@ -47,12 +51,11 @@ namespace TheDungeon.Editor.ContentDatabase
             root.Add(content);
             footer = new ValidationFooter(Revert, () => Commit());
             root.Add(footer);
-            root.RegisterCallback<DetachFromPanelEvent>(_ =>
+            window.Closing += () =>
             {
                 session?.Dispose();
                 session = null;
-                window.SetUnsaved(this, false);
-            });
+            };
 
             var existing = AssetFactory.LoadAll<PlayerProgression>().FirstOrDefault();
             if (existing != null)
@@ -91,6 +94,18 @@ namespace TheDungeon.Editor.ContentDatabase
             content.Clear();
             serializedObject.Update();
             content.Add(BuildGenerator());
+
+            // Trois mesures d'échelles différentes : trois petits graphiques côte à côte plutôt qu'un graphique à double axe.
+            var curves = ForgeUI.Section("Courbes de progression (survolez pour lire les valeurs)", content);
+            var row = new VisualElement();
+            row.AddToClassList("forge-small-multiples");
+            healthChart = new LineChart("PV max");
+            damageChart = new LineChart("Dégâts");
+            xpChart = new LineChart("XP pour le niveau suivant");
+            row.Add(healthChart);
+            row.Add(damageChart);
+            row.Add(xpChart);
+            curves.Add(row);
 
             var tableSection = ForgeUI.Section($"Niveaux 1 à {Limits.maxLevel}", content);
             var levels = serializedObject.FindProperty("levels");
@@ -221,10 +236,28 @@ namespace TheDungeon.Editor.ContentDatabase
                 row.style.backgroundColor = decreasing ? new Color(0.86f, 0.27f, 0.27f, 0.2f) : StyleKeyword.Null;
                 row.tooltip = decreasing ? "Une valeur baisse par rapport au niveau précédent." : null;
             }
+            RefreshCharts(levels);
             var issues = session.Validate();
             issuesPanel.Show(issues);
             footer.Show(issues, session.IsNew, session.IsDirty);
             window.SetUnsaved(this, session.IsDirty, Commit);
+        }
+
+        void RefreshCharts(System.Collections.Generic.IReadOnlyList<LevelEntry> levels)
+        {
+            var labels = Enumerable.Range(1, levels.Count).Select(l => l.ToString()).ToArray();
+            Chart(healthChart, labels, "PV max", 0, levels.Select(l => (float)l.maxHealth).ToArray(), strictlyIncreasing: false);
+            Chart(damageChart, labels, "Dégâts", 1, levels.Select(l => (float)l.damage).ToArray(), strictlyIncreasing: false);
+            Chart(xpChart, labels, "XP", 2, levels.Select(l => (float)l.xpRequired).ToArray(), strictlyIncreasing: true);
+        }
+
+        /// <summary>Une courbe, avec en rouge les niveaux où la valeur baisse (ou stagne, si elle doit augmenter).</summary>
+        static void Chart(LineChart chart, string[] labels, string name, int colorSlot, float[] values, bool strictlyIncreasing)
+        {
+            var alerts = Enumerable.Range(1, Mathf.Max(0, values.Length - 1))
+                .Where(i => strictlyIncreasing ? values[i] <= values[i - 1] : values[i] < values[i - 1]);
+            chart.SetData("Niveau", labels, new[] { new LineChart.Series { Name = name, Color = ChartColors.Series(colorSlot), Values = values } },
+                alertPoints: alerts);
         }
 
         bool Commit()

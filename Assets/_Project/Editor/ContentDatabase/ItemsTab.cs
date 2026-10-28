@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using TheDungeon.Data;
 using TheDungeon.Editor.Common;
+using TheDungeon.Editor.Common.Charts;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -17,8 +18,10 @@ namespace TheDungeon.Editor.ContentDatabase
 
         DropdownField rarityFilter;
         DropdownField typeFilter;
+        RangeMeter priceMeter;
+        VisualElement statBars;
 
-        public ItemsTab(ForgeToolWindow window) : base(window)
+        public ItemsTab(IToolHost window) : base(window)
         {
         }
 
@@ -68,6 +71,8 @@ namespace TheDungeon.Editor.ContentDatabase
             classification.Add(ForgeUI.Enum<ItemType>("Type", "type", "Catégorie de l'objet."));
             var priceSlider = ForgeUI.Slider("Prix", "price", Limits.GetRarity(item.Rarity).price, "Prix d'achat en pièces d'or.");
             classification.Add(priceSlider);
+            priceMeter = new RangeMeter("Position du prix");
+            classification.Add(priceMeter);
 
             var statRange = StatRange(item.Rarity);
             container.Add(ForgeLists.Array(serializedObject, "stats", "Bonus de statistiques", "Bonus appliqués quand l'objet est équipé.",
@@ -84,6 +89,10 @@ namespace TheDungeon.Editor.ContentDatabase
                     return ForgeLists.Row(stat, value);
                 },
                 element => InitializeStat(serializedObject, element)));
+
+            var budget = ForgeUI.Section("Puissance des bonus (par rapport au maximum de la rareté)", container);
+            statBars = new VisualElement();
+            budget.Add(statBars);
 
             container.Add(ForgeLists.Array(serializedObject, "effects", "Effets", "Effets spéciaux déclenchés par l'objet.",
                 Limits.maxEffectsPerItem,
@@ -118,6 +127,19 @@ namespace TheDungeon.Editor.ContentDatabase
                     slider.highValue = statRange.max;
                 });
             });
+        }
+
+        protected override void OnRefresh(ItemData item)
+        {
+            var rule = Limits.GetRarity(item.Rarity);
+            var legendaryMax = Limits.GetRarity(Rarity.Legendary).price.max;
+            priceMeter.SetValue(item.Price, rule.price.min, rule.price.max, legendaryMax, "or");
+
+            BarList.Fill(statBars, item.Stats.Select(stat => new BarList.Bar(
+                    stat.stat.ToString(), Mathf.Abs(stat.value), $"{stat.value:+0;-0} / {rule.maxStatValue}",
+                    Mathf.Abs(stat.value) > rule.maxStatValue ? ChartColors.Critical : ChartColors.Series((int)stat.stat),
+                    tooltip: $"{stat.stat} : {stat.value:+0;-0} (maximum {rule.maxStatValue} pour un objet {item.Rarity})")),
+                "Aucun bonus de statistique.", rule.maxStatValue);
         }
 
         IntRange StatRange(Rarity rarity)

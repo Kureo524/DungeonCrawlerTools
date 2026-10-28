@@ -57,11 +57,23 @@ namespace TheDungeon.Editor.Common
 
     /// <summary>
     /// Cadre fixé par les développeurs : les outils brident les champs à ces valeurs
-    /// et le Validator s'en sert comme référence. Réservé aux développeurs (Tools > Settings (dev)).
+    /// et le Validator s'en sert comme référence. Réservé aux développeurs (Forge Studio > Limites (dev)).
     /// </summary>
     public class ForgeDesignLimits : ScriptableObject
     {
         const string AssetPath = DungeonPaths.Settings + "/ForgeDesignLimits.asset";
+
+        [Header("Objectifs de production (GDD)")]
+        [Tooltip("Nombre d'objets prévus par le GDD.")]
+        public int targetItems = 40;
+        [Tooltip("Nombre d'ennemis (hors boss) prévus par le GDD.")]
+        public int targetEnemies = 12;
+        [Tooltip("Nombre de boss prévus par le GDD (un par étage).")]
+        public int targetBosses = 3;
+        [Tooltip("Nombre de tables de butin prévues par le GDD.")]
+        public int targetLootTables = 20;
+        [Tooltip("Nombre de salles prévues par le GDD.")]
+        public int targetRooms = 30;
 
         [Header("Structure du donjon")]
         [Tooltip("Nombre d'étages du donjon.")]

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using TheDungeon.Data;
 using TheDungeon.Editor.Common;
+using TheDungeon.Editor.Common.Charts;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -10,14 +11,16 @@ using UnityEngine.UIElements;
 
 namespace TheDungeon.Editor.Biomes
 {
-    /// <summary>Presets de biome : visuels, ennemis, décors, coffres et bonus de butin, réutilisés par le Room Editor.</summary>
+    /// <summary>Presets de biome : visuels, ennemis, décors, coffres et bonus de butin, réutilisés par l'éditeur de salles.</summary>
     public sealed class BiomesTab : AssetListTab<BiomeData>
     {
         VisualElement tilePreview;
         DropdownField lootPreviewTable;
         VisualElement lootPreview;
+        DonutChart lootByRarity;
+        DonutChart spawnShare;
 
-        public BiomesTab(ForgeToolWindow window) : base(window)
+        public BiomesTab(IToolHost window) : base(window)
         {
         }
 
@@ -80,7 +83,11 @@ namespace TheDungeon.Editor.Biomes
                     return true;
                 }));
 
-            container.Add(ForgeLists.Array(serializedObject, "props", "Décors du biome", "Décors disponibles dans la palette du Room Editor.",
+            var spawnSection = ForgeUI.Section("Répartition des apparitions", container);
+            spawnShare = new DonutChart("Part de chaque ennemi dans les apparitions");
+            spawnSection.Add(spawnShare);
+
+            container.Add(ForgeLists.Array(serializedObject, "props", "Décors du biome", "Décors disponibles dans la palette de l'éditeur de salles.",
                 Limits.maxBiomeProps,
                 (element, _) =>
                 {
@@ -128,8 +135,14 @@ namespace TheDungeon.Editor.Biomes
             lootPreviewTable = new DropdownField("Table") { tooltip = "Table de butin à prévisualiser avec les bonus de ce biome." };
             lootPreviewTable.RegisterValueChangedCallback(_ => RefreshLootPreview());
             lootSection.Add(lootPreviewTable);
+            var lootRow = new VisualElement();
+            lootRow.AddToClassList("forge-chart-row");
+            lootByRarity = new DonutChart("Par rareté, bonus inclus");
+            lootRow.Add(lootByRarity);
             lootPreview = new VisualElement();
-            lootSection.Add(lootPreview);
+            lootPreview.AddToClassList("forge-chart-row__grow");
+            lootRow.Add(lootPreview);
+            lootSection.Add(lootRow);
         }
 
         static bool InitializeBoost(SerializedObject serializedObject, SerializedProperty element)
@@ -149,6 +162,10 @@ namespace TheDungeon.Editor.Biomes
         protected override void OnRefresh(BiomeData biome)
         {
             RefreshTilePreview(biome);
+            // Ordre fixe des couleurs : celui de la liste du biome. Au-delà de 5, regroupé dans « Autres ».
+            spawnShare.SetData(biome.Enemies.Where(e => e.enemy != null && e.spawnWeight > 0)
+                .Select((e, index) => new DonutChart.Segment(e.enemy.DisplayName + (e.enemy.IsBoss ? " (boss)" : string.Empty), e.spawnWeight,
+                    index < 5 ? ChartColors.Series(index) : ChartColors.Neutral)), "poids total");
             var tables = biome.ChestLootTables.Where(table => table != null).Select(table => table.name).ToList();
             lootPreviewTable.choices = tables;
             if (!tables.Contains(lootPreviewTable.value))
@@ -193,9 +210,11 @@ namespace TheDungeon.Editor.Biomes
             {
                 lootPreview.Clear();
                 lootPreview.Add(ForgeUI.Label("Ajoutez une table de butin pour voir l'aperçu.", "forge-hint"));
+                lootByRarity.SetData(Enumerable.Empty<DonutChart.Segment>(), "par tirage");
                 return;
             }
             ProbabilityBars.Fill(lootPreview, table, biome.GetRarityMultiplier, Limits);
+            ProbabilityBars.FillByRarity(lootByRarity, table, biome.GetRarityMultiplier, Limits);
         }
     }
 }

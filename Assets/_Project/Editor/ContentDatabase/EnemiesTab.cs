@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using System.Linq;
 using TheDungeon.Data;
 using TheDungeon.Editor.Common;
+using TheDungeon.Editor.Common.Charts;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -17,9 +19,11 @@ namespace TheDungeon.Editor.ContentDatabase
         const string OnlyBosses = "Boss uniquement";
 
         DropdownField kindFilter;
-        VisualElement floorPreview;
+        LineChart healthChart;
+        LineChart damageChart;
+        LineChart xpChart;
 
-        public EnemiesTab(ForgeToolWindow window) : base(window)
+        public EnemiesTab(IToolHost window) : base(window)
         {
         }
 
@@ -65,8 +69,16 @@ namespace TheDungeon.Editor.ContentDatabase
 
             var scaling = ForgeUI.Section("Évolution par étage", container);
             scaling.Add(ForgeUI.Slider("Croissance", "floorScaling", Limits.enemyFloorScaling, "0.25 = +25 % de stats à chaque étage."));
-            floorPreview = new VisualElement();
-            scaling.Add(floorPreview);
+            scaling.Add(ForgeUI.Label("Comparé à la moyenne des autres ennemis du même rang (ennemis ou boss).", "forge-hint"));
+            var row = new VisualElement();
+            row.AddToClassList("forge-small-multiples");
+            healthChart = new LineChart("PV par étage", 120f);
+            damageChart = new LineChart("Dégâts par étage", 120f);
+            xpChart = new LineChart("XP donnée par étage", 120f);
+            row.Add(healthChart);
+            row.Add(damageChart);
+            row.Add(xpChart);
+            scaling.Add(row);
 
             var loot = ForgeUI.Section("Butin", container);
             loot.Add(new AssetPicker<LootTable>("Table de butin", serializedObject.FindProperty("lootTable"), "Table tirée à la mort de l'ennemi."));
@@ -74,21 +86,26 @@ namespace TheDungeon.Editor.ContentDatabase
 
         protected override void OnRefresh(EnemyData enemy)
         {
-            floorPreview.Clear();
-            floorPreview.Add(TableRow(true, "Étage", "PV", "Dégâts", "Défense", "XP"));
-            for (var floor = 1; floor <= Limits.floorCount; floor++)
-                floorPreview.Add(TableRow(false, floor.ToString(), enemy.GetHealth(floor).ToString(), enemy.GetDamage(floor).ToString(),
-                    enemy.GetDefense(floor).ToString(), enemy.GetXpReward(floor).ToString()));
+            var floors = Enumerable.Range(1, Limits.floorCount).ToArray();
+            var labels = floors.Select(f => f.ToString()).ToArray();
+            var peers = AssetFactory.LoadAll<EnemyData>().Where(e => e.IsBoss == enemy.IsBoss && e.name != enemy.name).ToList();
+            Chart(healthChart, labels, floors, enemy, peers, (e, f) => e.GetHealth(f), "PV");
+            Chart(damageChart, labels, floors, enemy, peers, (e, f) => e.GetDamage(f), "Dégâts");
+            Chart(xpChart, labels, floors, enemy, peers, (e, f) => e.GetXpReward(f), "XP");
         }
 
-        static VisualElement TableRow(bool header, params string[] cells)
+        static void Chart(LineChart chart, string[] labels, int[] floors, EnemyData enemy, List<EnemyData> peers,
+            System.Func<EnemyData, int, int> stat, string name)
         {
-            var row = new VisualElement();
-            row.AddToClassList("forge-table-row");
-            foreach (var text in cells)
-                row.Add(ForgeUI.Label(text, header ? "forge-table-header" : null));
-            row.tooltip = header ? "Stats calculées automatiquement à partir de l'étage 1 et de la croissance." : null;
-            return row;
+            var series = new List<LineChart.Series>
+            {
+                new() { Name = string.IsNullOrWhiteSpace(enemy.DisplayName) ? name : enemy.DisplayName, Color = ChartColors.Series(0),
+                    Values = floors.Select(f => (float)stat(enemy, f)).ToArray() }
+            };
+            if (peers.Count > 0)
+                series.Add(new LineChart.Series { Name = "Moyenne", Color = ChartColors.Neutral, Secondary = true,
+                    Values = floors.Select(f => (float)peers.Average(p => stat(p, f))).ToArray() });
+            chart.SetData("Étage", labels, series);
         }
     }
 }

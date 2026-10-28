@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using TheDungeon.Data;
 using TheDungeon.Editor.Common;
+using TheDungeon.Editor.Common.Charts;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -12,8 +13,9 @@ namespace TheDungeon.Editor.ContentDatabase
     public sealed class LootTablesTab : AssetListTab<LootTable>
     {
         VisualElement probabilities;
+        DonutChart byRarity;
 
-        public LootTablesTab(ForgeToolWindow window) : base(window)
+        public LootTablesTab(IToolHost window) : base(window)
         {
         }
 
@@ -71,12 +73,18 @@ namespace TheDungeon.Editor.ContentDatabase
                     "Ajoute les objets valides de la rareté choisie absents de la table, avec le poids par défaut de leur rareté.",
                     () => AddAllOfRarity(serializedObject, (Rarity)rarity.value))));
             shortcuts.Add(ForgeUI.Button("Appliquer les poids par défaut des raretés",
-                "Remplace chaque poids par celui défini pour la rareté de l'objet (Tools > Settings).",
+                "Remplace chaque poids par celui défini pour la rareté de l'objet (Forge Studio > Limites (dev)).",
                 () => ApplyDefaultWeights(serializedObject)));
 
             var preview = ForgeUI.Section("Probabilités par tirage", container);
+            var row = new VisualElement();
+            row.AddToClassList("forge-chart-row");
+            byRarity = new DonutChart("Chance d'obtenir un objet, par rareté");
+            row.Add(byRarity);
             probabilities = new VisualElement();
-            preview.Add(probabilities);
+            probabilities.AddToClassList("forge-chart-row__grow");
+            row.Add(probabilities);
+            preview.Add(row);
         }
 
         void AddAllOfRarity(SerializedObject serializedObject, Rarity rarity)
@@ -120,6 +128,7 @@ namespace TheDungeon.Editor.ContentDatabase
         protected override void OnRefresh(LootTable table)
         {
             ProbabilityBars.Fill(probabilities, table, null, Limits);
+            ProbabilityBars.FillByRarity(byRarity, table, null, Limits);
         }
     }
 }

@@ -1,4 +1,4 @@
-# Settings (dev)
+# Limites (dev)
 
 Réservé aux **développeurs**. Ces limites encadrent ce que les designers peuvent saisir dans les outils.
 

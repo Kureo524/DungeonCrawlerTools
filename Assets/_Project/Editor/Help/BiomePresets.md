@@ -1,6 +1,6 @@
-# Biome Presets
+# Biomes
 
-Un **biome** est un preset réutilisable : il définit l'apparence et le contenu autorisé d'un ensemble de salles (Crypte, Marais, Volcan…). Le **Room Editor** construit sa palette à partir du biome de la salle. **Impossible de créer une salle sans biome valide.**
+Un **biome** est un preset réutilisable : il définit l'apparence et le contenu autorisé d'un ensemble de salles (Crypte, Marais, Volcan…). L'outil **Salles** construit sa palette à partir du biome de la salle. **Impossible de créer une salle sans biome valide.**
 
 ## Créer un biome
 - Cliquez sur **+ Nouveau**. Rien n'est créé tant que vous n'avez pas cliqué sur **Valider et créer** en bas de la fenêtre.

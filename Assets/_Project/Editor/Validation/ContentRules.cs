@@ -132,7 +132,7 @@ namespace TheDungeon.Editor.Validation
         {
             var limits = context.Limits;
             if (context.Progressions.Count == 0)
-                yield return new ValidationIssue(Severity.Error, "Aucune progression du joueur n'existe. Créez-la dans Content Database > Progression.", null);
+                yield return new ValidationIssue(Severity.Error, "Aucune progression du joueur n'existe. Créez-la dans Forge Studio > Progression.", null);
             if (context.Progressions.Count > 1)
                 foreach (var extra in context.Progressions.Skip(1))
                     yield return Warning("Il existe plusieurs progressions du joueur : une seule est utilisée par le jeu.", extra);
