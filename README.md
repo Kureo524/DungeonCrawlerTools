@@ -12,10 +12,11 @@ Menu **Tools > Forge Studio**. Chaque outil est aussi accessible directement dep
 
 | Section | Rôle | Famille |
 |---|---|---|
-| **Tableau de bord** | Avancement face aux objectifs du GDD, santé des données, répartition du contenu | Validation, Équilibrage |
+| **Tableau de bord** | Avancement face aux objectifs du GDD, état des 4 règles de cohérence du GDD, santé des données, répartition du contenu | Validation, Équilibrage |
 | **Objets / Ennemis / Tables de butin / Progression** | Création et édition du contenu, avec graphiques (courbes par étage et par niveau, probabilités de butin) | Création de contenu, Équilibrage |
 | **Biomes** | Presets : visuels, ennemis, décors, coffres, bonus de butin | Création de contenu |
 | **Salles** | Salles dessinées sur une grille avec la palette du biome | Création de contenu, Automatisation |
+| **Étages** | Plan de chaque étage (3 × 10 salles), générateur de plans, contrôle des portes, de l'accessibilité et du boss unique | Création de contenu, Automatisation, Validation |
 | **Limites (dev)** | Bornes imposées aux designers et objectifs de production | Configuration |
 | *(automatique)* Import des sprites | Configuration des images déposées dans `Assets/_Project/Art` | Automatisation |
 | *(à venir)* Dialogues, Build | — | Création de contenu, Pipeline |

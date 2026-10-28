@@ -155,17 +155,50 @@ Où on les trouve :
 | Abonnements aux événements de l'éditeur laissés actifs après fermeture | Désabonnement confié au détachement de l'interface, qui n'a pas toujours lieu | Désabonnement explicite à la fermeture |
 | Tests automatiques bloqués | Boîtes de dialogue modales attendant un clic en mode batch | `ForgeDialogs` : en mode batch, aucune fenêtre modale, réponse prudente journalisée ; les tests abandonnent les modifications avant de fermer |
 
+## Étape 7 : direction « Soul Knight », en suivant le GDD
+
+Le jeu prend la direction d'un dungeon crawler façon Soul Knight : vue du dessus, salles en grille reliées par des portes, biomes, étages assemblés à partir de salles. **Le GDD reste la référence** : quand les deux divergent, on suit le GDD. On garde ainsi la progression du joueur 1 à 20 avec XP gagnée pendant la partie, et les volumes du GDD.
+
+Comparaison du GDD avec les outils existants :
+
+| Exigence du GDD | Outil |
+|---|---|
+| Salles : dimensions, portes, ennemis et placement, coffres, difficulté, tags | Salles |
+| Ennemis : stats, évolution par étage, comportement, table de butin | Ennemis |
+| Items, tables de butin, progression 1 à 20 | Objets, Tables de butin, Progression |
+| **3 étages × 10 salles**, portes compatibles, salles atteignables depuis l'entrée, un boss par étage | **Étages (nouveau)** |
+| Dialogues | à venir |
+
+### Outil Étages
+Il couvre **trois des quatre règles de cohérence du GDD**.
+- **Plan sur une grille** : chaque salle est dessinée en miniature (sol teinté par le biome, murs, ennemis, boss, coffres). Les couloirs entre salles sont **verts** quand les portes se font face, **rouges avec une croix** quand une porte mène dans le vide ou vers une salle sans porte en face. Les salles inaccessibles depuis l'entrée ont un cadre orange.
+- **Placement guidé** : quand on choisit une salle à placer, les cases où ses portes s'emboîtent avec les voisines sont surlignées en vert. Les autres gestes : clic pour sélectionner, clic sur une case vide pour déplacer, clic droit pour retirer, double-clic pour ouvrir la salle dans l'outil Salles.
+- **Générateur de plans** (à la Soul Knight) : salle de départ au centre, salles dont toutes les portes sont reliées, boss en dernier, en fond d'étage. Recherche avec retour arrière et nombre d'essais limité, à partir d'une graine reproductible. En cas d'échec, l'outil explique ce qui manque. Le plan reste ensuite modifiable à la main.
+- **Salles proposées** : seulement les salles **valides**, d'un **biome autorisé à cet étage**, et **pas déjà utilisées sur un autre étage**.
+- **Règle `FloorRule`** : portes compatibles, salles atteignables depuis l'entrée (parcours du graphe des portes), exactement un boss, 10 salles par étage, numéros d'étage uniques, biome compatible avec l'étage, et une salle sur un seul étage. Elle signale aussi les salles placées sur aucun étage.
+- `FloorGraph` regroupe la logique du graphe des portes. Elle est partagée par la validation, l'affichage du plan et le générateur, pour qu'ils ne puissent pas diverger.
+
+### Tableau de bord : les règles du GDD
+Une carte par règle de cohérence du GDD, chacune marquée respectée ou non, avec le nombre de cas et un clic vers l'outil concerné :
+1. ennemis et objets cités existent ;
+2. portes compatibles et salles atteignables ;
+3. exactement un boss par étage ;
+4. convention de nommage.
+
 ## Tests
 
-`Assets/_Project/Tests/Editor` contient **34 tests EditMode**. **Résultat actuel : 34/34.**
+`Assets/_Project/Tests/Editor` contient **42 tests EditMode**. **Résultat actuel : 42/42.**
 - Nommage : conversion des noms, préfixe des boss.
 - Règles de contenu : objet manquant, bonus trop élevé, progression qui baisse, probabilités de butin.
 - Salles : salle neuve correcte, ennemi hors biome, pose sur un mur refusée, entrée murée refusée, ennemi inaccessible, boss hors salle de boss, redimensionnement sans perte, salle sans biome.
+- Étages : plan correct, porte dans le vide, portes incompatibles, salle inaccessible, étage sans boss ; le générateur produit un plan entièrement relié avec un seul boss, et explique un échec.
 - Copie de travail : un objet invalide **n'est pas créé** ; un objet valide est créé avec le bon nom et au bon endroit.
 - Construction de chaque outil et du tableau de bord, y compris l'éditeur de salles avec de vraies données temporaires, pour détecter les exceptions sans ouvrir Unity.
 - **Vraie fenêtre Forge Studio** : ouverture de chaque section, et ajout de lignes après un ancrage simulé (régression du `NullReferenceException`).
 
 Remarque : les tests qui ouvrent une vraie fenêtre ont besoin d'un affichage. On lance donc Unity en `-batchmode` **sans** `-nographics`.
+
+**Limite connue de l'environnement de test** : en mode batch avec affichage, un enregistrement d'asset effectué *après* la fermeture de vraies fenêtres bloque parfois Unity (processus inactif, sans erreur). La classe `WindowLifecycleTests` est donc nommée pour s'exécuter en dernier. Avec cet ordre, deux runs complets consécutifs sont passés sans blocage. Le phénomène n'a pas été observé dans l'éditeur en usage normal.
 
 ## Prochaines étapes
 - Plan des étages : assembler les salles, vérifier les portes compatibles, les salles atteignables depuis l'entrée et le boss unique par étage.
