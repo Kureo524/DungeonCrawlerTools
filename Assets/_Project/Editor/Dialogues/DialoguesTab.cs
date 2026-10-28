@@ -193,8 +193,13 @@ namespace TheDungeon.Editor.Dialogues
 
             var input = new VisualElement();
             input.AddToClassList("forge-row");
-            composer = new TextField { tooltip = "Tapez la réplique puis Entrée. Elle est ajoutée à la suite de la réplique sélectionnée." };
+            composer = new TextField
+            {
+                tooltip = "Tapez la réplique puis Entrée (Maj+Entrée : retour à la ligne). Elle est ajoutée à la suite de la réplique sélectionnée.",
+                multiline = true
+            };
             composer.AddToClassList("forge-composer__input");
+            composer.AddToClassList("forge-wrap");
             composer.RegisterCallback<KeyDownEvent>(evt =>
             {
                 if (evt.keyCode is not (KeyCode.Return or KeyCode.KeypadEnter) || evt.shiftKey)

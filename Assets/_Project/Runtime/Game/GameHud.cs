@@ -257,8 +257,9 @@ namespace TheDungeon.Game
                 var alpha = Mathf.Clamp01(2.5f - age) * Mathf.Clamp01(age * 6f);
                 var style = new GUIStyle(big) { fontSize = 18 };
                 style.normal.textColor = new Color(color.r, color.g, color.b, alpha);
-                Fill(new Rect(width / 2 - 220, y, 440, 30), new Color(0f, 0f, 0f, 0.45f * alpha));
-                GUI.Label(new Rect(width / 2 - 220, y, 440, 30), message, style);
+                var toastWidth = Mathf.Clamp(style.CalcSize(new GUIContent(message)).x + 40f, 240f, width - 40f);
+                Fill(new Rect(width / 2 - toastWidth / 2, y, toastWidth, 30), new Color(0f, 0f, 0f, 0.45f * alpha));
+                GUI.Label(new Rect(width / 2 - toastWidth / 2, y, toastWidth, 30), message, style);
                 y += 34f;
             }
         }
@@ -270,9 +271,12 @@ namespace TheDungeon.Game
             var interactable = game.Nearest(game.Player.transform.position);
             if (interactable == null)
                 return;
-            var rect = new Rect(width / 2 - 200, ReferenceHeight - 130, 400, 34);
+            // Le bandeau s'élargit avec son texte (nom d'objet long, prix…).
+            var label = $"<color=#e8a05a><b>[E]</b></color>  {interactable.Prompt}";
+            var promptWidth = Mathf.Clamp(centered.CalcSize(new GUIContent(label)).x + 40f, 240f, width - 40f);
+            var rect = new Rect(width / 2 - promptWidth / 2, ReferenceHeight - 130, promptWidth, 34);
             Fill(rect, Panel);
-            GUI.Label(rect, $"<color=#e8a05a><b>[E]</b></color>  {interactable.Prompt}", centered);
+            GUI.Label(rect, label, centered);
         }
 
         #endregion
@@ -286,11 +290,20 @@ namespace TheDungeon.Game
                 return;
             var npc = dialogue.Npc;
             var node = dialogue.Current;
-            var box = new Rect(width / 2 - 420, ReferenceHeight - 250, 840, 230);
+            var narration = node.speaker == DialogueSpeaker.Narrator;
+            var textStyle = new GUIStyle(text) { fontSize = 17, fontStyle = narration ? FontStyle.Italic : FontStyle.Normal };
+
+            // La boîte s'adapte au contenu : hauteur calculée sur le texte complet (stable pendant l'écriture) et sur chaque choix.
+            const float boxWidth = 840f;
+            var textWidth = boxWidth - (narration ? 40f : 180f);
+            var textHeight = Mathf.Max(40f, textStyle.CalcHeight(new GUIContent(node.text ?? string.Empty), textWidth));
+            var choiceHeights = dialogue.Choices.Select(c => Mathf.Max(28f, choice.CalcHeight(new GUIContent($"9.  {c.text}"), textWidth))).ToList();
+            var contentHeight = 50f + textHeight + 10f + (choiceHeights.Count > 0 ? choiceHeights.Sum() + 3f * choiceHeights.Count : 30f) + 12f;
+            var boxHeight = Mathf.Min(ReferenceHeight - 40f, Mathf.Max(narration ? 120f : 160f, contentHeight));
+            var box = new Rect(width / 2 - boxWidth / 2, ReferenceHeight - boxHeight - 20f, boxWidth, boxHeight);
             Fill(box, new Color(0.05f, 0.04f, 0.07f, 0.94f));
             Outline(box, new Color(0.78f, 0.7f, 0.55f), 2f);
 
-            var narration = node.speaker == DialogueSpeaker.Narrator;
             var textLeft = box.x + 20;
             if (!narration)
             {
@@ -305,19 +318,18 @@ namespace TheDungeon.Game
                 textLeft = box.x + 160;
             }
 
-            var textStyle = new GUIStyle(text) { fontSize = 17, fontStyle = narration ? FontStyle.Italic : FontStyle.Normal };
-            GUI.Label(new Rect(textLeft, box.y + 50, box.xMax - textLeft - 20, 80), dialogue.VisibleText, textStyle);
+            GUI.Label(new Rect(textLeft, box.y + 50, textWidth, textHeight), dialogue.VisibleText, textStyle);
 
             if (dialogue.IsTyping)
                 return;
             if (dialogue.Choices.Count > 0)
             {
-                var y = box.y + 128;
+                var y = box.y + 50 + textHeight + 10;
                 for (var i = 0; i < dialogue.Choices.Count; i++)
                 {
-                    if (GUI.Button(new Rect(textLeft, y, box.xMax - textLeft - 20, 28), $"{i + 1}.  {dialogue.Choices[i].text}", choice))
+                    if (GUI.Button(new Rect(textLeft, y, textWidth, choiceHeights[i]), $"{i + 1}.  {dialogue.Choices[i].text}", choice))
                         dialogue.Choose(i);
-                    y += 31;
+                    y += choiceHeights[i] + 3;
                 }
             }
             else

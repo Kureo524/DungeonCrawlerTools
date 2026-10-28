@@ -105,7 +105,7 @@
 }
 
 .forge-theme .unity-button {
-    height: 26px;
+    min-height: 26px;
     margin: 2px 4px 2px 0;
     padding: 0 12px;
     border-width: 1px;
@@ -214,9 +214,61 @@
     color: var(--forge-text-3);
 }
 
-.forge-multiline TextInput {
+/* ---------- Contenu qui s'adapte à son texte ----------
+   Textes libres : retour à la ligne et hauteur qui grandit avec le contenu.
+   Libellés courts (listes déroulantes, noms, compteurs) : une ligne, coupée par des points de suspension. */
+
+.forge-multiline .unity-base-text-field__input {
     min-height: 56px;
+    height: auto;
+}
+
+.forge-multiline .unity-text-element,
+.forge-wrap .unity-text-element,
+.forge-wrap .unity-base-text-field__input {
     white-space: normal;
+}
+
+.forge-wrap .unity-base-text-field__input {
+    height: auto;
+    min-height: 24px;
+}
+
+.forge-theme .unity-button {
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+.forge-theme .unity-base-popup-field__text,
+.forge-theme .unity-object-field-display__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.forge-theme .forge-nav__label,
+.forge-theme .forge-list-item__label,
+.forge-theme .forge-sprite-field__name,
+.forge-theme .forge-bar-row__label,
+.forge-theme .forge-sidebar__tagline,
+.forge-theme .forge-floor-room Label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.forge-theme .forge-details-title,
+.forge-theme .forge-title,
+.forge-theme .forge-section-title,
+.forge-theme .forge-issue Label,
+.forge-theme .forge-chip,
+.forge-theme .forge-badge__text {
+    white-space: normal;
+}
+
+.forge-floor-room > VisualElement {
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 /* ---------- Structure : barre latérale ---------- */
@@ -272,7 +324,7 @@
 .forge-nav {
     flex-direction: row;
     align-items: center;
-    height: 32px;
+    min-height: 32px;
     margin: 1px 10px;
     padding: 0 10px 0 0;
     border-radius: 6px;
@@ -332,7 +384,7 @@
 }
 
 .forge-theme .forge-play-button {
-    height: 34px;
+    min-height: 34px;
     margin: 10px 14px 6px 14px;
     border-width: 0;
     border-radius: 8px;
@@ -794,7 +846,7 @@
 
 .forge-theme .forge-footer__commit {
     min-width: 180px;
-    height: 32px;
+    min-height: 32px;
 }
 
 /* ---------- Sélecteurs ---------- */
@@ -1088,7 +1140,7 @@
 .forge-bar-row {
     flex-direction: row;
     align-items: center;
-    height: 24px;
+    min-height: 24px;
     padding: 0 6px;
     border-radius: 6px;
     transition-property: background-color;
@@ -1147,7 +1199,7 @@
 }
 
 .forge-theme .forge-view-switch__button {
-    height: 26px;
+    min-height: 26px;
     margin: 0;
     padding: 0 14px;
     border-color: rgba(0, 0, 0, 0);
@@ -1230,7 +1282,7 @@
 
 .forge-palette__brush {
     width: 58px;
-    height: 62px;
+    min-height: 62px;
     margin: 2px;
     padding: 4px 2px;
     align-items: center;
@@ -1643,7 +1695,7 @@
 }
 
 .forge-theme .forge-composer__speaker {
-    height: 24px;
+    min-height: 24px;
     border-radius: 12px;
     padding: 0 12px;
 }
@@ -1813,7 +1865,7 @@
 }
 
 .forge-preview-game__screen {
-    height: 420px;
+    min-height: 420px;
     justify-content: space-between;
     padding: 14px;
     border-width: 1px;
@@ -1888,6 +1940,9 @@
 
 .forge-theme .forge-preview-game__choice {
     -unity-text-align: middle-left;
+    white-space: normal;
+    padding-top: 6px;
+    padding-bottom: 6px;
     margin: 2px 0;
     padding: 4px 10px;
     border-radius: 6px;

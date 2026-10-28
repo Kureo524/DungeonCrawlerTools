@@ -127,7 +127,8 @@ namespace TheDungeon.Editor.Dialogues
         {
             var row = new VisualElement();
             row.AddToClassList("forge-dialogue-choice");
-            var text = new TextField { tooltip = "Texte de la réponse du joueur." };
+            var text = new TextField { tooltip = "Texte de la réponse du joueur.", multiline = true };
+            text.AddToClassList("forge-wrap");
             text.BindProperty(choice.FindPropertyRelative("text"));
             row.Add(text);
             row.Add(TargetField("Mène à", choice.FindPropertyRelative("target"), nodeId, "Réplique déclenchée par cette réponse."));
