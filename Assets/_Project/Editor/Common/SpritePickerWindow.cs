@@ -21,7 +21,7 @@ namespace TheDungeon.Editor.Common
         {
             var window = CreateInstance<SpritePickerWindow>();
             window.titleContent = new GUIContent($"Choisir un sprite ({artFolder})");
-            window.folder = $"{DungeonPaths.Art}/{artFolder}";
+            window.folder = string.IsNullOrEmpty(artFolder) ? DungeonPaths.Art : $"{DungeonPaths.Art}/{artFolder}";
             window.onPicked = onPicked;
             window.minSize = new Vector2(420, 360);
             var main = EditorGUIUtility.GetMainWindowPosition();

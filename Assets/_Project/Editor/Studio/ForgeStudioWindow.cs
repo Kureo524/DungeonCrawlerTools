@@ -5,6 +5,7 @@ using TheDungeon.Data;
 using TheDungeon.Editor.Biomes;
 using TheDungeon.Editor.Common;
 using TheDungeon.Editor.ContentDatabase;
+using TheDungeon.Editor.Dialogues;
 using TheDungeon.Editor.Floors;
 using TheDungeon.Editor.RoomEditor;
 using TheDungeon.Editor.Validation;
@@ -29,6 +30,7 @@ namespace TheDungeon.Editor.Studio
         public const string Biomes = "biomes";
         public const string Rooms = "rooms";
         public const string Floors = "floors";
+        public const string Dialogues = "dialogues";
         public const string Settings = "settings";
 
         [SerializeField] string currentSection = Home;
@@ -66,6 +68,9 @@ namespace TheDungeon.Editor.Studio
 
         [MenuItem("Tools/Progression du joueur", priority = 23)]
         static void OpenProgression() => Open(Progression);
+
+        [MenuItem("Tools/Dialogues", priority = 24)]
+        static void OpenDialogues() => Open(Dialogues);
 
         [MenuItem("Tools/Biomes", priority = 40)]
         static void OpenBiomes() => Open(Biomes);
@@ -113,6 +118,8 @@ namespace TheDungeon.Editor.Studio
                 "ContentDatabase", "SPR_Chest", typeof(LootTable), () => new LootTablesTab(this));
             yield return new ForgeSection(Progression, "Contenu", "Progression", "PV, dégâts et XP du joueur pour chaque niveau.",
                 "ContentDatabase", "SPR_PotionRed", typeof(PlayerProgression), () => new ProgressionTab(this).Build());
+            yield return Content(Dialogues, "Contenu", "Dialogues", "PNJ et arbres de dialogue, écrits comme une messagerie et jouables en aperçu.",
+                "Dialogues", "SPR_ScrollBlue", typeof(NpcData), () => new DialoguesTab(this));
             yield return Content(Biomes, "Monde", "Biomes", "Presets de biome : visuels, ennemis, décors et butin. Les salles s'appuient dessus.",
                 "BiomePresets", "SPR_SwampTree", typeof(BiomeData), () => new BiomesTab(this));
             yield return Content(Rooms, "Monde", "Salles", "Salles dessinées sur une grille avec la palette de leur biome.",

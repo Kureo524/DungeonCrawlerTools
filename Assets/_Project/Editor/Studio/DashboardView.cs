@@ -49,6 +49,8 @@ namespace TheDungeon.Editor.Studio
             AddRing(progress, "loot", "Tables de butin", ForgeStudioWindow.LootTables);
             AddRing(progress, "rooms", "Salles", ForgeStudioWindow.Rooms);
             AddRing(progress, "floors", "Étages", ForgeStudioWindow.Floors);
+            AddRing(progress, "npcs", "PNJ", ForgeStudioWindow.Dialogues);
+            AddRing(progress, "lines", "Répliques", ForgeStudioWindow.Dialogues);
             AddRing(progress, "levels", "Niveaux du joueur", ForgeStudioWindow.Progression);
             scroll.Add(progress);
 
@@ -198,6 +200,8 @@ namespace TheDungeon.Editor.Studio
             rings["loot"].SetValue(context.LootTables.Count, limits.targetLootTables, Errors(context.LootTables));
             rings["rooms"].SetValue(context.Rooms.Count, limits.targetRooms, Errors(context.Rooms));
             rings["floors"].SetValue(context.Floors.Count, limits.floorCount, Errors(context.Floors));
+            rings["npcs"].SetValue(context.Npcs.Count, limits.targetNpcs, Errors(context.Npcs));
+            rings["lines"].SetValue(context.Npcs.Sum(n => n.LineCount), limits.targetDialogueLines, Errors(context.Npcs));
             RefreshGddRules(context, issues);
             var progression = context.Progressions.FirstOrDefault();
             rings["levels"].SetValue(progression != null ? progression.Levels.Count : 0, limits.maxLevel, Errors(context.Progressions));

@@ -74,6 +74,10 @@ namespace TheDungeon.Editor.Common
         public int targetLootTables = 20;
         [Tooltip("Nombre de salles prévues par le GDD.")]
         public int targetRooms = 30;
+        [Tooltip("Nombre de PNJ prévus par le GDD.")]
+        public int targetNpcs = 25;
+        [Tooltip("Nombre de répliques prévues par le GDD (répliques + réponses du joueur).")]
+        public int targetDialogueLines = 150;
 
         [Header("Structure du donjon")]
         [Tooltip("Nombre d'étages du donjon.")]
@@ -133,6 +137,16 @@ namespace TheDungeon.Editor.Common
         public int maxLootEntries = 12;
         public IntRange lootWeight = new(1, 1000);
         public IntRange lootRolls = new(1, 5);
+
+        [Header("Dialogues")]
+        [Tooltip("Nombre maximum de répliques dans la conversation d'un PNJ.")]
+        public int maxDialogueNodes = 40;
+        [Tooltip("Nombre maximum de réponses proposées après une réplique.")]
+        public int maxChoicesPerNode = 4;
+        [Tooltip("Longueur conseillée d'une réplique, en caractères (au-delà, la bulle déborde à l'écran).")]
+        public int maxLineLength = 200;
+        [Tooltip("Nombre maximum de conditions ou de conséquences sur une réplique ou un choix.")]
+        public int maxDialogueRules = 4;
 
         [Header("Progression du joueur")]
         public int maxLevel = 20;

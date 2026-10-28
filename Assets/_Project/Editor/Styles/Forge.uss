@@ -1187,3 +1187,548 @@
     -unity-font-style: bold;
     color: rgb(255, 255, 255);
 }
+
+/* ---------- Dialogues ---------- */
+
+.forge-view-switch {
+    flex-direction: row;
+    margin: 8px 0 4px 0;
+    padding: 3px;
+    align-self: flex-start;
+    border-radius: 16px;
+    background-color: var(--forge-card);
+}
+
+.forge-view-switch__button {
+    height: 26px;
+    padding: 0 14px;
+    margin: 0 2px;
+    border-width: 0;
+    border-radius: 13px;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.forge-view-switch__button--active {
+    background-color: var(--forge-accent-strong);
+    -unity-font-style: bold;
+}
+
+.forge-stat--compact .forge-stat__value {
+    font-size: 18px;
+}
+
+.forge-card-grid > .forge-stat--compact {
+    flex-basis: 140px;
+}
+
+.forge-dialogue-layout {
+    flex-direction: row;
+    align-items: stretch;
+    min-height: 560px;
+}
+
+.forge-dialogue-layout__chat {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 320px;
+    margin-right: 10px;
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: var(--forge-line);
+    background-color: rgba(0, 0, 0, 0.12);
+}
+
+.forge-dialogue-layout__side {
+    width: 380px;
+    flex-shrink: 0;
+    max-height: 700px;
+}
+
+.forge-chat {
+    flex-grow: 1;
+}
+
+.forge-chat__thread {
+    height: 470px;
+    padding: 10px;
+}
+
+.forge-chat__block {
+    margin-bottom: 10px;
+}
+
+.forge-chat__line {
+    flex-direction: row;
+    align-items: flex-end;
+}
+
+.forge-chat__line--player {
+    justify-content: flex-end;
+}
+
+.forge-chat__line--narrator {
+    justify-content: center;
+}
+
+.forge-chat__avatar {
+    width: 38px;
+    height: 38px;
+    margin-right: 8px;
+    border-radius: 19px;
+    border-width: 2px;
+    background-color: rgba(0, 0, 0, 0.25);
+    flex-shrink: 0;
+}
+
+.forge-chat__bubble {
+    max-width: 78%;
+    padding: 7px 11px;
+    border-radius: 14px;
+    border-width: 2px;
+    border-color: rgba(0, 0, 0, 0);
+    background-color: var(--forge-card-hover);
+    transition-property: border-color, translate, background-color;
+    transition-duration: 0.12s;
+}
+
+.forge-chat__line--npc .forge-chat__bubble {
+    border-bottom-left-radius: 3px;
+}
+
+.forge-chat__line--player .forge-chat__bubble {
+    border-bottom-right-radius: 3px;
+    background-color: rgba(27, 175, 122, 0.3);
+}
+
+.forge-chat__line--narrator .forge-chat__bubble {
+    background-color: rgba(128, 128, 128, 0.1);
+    border-color: var(--forge-line);
+}
+
+.forge-chat__bubble:hover {
+    translate: 0 -1px;
+    border-color: rgba(232, 160, 90, 0.5);
+}
+
+.forge-chat__bubble--selected,
+.forge-chat__bubble--selected:hover {
+    border-color: var(--forge-accent);
+}
+
+.forge-chat__meta {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.forge-chat__speaker {
+    font-size: 10px;
+    -unity-font-style: bold;
+    opacity: 0.8;
+    margin-right: 6px;
+}
+
+.forge-chat__id {
+    font-size: 9px;
+    opacity: 0.5;
+    margin-right: 6px;
+}
+
+.forge-chat__text {
+    white-space: normal;
+    font-size: 12px;
+}
+
+.forge-chat__line--narrator .forge-chat__text {
+    -unity-font-style: italic;
+    -unity-text-align: middle-center;
+}
+
+.forge-chat__text--empty {
+    opacity: 0.5;
+    -unity-font-style: italic;
+}
+
+.forge-chat__replies {
+    align-items: flex-end;
+    margin: 4px 0 0 46px;
+}
+
+.forge-chat__reply {
+    max-width: 75%;
+    margin: 2px 0;
+    padding: 5px 10px;
+    border-radius: 12px;
+    border-bottom-right-radius: 3px;
+    border-width: 1px;
+    border-color: rgba(27, 175, 122, 0.6);
+    background-color: rgba(27, 175, 122, 0.16);
+    transition-property: background-color, translate;
+    transition-duration: 0.12s;
+}
+
+.forge-chat__reply:hover {
+    background-color: rgba(27, 175, 122, 0.32);
+    translate: -2px 0;
+}
+
+.forge-chat__reply-text {
+    white-space: normal;
+}
+
+.forge-chat__chips {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 3px;
+}
+
+.forge-chat__system {
+    align-self: center;
+    margin: 4px 0;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 10px;
+    opacity: 0.65;
+    background-color: rgba(128, 128, 128, 0.12);
+}
+
+.forge-chat__jump {
+    align-self: flex-start;
+    margin: 2px 0 0 46px;
+    font-size: 10px;
+    color: var(--forge-accent);
+}
+
+.forge-chip {
+    padding: 1px 6px;
+    margin: 1px 3px 1px 0;
+    border-radius: 7px;
+    font-size: 9px;
+    -unity-font-style: bold;
+}
+
+.forge-chip--condition {
+    background-color: rgba(98, 80, 214, 0.35);
+}
+
+.forge-chip--effect {
+    background-color: rgba(237, 161, 0, 0.3);
+}
+
+.forge-chip--target {
+    background-color: rgba(128, 128, 128, 0.25);
+}
+
+.forge-chip--start {
+    background-color: rgba(12, 163, 12, 0.35);
+}
+
+.forge-composer {
+    padding: 8px;
+    border-top-width: 1px;
+    border-top-color: var(--forge-line);
+}
+
+.forge-composer__speakers {
+    flex-direction: row;
+    margin-bottom: 4px;
+}
+
+.forge-composer__speaker {
+    border-radius: 11px;
+    padding: 1px 10px;
+}
+
+.forge-composer__speaker--active {
+    background-color: var(--forge-accent-strong);
+    -unity-font-style: bold;
+}
+
+.forge-composer__input {
+    flex-grow: 1;
+}
+
+.forge-composer__input TextInput {
+    min-height: 26px;
+    border-radius: 13px;
+    padding-left: 10px;
+}
+
+.forge-dialogue-inspector {
+    padding: 8px 10px;
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: var(--forge-line);
+    background-color: var(--forge-card);
+}
+
+.forge-dialogue-inspector__text TextInput {
+    min-height: 70px;
+}
+
+.forge-dialogue-inspector__counter {
+    font-size: 10px;
+    opacity: 0.6;
+    -unity-text-align: middle-right;
+}
+
+.forge-dialogue-inspector__counter--over {
+    color: var(--forge-critical);
+    opacity: 1;
+    -unity-font-style: bold;
+}
+
+.forge-dialogue-choice {
+    flex-grow: 1;
+    padding: 4px 0;
+}
+
+.forge-dialogue-choice__rules {
+    margin-left: 4px;
+}
+
+.forge-rule-row {
+    flex-direction: row;
+    align-items: center;
+    flex-grow: 1;
+}
+
+.forge-rule-row__type {
+    width: 150px;
+    flex-shrink: 0;
+}
+
+.forge-rule-row__value {
+    flex-direction: row;
+    flex-grow: 1;
+}
+
+.forge-rule-row__value > * {
+    flex-grow: 1;
+}
+
+.forge-dialogue-graph__scroll {
+    height: 560px;
+    border-radius: 10px;
+    background-color: rgba(0, 0, 0, 0.12);
+}
+
+.forge-dialogue-graph__canvas {
+    position: relative;
+}
+
+.forge-dialogue-graph__edges {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.forge-dialogue-graph__box {
+    position: absolute;
+    flex-direction: row;
+    border-radius: 8px;
+    border-width: 2px;
+    border-color: var(--forge-line);
+    background-color: var(--unity-colors-window-background, rgb(56, 56, 56));
+    overflow: hidden;
+    transition-property: border-color, translate;
+    transition-duration: 0.12s;
+}
+
+.forge-dialogue-graph__box:hover {
+    border-color: rgba(232, 160, 90, 0.6);
+    translate: 0 -2px;
+}
+
+.forge-dialogue-graph__box--selected {
+    border-color: var(--forge-accent);
+}
+
+.forge-dialogue-graph__box--orphan {
+    border-color: var(--forge-warning);
+}
+
+.forge-dialogue-graph__box Label {
+    font-size: 10px;
+}
+
+.forge-dialogue-graph__stripe {
+    width: 5px;
+    margin-right: 6px;
+}
+
+.forge-dialogue-graph__text {
+    white-space: normal;
+    opacity: 0.8;
+}
+
+.forge-dialogue-graph__edge-label {
+    position: absolute;
+    width: 80px;
+    font-size: 9px;
+    -unity-text-align: middle-center;
+    padding: 1px 3px;
+    border-radius: 6px;
+    background-color: var(--unity-colors-window-background, rgb(56, 56, 56));
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* Aperçu en jeu */
+
+.forge-preview-game {
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.forge-preview-game__left {
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+.forge-preview-game__right {
+    width: 280px;
+    flex-shrink: 0;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background-color: var(--forge-card);
+}
+
+.forge-preview-game__screen {
+    height: 420px;
+    justify-content: space-between;
+    padding: 12px;
+    border-radius: 10px;
+    border-width: 3px;
+    border-color: rgb(25, 25, 30);
+    background-color: rgb(32, 28, 36);
+    background-size: 64px 64px;
+    background-repeat: repeat repeat;
+    -unity-background-image-tint-color: rgb(110, 110, 120);
+}
+
+.forge-preview-game__hud {
+    align-self: flex-start;
+    padding: 3px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    color: rgb(235, 235, 235);
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+.forge-preview-game__box {
+    flex-direction: row;
+    min-height: 140px;
+    padding: 10px;
+    border-radius: 8px;
+    border-width: 2px;
+    border-color: rgb(200, 180, 140);
+    background-color: rgba(14, 12, 18, 0.92);
+}
+
+.forge-preview-game__portrait {
+    width: 96px;
+    height: 96px;
+    margin-right: 12px;
+    border-radius: 6px;
+    border-width: 2px;
+    border-color: rgb(200, 180, 140);
+    background-color: rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+}
+
+.forge-preview-game__content {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.forge-preview-game__name {
+    align-self: flex-start;
+    padding: 1px 10px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: rgb(255, 255, 255);
+}
+
+.forge-preview-game__text {
+    white-space: normal;
+    font-size: 14px;
+    color: rgb(240, 236, 228);
+    min-height: 44px;
+}
+
+.forge-preview-game__text--narration {
+    -unity-font-style: italic;
+    color: rgb(200, 195, 185);
+}
+
+.forge-preview-game__choices {
+    margin-top: 6px;
+}
+
+.forge-preview-game__choice {
+    -unity-text-align: middle-left;
+    margin: 2px 0;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: rgba(200, 180, 140, 0.5);
+    background-color: rgba(255, 255, 255, 0.05);
+    color: rgb(240, 236, 228);
+    transition-property: background-color, translate;
+    transition-duration: 0.1s;
+}
+
+.forge-preview-game__choice:hover {
+    background-color: rgba(200, 180, 140, 0.25);
+    translate: 4px 0;
+}
+
+.forge-preview-game__prompt {
+    margin-top: 6px;
+    font-size: 10px;
+    color: rgb(200, 180, 140);
+    -unity-text-align: middle-right;
+}
+
+.forge-preview-game__journal {
+    height: 200px;
+    margin-top: 4px;
+}
+
+.forge-journal {
+    white-space: normal;
+    font-size: 10px;
+    margin: 1px 0;
+    padding: 2px 6px;
+    border-left-width: 3px;
+    border-radius: 3px;
+}
+
+.forge-journal--line {
+    border-left-color: rgba(128, 128, 128, 0.6);
+}
+
+.forge-journal--player {
+    border-left-color: rgb(27, 175, 122);
+}
+
+.forge-journal--effect {
+    border-left-color: rgb(237, 161, 0);
+    background-color: rgba(237, 161, 0, 0.12);
+}
+
+.forge-journal--system {
+    opacity: 0.6;
+    -unity-font-style: italic;
+    border-left-color: rgba(0, 0, 0, 0);
+}
+
+.forge-journal--error {
+    border-left-color: var(--forge-critical);
+    background-color: rgba(208, 59, 59, 0.15);
+}

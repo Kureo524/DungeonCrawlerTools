@@ -15,6 +15,7 @@ namespace TheDungeon.Editor.Common
         public const string Floors = Data + "/Floors";
         public const string Progression = Data + "/Progression";
         public const string Biomes = Data + "/Biomes";
+        public const string Npcs = Data + "/Npcs";
         public const string Art = Root + "/Art";
         public const string Settings = Root + "/Settings";
         public const string Help = Root + "/Editor/Help";
@@ -29,6 +30,7 @@ namespace TheDungeon.Editor.Common
             if (type == typeof(FloorData)) return Floors;
             if (type == typeof(PlayerProgression)) return Progression;
             if (type == typeof(BiomeData)) return Biomes;
+            if (type == typeof(NpcData)) return Npcs;
             throw new ArgumentException($"Aucun dossier défini pour {type.Name}", nameof(type));
         }
     }
