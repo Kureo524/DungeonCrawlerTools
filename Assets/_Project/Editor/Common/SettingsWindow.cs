@@ -9,7 +9,7 @@ namespace TheDungeon.Editor.Common
     public class SettingsWindow : ForgeToolWindow
     {
         [MenuItem("Tools/Settings (dev)", priority = 100)]
-        static void Open() => GetWindow<SettingsWindow>("Forge Settings");
+        static void OpenWindow() => Open<SettingsWindow>("Forge Settings", 700, 700);
 
         protected override string Subtitle => "Limites imposées aux outils de conception. Réservé aux développeurs.";
         protected override string HelpFile => "Settings";

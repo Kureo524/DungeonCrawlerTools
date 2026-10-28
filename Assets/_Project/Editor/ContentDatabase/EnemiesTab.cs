@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using TheDungeon.Data;
 using TheDungeon.Editor.Common;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -20,10 +19,13 @@ namespace TheDungeon.Editor.ContentDatabase
         DropdownField kindFilter;
         VisualElement floorPreview;
 
+        public EnemiesTab(ForgeToolWindow window) : base(window)
+        {
+        }
+
         protected override string NewAssetName => "Nouvel ennemi";
         protected override string Noun => "ennemi";
 
-        protected override string GetLabel(EnemyData enemy) => string.IsNullOrWhiteSpace(enemy.DisplayName) ? enemy.name : enemy.DisplayName;
         protected override Sprite GetPreview(EnemyData enemy) => enemy.Sprite;
         protected override Color GetColor(EnemyData enemy) => enemy.IsBoss ? BossColor : EnemyColor;
 
@@ -49,14 +51,9 @@ namespace TheDungeon.Editor.ContentDatabase
         protected override void BuildDetails(VisualElement container, SerializedObject serializedObject, EnemyData enemy)
         {
             var identity = ForgeUI.Section("Identité", container);
-            var nameField = ForgeUI.Text("Nom", "displayName", "Nom affiché au joueur. Le fichier est renommé automatiquement (ENM_… ou BOSS_…).");
-            nameField.isDelayed = true;
-            nameField.RegisterValueChangedCallback(_ => ScheduleRename(enemy));
-            identity.Add(nameField);
-            identity.Add(ForgeUI.Object<Sprite>("Visuel", "sprite", "Glissez un sprite depuis la fenêtre Project."));
-            var bossToggle = ForgeUI.Toggle("Boss", "isBoss", "Un boss garde la fin d'un étage. Chaque étage doit en avoir exactement un.");
-            bossToggle.RegisterValueChangedCallback(_ => ScheduleRename(enemy));
-            identity.Add(bossToggle);
+            identity.Add(ForgeUI.Text("Nom", "displayName", "Nom affiché au joueur. Le fichier sera nommé ENM_<Nom> (ou BOSS_<Nom>) automatiquement."));
+            identity.Add(new SpriteField("Visuel", serializedObject.FindProperty("sprite"), "Enemies", "Visuel de l'ennemi. Cliquez pour ouvrir la galerie."));
+            identity.Add(ForgeUI.Toggle("Boss", "isBoss", "Un boss garde la salle de boss d'un étage. Chaque étage doit en avoir exactement un."));
             identity.Add(ForgeUI.Enum<EnemyBehaviour>("Comportement", "behaviour", "Façon dont l'ennemi combat."));
 
             var stats = ForgeUI.Section("Statistiques à l'étage 1", container);
@@ -72,23 +69,23 @@ namespace TheDungeon.Editor.ContentDatabase
             scaling.Add(floorPreview);
 
             var loot = ForgeUI.Section("Butin", container);
-            loot.Add(ForgeUI.Object<LootTable>("Table de butin", "lootTable", "Table tirée à la mort de l'ennemi."));
+            loot.Add(new AssetPicker<LootTable>("Table de butin", serializedObject.FindProperty("lootTable"), "Table tirée à la mort de l'ennemi."));
         }
 
         protected override void OnRefresh(EnemyData enemy)
         {
             floorPreview.Clear();
-            floorPreview.Add(TableRow("Étage", "PV", "Dégâts", "Défense", "XP", true));
+            floorPreview.Add(TableRow(true, "Étage", "PV", "Dégâts", "Défense", "XP"));
             for (var floor = 1; floor <= Limits.floorCount; floor++)
-                floorPreview.Add(TableRow(floor.ToString(), enemy.GetHealth(floor).ToString(), enemy.GetDamage(floor).ToString(),
-                    enemy.GetDefense(floor).ToString(), enemy.GetXpReward(floor).ToString(), false));
+                floorPreview.Add(TableRow(false, floor.ToString(), enemy.GetHealth(floor).ToString(), enemy.GetDamage(floor).ToString(),
+                    enemy.GetDefense(floor).ToString(), enemy.GetXpReward(floor).ToString()));
         }
 
-        static VisualElement TableRow(string a, string b, string c, string d, string e, bool header)
+        static VisualElement TableRow(bool header, params string[] cells)
         {
             var row = new VisualElement();
             row.AddToClassList("forge-table-row");
-            foreach (var text in new[] { a, b, c, d, e })
+            foreach (var text in cells)
                 row.Add(ForgeUI.Label(text, header ? "forge-table-header" : null));
             row.tooltip = header ? "Stats calculées automatiquement à partir de l'étage 1 et de la croissance." : null;
             return row;

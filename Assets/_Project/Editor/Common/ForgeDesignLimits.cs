@@ -75,10 +75,22 @@ namespace TheDungeon.Editor.Common
         public IntRange roomWidth = new(6, 20);
         public IntRange roomHeight = new(5, 14);
         [Tooltip("Nombre maximum d'ennemis dans une salle.")]
-        public int maxEnemiesPerRoom = 8;
+        public int maxEnemiesPerRoom = 12;
         [Tooltip("Nombre maximum de coffres dans une salle.")]
         public int maxChestsPerRoom = 3;
         public IntRange roomDifficulty = new(1, 5);
+
+        [Header("Biomes")]
+        [Tooltip("Nombre maximum d'ennemis différents proposés par un biome.")]
+        public int maxBiomeEnemies = 12;
+        [Tooltip("Nombre maximum de décors proposés par un biome.")]
+        public int maxBiomeProps = 12;
+        [Tooltip("Nombre maximum de tables de butin de coffre par biome.")]
+        public int maxBiomeLootTables = 6;
+        [Tooltip("Variantes de sol maximum par biome.")]
+        public int maxBiomeFloorVariants = 4;
+        public IntRange biomeSpawnWeight = new(1, 100);
+        public FloatRange biomeRarityBoost = new(0f, 5f);
 
         [Header("Objets")]
         public List<RarityRule> rarities = new()

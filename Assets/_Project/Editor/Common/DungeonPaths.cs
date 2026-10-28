@@ -14,6 +14,8 @@ namespace TheDungeon.Editor.Common
         public const string Rooms = Data + "/Rooms";
         public const string Floors = Data + "/Floors";
         public const string Progression = Data + "/Progression";
+        public const string Biomes = Data + "/Biomes";
+        public const string Art = Root + "/Art";
         public const string Settings = Root + "/Settings";
         public const string Help = Root + "/Editor/Help";
         public const string StyleSheet = Root + "/Editor/Styles/Forge.uss";
@@ -26,6 +28,7 @@ namespace TheDungeon.Editor.Common
             if (type == typeof(RoomData)) return Rooms;
             if (type == typeof(FloorData)) return Floors;
             if (type == typeof(PlayerProgression)) return Progression;
+            if (type == typeof(BiomeData)) return Biomes;
             throw new ArgumentException($"Aucun dossier défini pour {type.Name}", nameof(type));
         }
     }

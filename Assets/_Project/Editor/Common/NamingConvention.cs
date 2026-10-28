@@ -8,18 +8,19 @@ namespace TheDungeon.Editor.Common
 {
     /// <summary>
     /// Convention de nommage des assets : PRÉFIXE_NomEnPascalCase.
-    /// ITM_ objets, ENM_ ennemis, BOSS_ boss, LT_ tables de butin, RM_ salles, FLR_ étages, PRG_ progression.
+    /// ITM_ objets, ENM_ ennemis, BOSS_ boss, LT_ tables de butin, BIO_ biomes, RM_ salles, FLR_ étages, PRG_ progression.
     /// </summary>
     public static class NamingConvention
     {
         static readonly Regex ValidBody = new("^[A-Z0-9][A-Za-z0-9]*(_[A-Za-z0-9]+)*$");
-        static readonly Regex AnyPrefix = new("^(ITM|ENM|BOSS|LT|RM|FLR|PRG)_");
+        static readonly Regex AnyPrefix = new("^(ITM|ENM|BOSS|LT|BIO|RM|FLR|PRG)_");
 
         public static string GetPrefix(Object asset) => asset switch
         {
             ItemData => "ITM_",
             EnemyData enemy => enemy.IsBoss ? "BOSS_" : "ENM_",
             LootTable => "LT_",
+            BiomeData => "BIO_",
             RoomData => "RM_",
             FloorData => "FLR_",
             PlayerProgression => "PRG_",
@@ -35,12 +36,9 @@ namespace TheDungeon.Editor.Common
         /// <summary>Nom attendu : préfixe correct + nom affiché (ou nom actuel) converti en PascalCase.</summary>
         public static string GetExpectedName(Object asset)
         {
-            var source = asset switch
-            {
-                ItemData item when !string.IsNullOrWhiteSpace(item.DisplayName) => item.DisplayName,
-                EnemyData enemy when !string.IsNullOrWhiteSpace(enemy.DisplayName) => enemy.DisplayName,
-                _ => AnyPrefix.Replace(asset.name, string.Empty)
-            };
+            var source = asset is IDisplayNamed named && !string.IsNullOrWhiteSpace(named.DisplayName)
+                ? named.DisplayName
+                : AnyPrefix.Replace(asset.name, string.Empty);
             var body = ToPascalCase(source);
             return GetPrefix(asset) + (body.Length > 0 ? body : "Unnamed");
         }

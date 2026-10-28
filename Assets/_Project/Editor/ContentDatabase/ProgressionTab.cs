@@ -1,7 +1,6 @@
 using System.Linq;
 using TheDungeon.Data;
 using TheDungeon.Editor.Common;
-using TheDungeon.Editor.Validation;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -9,10 +8,10 @@ using UnityEngine.UIElements;
 
 namespace TheDungeon.Editor.ContentDatabase
 {
-    /// <summary>Tableau des niveaux du joueur, avec génération automatique à partir d'une formule.</summary>
+    /// <summary>Tableau des niveaux du joueur, avec génération à partir d'une formule et validation avant enregistrement.</summary>
     public sealed class ProgressionTab
     {
-        ForgeDesignLimits Limits => ForgeDesignLimits.Instance;
+        readonly ForgeToolWindow window;
 
         // Paramètres du générateur (valeurs de départ raisonnables, modifiables dans l'onglet).
         int baseHealth = 50;
@@ -23,39 +22,77 @@ namespace TheDungeon.Editor.ContentDatabase
         float xpGrowth = 1.25f;
 
         VisualElement root;
+        ScrollView content;
+        ValidationFooter footer;
         VisualElement table;
         IssuesPanel issuesPanel;
-        PlayerProgression progression;
+        DraftSession<PlayerProgression> session;
         SerializedObject serializedObject;
+        IVisualElementScheduledItem pendingRefresh;
+
+        public ProgressionTab(ForgeToolWindow window)
+        {
+            this.window = window;
+        }
+
+        ForgeDesignLimits Limits => ForgeDesignLimits.Instance;
 
         public VisualElement Build()
         {
-            root = new ScrollView();
-            root.AddToClassList("forge-details");
-            root.RegisterCallback<AttachToPanelEvent>(_ => EditorApplication.projectChanged += Rebuild);
-            root.RegisterCallback<DetachFromPanelEvent>(_ => EditorApplication.projectChanged -= Rebuild);
-            Rebuild();
+            root = new VisualElement();
+            root.AddToClassList("forge-details-pane");
+            content = new ScrollView();
+            content.AddToClassList("forge-details");
+            content.style.flexGrow = 1;
+            root.Add(content);
+            footer = new ValidationFooter(Revert, () => Commit());
+            root.Add(footer);
+            root.RegisterCallback<DetachFromPanelEvent>(_ =>
+            {
+                session?.Dispose();
+                session = null;
+                window.SetUnsaved(this, false);
+            });
+
+            var existing = AssetFactory.LoadAll<PlayerProgression>().FirstOrDefault();
+            if (existing != null)
+                Open(DraftSession<PlayerProgression>.Edit(existing));
+            else
+                ShowEmpty();
             return root;
+        }
+
+        void ShowEmpty()
+        {
+            content.Clear();
+            footer.style.display = DisplayStyle.None;
+            content.Add(ForgeUI.EmptyState("La progression du joueur n'existe pas encore."));
+            var create = ForgeUI.Button($"Préparer la progression ({Limits.maxLevel} niveaux)",
+                "Prépare la progression avec la formule par défaut. Elle sera créée après validation.", () =>
+                {
+                    Open(DraftSession<PlayerProgression>.CreateNew("Player"));
+                    Generate();
+                }, "forge-button--primary");
+            create.style.alignSelf = Align.Center;
+            content.Add(create);
+        }
+
+        void Open(DraftSession<PlayerProgression> newSession)
+        {
+            session?.Dispose();
+            session = newSession;
+            serializedObject = new SerializedObject(session.Draft);
+            footer.style.display = DisplayStyle.Flex;
+            Rebuild();
         }
 
         void Rebuild()
         {
-            root.Clear();
-            progression = AssetFactory.LoadAll<PlayerProgression>().FirstOrDefault();
-            if (progression == null)
-            {
-                root.Add(ForgeUI.EmptyState("La progression du joueur n'existe pas encore."));
-                var create = ForgeUI.Button($"Créer la progression ({Limits.maxLevel} niveaux)",
-                    "Crée l'asset de progression et le remplit avec la formule par défaut.", CreateProgression, "forge-button--primary");
-                create.style.alignSelf = Align.Center;
-                root.Add(create);
-                return;
-            }
+            content.Clear();
+            serializedObject.Update();
+            content.Add(BuildGenerator());
 
-            serializedObject = new SerializedObject(progression);
-            root.Add(BuildGenerator());
-
-            var tableSection = ForgeUI.Section($"Niveaux 1 à {Limits.maxLevel}", root);
+            var tableSection = ForgeUI.Section($"Niveaux 1 à {Limits.maxLevel}", content);
             var levels = serializedObject.FindProperty("levels");
             if (levels.arraySize != Limits.maxLevel)
             {
@@ -71,18 +108,22 @@ namespace TheDungeon.Editor.ContentDatabase
             tableSection.Add(table);
             BuildTable(levels);
 
-            var issuesSection = ForgeUI.Section("Problèmes détectés", root);
+            var issuesSection = ForgeUI.Section("Problèmes détectés", content);
+            issuesSection.name = "issues";
             issuesPanel = new IssuesPanel();
-            issuesPanel.Fixed += Rebuild;
             issuesSection.Add(issuesPanel);
 
-            root.TrackSerializedObjectValue(serializedObject, _ => Refresh());
+            content.TrackSerializedObjectValue(serializedObject, _ =>
+            {
+                pendingRefresh?.Pause();
+                pendingRefresh = root.schedule.Execute(Refresh).StartingIn(250);
+            });
             Refresh();
         }
 
         VisualElement BuildGenerator()
         {
-            var foldout = new Foldout { text = "Générer depuis une formule", value = false, tooltip = "Remplit tout le tableau en un clic à partir de quelques paramètres." };
+            var foldout = new Foldout { text = "Générer depuis une formule", value = session.IsNew, tooltip = "Remplit tout le tableau en un clic à partir de quelques paramètres." };
             foldout.AddToClassList("forge-section");
 
             var health = new IntegerField("PV au niveau 1") { value = baseHealth, tooltip = "Points de vie du joueur au niveau 1." };
@@ -101,12 +142,9 @@ namespace TheDungeon.Editor.ContentDatabase
             foreach (var field in new VisualElement[] { health, healthRate, damage, damageRate, xp, xpRate })
                 foldout.Add(field);
 
-            foldout.Add(ForgeUI.Button("Générer les niveaux", "Remplace PV, dégâts et XP de tous les niveaux. Les déblocages sont conservés. Annulable (Ctrl+Z).",
-                () =>
-                {
-                    if (EditorUtility.DisplayDialog("Générer la progression", "Remplacer les PV, dégâts et XP des niveaux existants ?", "Générer", "Annuler"))
-                        Generate();
-                }, "forge-button--primary"));
+            foldout.Add(ForgeUI.Button("Générer les niveaux",
+                "Remplace PV, dégâts et XP de tous les niveaux (les déblocages sont conservés). Rien n'est enregistré avant « Valider ».",
+                Generate, "forge-button--primary"));
             return foldout;
         }
 
@@ -123,13 +161,6 @@ namespace TheDungeon.Editor.ContentDatabase
             }
             serializedObject.ApplyModifiedProperties();
             Rebuild();
-        }
-
-        void CreateProgression()
-        {
-            progression = AssetFactory.Create<PlayerProgression>("Player");
-            serializedObject = new SerializedObject(progression);
-            Generate();
         }
 
         void BuildTable(SerializedProperty levels)
@@ -167,20 +198,19 @@ namespace TheDungeon.Editor.ContentDatabase
             field.BindProperty(property);
             field.RegisterValueChangedCallback(evt =>
             {
-                if (!range.Contains(evt.newValue))
-                {
-                    field.value = range.Clamp(evt.newValue);
-                    ForgeLists.Notify($"Valeur ramenée entre {range.min} et {range.max}.");
-                }
+                if (range.Contains(evt.newValue))
+                    return;
+                field.value = range.Clamp(evt.newValue);
+                ForgeLists.Notify($"Valeur ramenée entre {range.min} et {range.max}.");
             });
             return field;
         }
 
         void Refresh()
         {
-            if (progression == null)
+            if (session == null)
                 return;
-            var levels = progression.Levels;
+            var levels = session.Draft.Levels;
             for (var i = 0; i < levels.Count; i++)
             {
                 var row = table.Q($"level-{i}");
@@ -189,8 +219,42 @@ namespace TheDungeon.Editor.ContentDatabase
                 var decreasing = i > 0 && (levels[i].maxHealth < levels[i - 1].maxHealth || levels[i].damage < levels[i - 1].damage ||
                                            levels[i].xpRequired <= levels[i - 1].xpRequired);
                 row.style.backgroundColor = decreasing ? new Color(0.86f, 0.27f, 0.27f, 0.2f) : StyleKeyword.Null;
+                row.tooltip = decreasing ? "Une valeur baisse par rapport au niveau précédent." : null;
             }
-            issuesPanel.Show(ValidationRunner.RunFor(progression));
+            var issues = session.Validate();
+            issuesPanel.Show(issues);
+            footer.Show(issues, session.IsNew, session.IsDirty);
+            window.SetUnsaved(this, session.IsDirty, Commit);
+        }
+
+        bool Commit()
+        {
+            var errors = session.TryCommit();
+            if (errors.Count > 0)
+            {
+                ForgeLists.Notify($"Non enregistré : {errors.Count} erreur(s) à corriger.");
+                Refresh();
+                content.ScrollTo(content.Q("issues"));
+                return false;
+            }
+            ForgeLists.Notify("Progression enregistrée.");
+            Refresh();
+            return true;
+        }
+
+        void Revert()
+        {
+            if (session.IsNew)
+            {
+                session.Dispose();
+                session = null;
+                window.SetUnsaved(this, false);
+                ShowEmpty();
+                return;
+            }
+            session.Revert();
+            serializedObject = new SerializedObject(session.Draft);
+            Rebuild();
         }
     }
 }

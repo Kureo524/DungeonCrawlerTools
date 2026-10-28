@@ -6,46 +6,35 @@ using UnityEngine;
 
 namespace TheDungeon.Editor.Common
 {
-    /// <summary>Création, duplication, renommage et suppression des données, toujours rangées et nommées selon la convention.</summary>
+    /// <summary>Enregistrement, renommage et suppression des données, toujours rangées et nommées selon la convention.</summary>
     public static class AssetFactory
     {
-        public static T Create<T>(string displayName) where T : ScriptableObject
+        /// <summary>Enregistre une copie de travail validée comme nouvel asset, dans le dossier de son type.</summary>
+        public static T SaveNew<T>(T draft) where T : ScriptableObject
         {
             var asset = ScriptableObject.CreateInstance<T>();
-            var serialized = new SerializedObject(asset);
-            var nameProperty = serialized.FindProperty("displayName");
-            if (nameProperty != null)
-            {
-                nameProperty.stringValue = displayName;
-                serialized.ApplyModifiedPropertiesWithoutUndo();
-            }
-            asset.name = NamingConvention.ToPascalCase(displayName);
+            EditorUtility.CopySerialized(draft, asset);
+            asset.hideFlags = HideFlags.None;
+            asset.name = NamingConvention.GetExpectedName(asset);
 
             var folder = DungeonPaths.FolderFor(typeof(T));
             EnsureFolder(folder);
-            var path = AssetDatabase.GenerateUniqueAssetPath($"{folder}/{NamingConvention.GetExpectedName(asset)}.asset");
-            AssetDatabase.CreateAsset(asset, path);
+            AssetDatabase.CreateAsset(asset, AssetDatabase.GenerateUniqueAssetPath($"{folder}/{asset.name}.asset"));
             AssetDatabase.SaveAssets();
             return asset;
         }
 
-        public static T Duplicate<T>(T source) where T : ScriptableObject
+        /// <summary>Recopie une copie de travail validée dans l'asset d'origine (annulable avec Ctrl+Z).</summary>
+        public static void SaveInto<T>(T draft, T original) where T : ScriptableObject
         {
-            var sourcePath = AssetDatabase.GetAssetPath(source);
-            var copyPath = AssetDatabase.GenerateUniqueAssetPath(sourcePath);
-            if (!AssetDatabase.CopyAsset(sourcePath, copyPath))
-                return null;
-
-            var copy = AssetDatabase.LoadAssetAtPath<T>(copyPath);
-            var serialized = new SerializedObject(copy);
-            var nameProperty = serialized.FindProperty("displayName");
-            if (nameProperty != null)
-            {
-                nameProperty.stringValue += " (copie)";
-                serialized.ApplyModifiedPropertiesWithoutUndo();
-                ApplyNamingConvention(copy);
-            }
-            return copy;
+            Undo.RecordObject(original, $"Modifier {original.name}");
+            var fileName = original.name;
+            EditorUtility.CopySerialized(draft, original);
+            original.name = fileName;
+            original.hideFlags = HideFlags.None;
+            EditorUtility.SetDirty(original);
+            AssetDatabase.SaveAssetIfDirty(original);
+            ApplyNamingConvention(original);
         }
 
         /// <summary>Renomme le fichier pour respecter la convention. Renvoie un message d'erreur, ou null si tout va bien.</summary>
@@ -67,7 +56,8 @@ namespace TheDungeon.Editor.Common
             var message = $"Supprimer « {asset.name} » ?\nL'asset est envoyé dans la corbeille du système.";
             if (users.Count > 0)
                 message += $"\n\nAttention, il est encore utilisé par :\n- {string.Join("\n- ", users.Take(8).Select(u => u.name))}"
-                           + (users.Count > 8 ? $"\n… et {users.Count - 8} autre(s)" : string.Empty);
+                           + (users.Count > 8 ? $"\n… et {users.Count - 8} autre(s)" : string.Empty)
+                           + "\nCes données deviendront invalides.";
 
             if (!EditorUtility.DisplayDialog("Supprimer", message, "Supprimer", "Annuler"))
                 return false;
@@ -88,10 +78,9 @@ namespace TheDungeon.Editor.Common
 
         public static List<T> LoadAll<T>() where T : Object
         {
-            var folder = DungeonPaths.Data;
-            if (!AssetDatabase.IsValidFolder(folder))
+            if (!AssetDatabase.IsValidFolder(DungeonPaths.Data))
                 return new List<T>();
-            return AssetDatabase.FindAssets($"t:{typeof(T).Name}", new[] { folder })
+            return AssetDatabase.FindAssets($"t:{typeof(T).Name}", new[] { DungeonPaths.Data })
                 .Select(guid => AssetDatabase.LoadAssetAtPath<T>(AssetDatabase.GUIDToAssetPath(guid)))
                 .Where(asset => asset != null)
                 .OrderBy(asset => asset.name)
