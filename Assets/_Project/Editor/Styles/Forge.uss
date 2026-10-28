@@ -1,0 +1,291 @@
+/* Feuille de style partagée par toutes les fenêtres Tools. Couleurs semi-transparentes : lisibles en thème clair et sombre. */
+
+.forge-window {
+    flex-grow: 1;
+}
+
+.forge-header {
+    padding: 8px 10px 6px 10px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(128, 128, 128, 0.3);
+}
+
+.forge-title {
+    font-size: 16px;
+    -unity-font-style: bold;
+}
+
+.forge-subtitle {
+    opacity: 0.7;
+    white-space: normal;
+}
+
+.forge-tabbar {
+    flex-direction: row;
+    padding: 4px 6px 0 6px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(128, 128, 128, 0.3);
+}
+
+.forge-tab {
+    margin: 0 2px 0 0;
+    padding: 4px 12px;
+    border-radius: 4px 4px 0 0;
+    border-width: 0;
+    background-color: rgba(128, 128, 128, 0.12);
+}
+
+.forge-tab:hover {
+    background-color: rgba(128, 128, 128, 0.25);
+}
+
+.forge-tab--active {
+    background-color: rgba(232, 160, 90, 0.35);
+    -unity-font-style: bold;
+}
+
+.forge-tab--help {
+    margin-left: auto;
+}
+
+.forge-tab-content {
+    flex-grow: 1;
+}
+
+.forge-tab-content > * {
+    flex-grow: 1;
+}
+
+/* Liste + détail */
+
+.forge-list-pane {
+    min-width: 180px;
+    padding: 4px;
+}
+
+.forge-toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin: 2px 0 4px 0;
+}
+
+.forge-list-item {
+    flex-direction: row;
+    align-items: center;
+    padding: 0 4px;
+}
+
+.forge-list-item__icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+}
+
+.forge-list-item__strip {
+    width: 4px;
+    height: 18px;
+    margin-right: 6px;
+    border-radius: 2px;
+}
+
+.forge-list-item__label {
+    flex-grow: 1;
+}
+
+.forge-list-item__warning {
+    color: rgb(240, 170, 60);
+    -unity-font-style: bold;
+}
+
+.forge-details {
+    padding: 6px 10px;
+}
+
+.forge-details-header {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.forge-preview {
+    width: 64px;
+    height: 64px;
+    margin-right: 10px;
+    border-width: 1px;
+    border-color: rgba(128, 128, 128, 0.4);
+    border-radius: 4px;
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+.forge-details-title {
+    font-size: 15px;
+    -unity-font-style: bold;
+}
+
+.forge-section {
+    margin: 6px 0;
+    padding: 6px 8px;
+    border-radius: 4px;
+    background-color: rgba(128, 128, 128, 0.08);
+}
+
+.forge-section-title {
+    -unity-font-style: bold;
+    margin-bottom: 4px;
+    opacity: 0.85;
+}
+
+.forge-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.forge-row > .unity-base-field {
+    flex-grow: 1;
+}
+
+.forge-button {
+    margin: 1px 2px;
+}
+
+.forge-button--primary {
+    background-color: rgba(90, 170, 90, 0.45);
+}
+
+.forge-button--danger {
+    background-color: rgba(200, 70, 70, 0.4);
+}
+
+.forge-badge {
+    padding: 1px 6px;
+    margin: 0 4px;
+    border-radius: 8px;
+    color: rgb(20, 20, 20);
+    -unity-font-style: bold;
+    font-size: 10px;
+}
+
+.forge-multiline TextInput {
+    min-height: 48px;
+    white-space: normal;
+}
+
+.forge-empty {
+    padding: 20px;
+    opacity: 0.6;
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+/* Problèmes détectés */
+
+.forge-issue {
+    flex-direction: row;
+    align-items: center;
+    padding: 3px 6px;
+    margin: 1px 0;
+    border-left-width: 3px;
+    border-radius: 2px;
+    white-space: normal;
+}
+
+.forge-issue Label {
+    white-space: normal;
+    flex-shrink: 1;
+}
+
+.forge-issue--error {
+    border-left-color: rgb(220, 70, 70);
+    background-color: rgba(220, 70, 70, 0.12);
+}
+
+.forge-issue--warning {
+    border-left-color: rgb(240, 170, 60);
+    background-color: rgba(240, 170, 60, 0.12);
+}
+
+.forge-issue--ok {
+    border-left-color: rgb(90, 180, 90);
+    background-color: rgba(90, 180, 90, 0.12);
+}
+
+/* Barres de probabilité */
+
+.forge-bar-row {
+    flex-direction: row;
+    align-items: center;
+    height: 18px;
+}
+
+.forge-bar-row__label {
+    width: 160px;
+    overflow: hidden;
+}
+
+.forge-bar-row__track {
+    flex-grow: 1;
+    height: 10px;
+    border-radius: 3px;
+    background-color: rgba(128, 128, 128, 0.2);
+}
+
+.forge-bar-row__fill {
+    height: 100%;
+    border-radius: 3px;
+}
+
+.forge-bar-row__value {
+    width: 56px;
+    -unity-text-align: middle-right;
+}
+
+/* Tableau de progression */
+
+.forge-table-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.forge-table-row > * {
+    width: 90px;
+    margin: 1px 2px;
+}
+
+.forge-table-row > .forge-table-wide {
+    flex-grow: 1;
+    width: auto;
+}
+
+.forge-table-header {
+    -unity-font-style: bold;
+    opacity: 0.8;
+}
+
+/* Aide */
+
+.forge-help {
+    padding: 10px 14px;
+}
+
+.forge-help-h1 {
+    font-size: 16px;
+    -unity-font-style: bold;
+    margin: 4px 0;
+}
+
+.forge-help-h2 {
+    font-size: 13px;
+    -unity-font-style: bold;
+    margin: 8px 0 2px 0;
+    color: rgb(232, 160, 90);
+}
+
+.forge-help-text,
+.forge-help-bullet {
+    white-space: normal;
+    margin: 1px 0;
+}
+
+.forge-help-bullet {
+    margin-left: 10px;
+}
