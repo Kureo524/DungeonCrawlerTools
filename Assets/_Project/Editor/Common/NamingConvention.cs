@@ -36,6 +36,8 @@ namespace TheDungeon.Editor.Common
         /// <summary>Nom attendu : préfixe correct + nom affiché (ou nom actuel) converti en PascalCase.</summary>
         public static string GetExpectedName(Object asset)
         {
+            if (asset is FloorData floor)
+                return $"FLR_{floor.FloorNumber}";
             var source = asset is IDisplayNamed named && !string.IsNullOrWhiteSpace(named.DisplayName)
                 ? named.DisplayName
                 : AnyPrefix.Replace(asset.name, string.Empty);
