@@ -47,13 +47,15 @@ namespace TheDungeon.Editor.Validation
         public IReadOnlyList<RoomData> Rooms { get; }
         public IReadOnlyList<FloorData> Floors { get; }
         public IReadOnlyList<PlayerProgression> Progressions { get; }
+        public IReadOnlyList<NpcData> Npcs { get; }
         public ForgeDesignLimits Limits { get; }
 
         public ValidationContext(
             IReadOnlyList<ItemData> items, IReadOnlyList<EnemyData> enemies, IReadOnlyList<LootTable> lootTables,
             IReadOnlyList<BiomeData> biomes, IReadOnlyList<RoomData> rooms, IReadOnlyList<FloorData> floors,
-            IReadOnlyList<PlayerProgression> progressions, ForgeDesignLimits limits)
+            IReadOnlyList<PlayerProgression> progressions, ForgeDesignLimits limits, IReadOnlyList<NpcData> npcs = null)
         {
+            Npcs = npcs ?? new List<NpcData>();
             Items = items;
             Enemies = enemies;
             LootTables = lootTables;
@@ -70,7 +72,7 @@ namespace TheDungeon.Editor.Validation
         public static ValidationContext FromProject(Object original, Object draft) => new(
             Load<ItemData>(original, draft), Load<EnemyData>(original, draft), Load<LootTable>(original, draft),
             Load<BiomeData>(original, draft), Load<RoomData>(original, draft), Load<FloorData>(original, draft),
-            Load<PlayerProgression>(original, draft), ForgeDesignLimits.Instance);
+            Load<PlayerProgression>(original, draft), ForgeDesignLimits.Instance, Load<NpcData>(original, draft));
 
         static List<T> Load<T>(Object original, Object draft) where T : Object
         {
@@ -85,7 +87,7 @@ namespace TheDungeon.Editor.Validation
         }
 
         public IEnumerable<Object> AllAssets() =>
-            Items.Cast<Object>().Concat(Enemies).Concat(LootTables).Concat(Biomes).Concat(Rooms).Concat(Floors).Concat(Progressions);
+            Items.Cast<Object>().Concat(Enemies).Concat(LootTables).Concat(Biomes).Concat(Rooms).Concat(Floors).Concat(Progressions).Concat(Npcs);
     }
 
     /// <summary>
