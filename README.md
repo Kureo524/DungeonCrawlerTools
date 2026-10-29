@@ -41,16 +41,21 @@ Le jeu est un dungeon crawler en vue du dessus, construit **entièrement à part
 |---|---|---|
 | Se déplacer | ZQSD / WASD / flèches | Stick gauche |
 | Viser, tirer | Souris, clic gauche | Stick droit, gâchette droite |
-| Esquive | Espace | B |
-| Interagir (coffre, PNJ, boutique, portail) | E | A |
+| Mécanique secondaire (ex : onde de choc) | Clic droit | Gâchette gauche |
+| Esquive | Espace / Maj | B |
+| Mécaniques débloquées en route | 1, 2, 3 | LB, RB, X |
+
+| Interagir (coffre, PNJ, boutique, feu de camp, portail) | E | A |
 | Consommable | F | Y |
 | Inventaire / Pause | I / Échap | Select / Start |
 
 Déroulement :
 1. Entrer dans une salle de combat fait apparaître ses ennemis et **ferme les portes** jusqu'à la victoire.
 2. Les ennemis lâchent XP, or et butin (tables de butin, bonus de rareté du biome, conditions d'étage). Les coffres s'ouvrent avec E, et la boutique vend des objets à leur prix.
-3. Les PNJ de l'étage attendent dans les salles calmes et jouent leurs dialogues, avec conditions et effets appliqués à la partie.
-4. Le boss de l'étage vaincu ouvre un **portail** vers l'étage suivant. Après le dernier étage, c'est la victoire.
+3. Chaque salle a un **feu de camp** : il brûle dès l'arrivée dans une salle sans ennemis, et s'allume dans une salle de combat une fois les ennemis vaincus. C'est là que le joueur répartit les points d'attributs gagnés en montant de niveau.
+4. Les PNJ de l'étage attendent dans les salles calmes et jouent leurs dialogues, avec conditions et effets appliqués à la partie.
+5. Le boss de l'étage vaincu ouvre un **portail** vers l'étage suivant. Après le dernier étage, c'est la victoire.
+
 
 ## Organisation du projet
 ```

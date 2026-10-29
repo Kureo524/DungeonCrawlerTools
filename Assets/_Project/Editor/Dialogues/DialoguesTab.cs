@@ -97,7 +97,7 @@ namespace TheDungeon.Editor.Dialogues
             left.Add(ForgeUI.Text("Nom", "displayName", "Nom affiché dans la boîte de dialogue. Le fichier sera nommé NPC_<Nom>."));
             left.Add(ForgeUI.Text("Rôle", "role", "Rôle ou titre : forgeron, marchand, prisonnier…"));
             left.Add(ForgeUI.Slider("Étage", "floor", new IntRange(1, Limits.floorCount), "Étage où l'on rencontre ce personnage."));
-            left.Add(new ColorField("Couleur") { bindingPath = "color", tooltip = "Couleur des bulles et de la plaque de nom." });
+            left.Add(new ColorField("Couleur") { showAlpha = false, bindingPath = "color", tooltip = "Couleur des bulles et de la plaque de nom." });
             identityRow.Add(left);
             var right = new VisualElement();
             right.AddToClassList("forge-chart-row__grow");

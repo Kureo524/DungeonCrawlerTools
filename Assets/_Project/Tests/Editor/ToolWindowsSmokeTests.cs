@@ -3,6 +3,7 @@ using NUnit.Framework;
 using TheDungeon.Editor.Biomes;
 using TheDungeon.Editor.Common;
 using TheDungeon.Editor.ContentDatabase;
+using TheDungeon.Editor.Progression;
 using TheDungeon.Editor.RoomEditor;
 using TheDungeon.Editor.Studio;
 using UnityEngine;
@@ -73,6 +74,31 @@ namespace TheDungeon.Editor.Tests
             }
         }
 
+        /// <summary>Progression réelle (créée puis supprimée) : chaque catégorie de l'onglet se construit sans erreur.</summary>
+        [Test]
+        public void Progression_EveryCategory_Builds()
+        {
+            var created = new System.Collections.Generic.List<Object>();
+            try
+            {
+                Commit<TheDungeon.Data.PlayerProgression>("Zz Smoke Progression", so => ProgressionEditing.Reset(so, ForgeDesignLimits.Instance), created);
+                AssertBuilds(w =>
+                {
+                    var root = new ProgressionTab(w).Build();
+                    var categories = root.Query<Button>(className: "forge-seg__item").ToList();
+                    Assert.AreEqual(6, categories.Count, "Aucune progression ouverte : catégories introuvables.");
+                    foreach (var category in categories)
+                        Click(category);
+                    return root;
+                });
+            }
+            finally
+            {
+                for (var i = created.Count - 1; i >= 0; i--)
+                    UnityEditor.AssetDatabase.DeleteAsset(UnityEditor.AssetDatabase.GetAssetPath(created[i]));
+            }
+        }
+
         [Test] public void Dashboard_Builds() => AssertBuilds(w => new DashboardView(w).Build());
         [Test] public void Settings_Builds() => AssertBuilds(_ => SettingsView.Build());
 
@@ -128,10 +154,16 @@ namespace TheDungeon.Editor.Tests
         {
             var buttons = root.Query<Button>().Where(b => b.text == text).ToList();
             Assert.IsNotEmpty(buttons, $"Aucun bouton « {text} ».");
-            var field = typeof(Clickable).GetField("clicked", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
             foreach (var button in buttons)
-                ((System.Action)field!.GetValue(button.clickable))?.Invoke();
+                Click(button);
         }
+
+        static void Click(Button button)
+        {
+            var field = typeof(Clickable).GetField("clicked", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            ((System.Action)field!.GetValue(button.clickable))?.Invoke();
+        }
+
 
         static T Commit<T>(string name, System.Action<UnityEditor.SerializedObject> setup, System.Collections.Generic.List<Object> created)
             where T : ScriptableObject

@@ -65,6 +65,14 @@ namespace TheDungeon.Editor.Common
             return new DraftSession<T>(null, draft);
         }
 
+        /// <summary>Nouvelle copie de travail reprenant le contenu d'un modèle (import d'un fichier…), à valider pour créer l'asset.</summary>
+        public static DraftSession<T> CreateFrom(T template)
+        {
+            var draft = Object.Instantiate(template);
+            draft.name = NamingConvention.GetExpectedName(draft);
+            return new DraftSession<T>(null, draft);
+        }
+
         /// <summary>Problèmes de la copie de travail, évaluée avec le reste du projet.</summary>
         public List<ValidationIssue> Validate()
         {

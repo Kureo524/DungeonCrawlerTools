@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine.UIElements;
 
@@ -16,10 +18,63 @@ namespace TheDungeon.Editor.Common.Charts
 
         public float Progress { get; private set; } = 1f;
 
+        // Graphiques animés, retrouvés à partir de leur élément pour rejouer l'animation à l'ouverture d'un panneau.
+        static readonly ConditionalWeakTable<VisualElement, ChartAnimation> Registry = new();
+        const string AnimatedClass = "forge-animated";
+
+        /// <summary>Barres qui grandissent par transition USS (largeur ou hauteur) : rejouées en repartant de zéro.</summary>
+        static readonly (string className, bool vertical)[] GrowingBars =
+        {
+            ("forge-bar-row__fill", false), ("forge-meter__fill", false), ("forge-bar__fill", true)
+        };
+
         public ChartAnimation(VisualElement owner, Action onFrame)
         {
             this.owner = owner;
             this.onFrame = onFrame;
+            owner.AddToClassList(AnimatedClass);
+            Registry.AddOrUpdate(owner, this);
+        }
+
+        /// <summary>
+        /// Rejoue les animations de tous les graphiques et barres d'un panneau, comme à sa première ouverture.
+        /// </summary>
+        public static void ReplayAll(VisualElement root)
+        {
+            root.Query(className: AnimatedClass).ForEach(element =>
+            {
+                if (Registry.TryGetValue(element, out var animation) && animation.played)
+                    animation.Play();
+            });
+
+            foreach (var (className, vertical) in GrowingBars)
+            {
+                var bars = root.Query(className: className).ToList();
+                if (bars.Count == 0)
+                    continue;
+                // Sans transition, la barre revient à zéro ; à l'image suivante, la transition la ramène à sa valeur.
+                var targets = new List<StyleLength>();
+                foreach (var bar in bars)
+                {
+                    targets.Add(vertical ? bar.style.height : bar.style.width);
+                    bar.style.transitionDuration = new List<TimeValue> { new(0f) };
+                    if (vertical)
+                        bar.style.height = 0f;
+                    else
+                        bar.style.width = 0f;
+                }
+                root.schedule.Execute(() =>
+                {
+                    for (var i = 0; i < bars.Count; i++)
+                    {
+                        bars[i].style.transitionDuration = StyleKeyword.Null;
+                        if (vertical)
+                            bars[i].style.height = targets[i];
+                        else
+                            bars[i].style.width = targets[i];
+                    }
+                }).StartingIn(30);
+            }
         }
 
         bool played;

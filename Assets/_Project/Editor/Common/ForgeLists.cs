@@ -90,10 +90,13 @@ namespace TheDungeon.Editor.Common
 
         public static void Notify(string message)
         {
+            // Message système, écrit comme dans le roman : entre crochets, les noms entre apostrophes.
+            message = ForgeText.System(message);
             if (EditorWindow.focusedWindow != null)
                 EditorWindow.focusedWindow.ShowNotification(new GUIContent(message), 2);
             else
                 Debug.LogWarning(message);
+
         }
     }
 }

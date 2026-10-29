@@ -99,19 +99,44 @@ namespace TheDungeon.Editor.Play
             EditorApplication.EnterPlaymode();
         }
 
+        /// <summary>
+        /// Progression jouée : celle choisie dans l'outil Progression (mémorisée dans la base de jeu), sinon la première trouvée.
+        /// </summary>
+        public static PlayerProgression ActiveProgression
+        {
+            get
+            {
+                var all = AssetFactory.LoadAll<PlayerProgression>();
+                var chosen = AssetDatabase.LoadAssetAtPath<GameDatabase>(DatabasePath)?.progression;
+                return chosen != null && all.Contains(chosen) ? chosen : all.FirstOrDefault();
+            }
+            set
+            {
+                var database = LoadOrCreateDatabase();
+                database.progression = value;
+                EditorUtility.SetDirty(database);
+                AssetDatabase.SaveAssetIfDirty(database);
+            }
+        }
+
+        static GameDatabase LoadOrCreateDatabase()
+        {
+            var database = AssetDatabase.LoadAssetAtPath<GameDatabase>(DatabasePath);
+            if (database != null)
+                return database;
+            database = ScriptableObject.CreateInstance<GameDatabase>();
+            AssetFactory.EnsureFolder(DungeonPaths.Settings);
+            AssetDatabase.CreateAsset(database, DatabasePath);
+            return database;
+        }
+
         /// <summary>Rassemble dans la base de jeu tout ce que les outils ont produit.</summary>
         public static GameDatabase RefreshDatabase()
         {
-            var database = AssetDatabase.LoadAssetAtPath<GameDatabase>(DatabasePath);
-            if (database == null)
-            {
-                database = ScriptableObject.CreateInstance<GameDatabase>();
-                AssetFactory.EnsureFolder(DungeonPaths.Settings);
-                AssetDatabase.CreateAsset(database, DatabasePath);
-            }
-
+            var progression = ActiveProgression;
+            var database = LoadOrCreateDatabase();
             database.floors = AssetFactory.LoadAll<FloorData>().Where(f => f.Rooms.Any(s => s.room != null)).OrderBy(f => f.FloorNumber).ToList();
-            database.progression = AssetFactory.LoadAll<PlayerProgression>().FirstOrDefault();
+            database.progression = progression;
             database.npcs = AssetFactory.LoadAll<NpcData>();
             database.rooms = AssetFactory.LoadAll<RoomData>().Where(r => r.HasValidTiles).ToList();
             database.rarityColors = ForgeDesignLimits.Instance.rarities

@@ -149,9 +149,22 @@ namespace TheDungeon.Editor.Common
         public int maxDialogueRules = 4;
 
         [Header("Progression du joueur")]
+        [Tooltip("Nombre de niveaux prévu par le GDD : objectif du tableau de bord et nombre de niveaux d'une nouvelle progression.")]
         public int maxLevel = 20;
+        [Tooltip("Nombre de niveaux le plus élevé qu'une progression peut avoir (les designers choisissent le leur dans l'outil).")]
+        public int maxLevelCap = 99;
+
+        [Tooltip("Nombre maximum de stats dans une progression.")]
+        public int maxProgressionStats = 10;
+        [Tooltip("Nombre maximum d'attributs dans lesquels le joueur répartit ses points (la fiche du jeu en affiche 6).")]
+        public int maxAttributes = 6;
+        [Tooltip("Nombre maximum de compétences dans une progression.")]
+        public int maxSkills = 10;
+
         public IntRange playerHealth = new(10, 2000);
         public IntRange playerDamage = new(1, 300);
+        public IntRange playerDefense = new(0, 200);
+        public FloatRange playerSpeed = new(2f, 12f);
         public IntRange xpRequired = new(1, 100000);
 
         static ForgeDesignLimits instance;

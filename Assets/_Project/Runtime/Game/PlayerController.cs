@@ -5,24 +5,27 @@ using UnityEngine;
 
 namespace TheDungeon.Game
 {
-    /// <summary>Joueur : déplacement, tir à la souris, esquive, interaction. Ses stats viennent de GameState.</summary>
+    /// <summary>
+    /// Joueur : déplacement, interaction et mécaniques de la progression (tir, esquive, soin…), chacune sur sa touche,
+    /// avec son coût et sa recharge. Ses stats viennent de GameState.
+    /// </summary>
     public sealed class PlayerController : MonoBehaviour, IDamageable
     {
-        const float FireInterval = 0.22f;
         const float ProjectileSpeed = 13f;
-        const float DashDuration = 0.18f;
-        const float DashSpeed = 17f;
-        const float DashCooldown = 0.7f;
         const float HurtInvulnerability = 0.6f;
         const float CriticalChance = 0.1f;
+        const float Spread = 12f;
 
         DungeonGame game;
         Rigidbody2D body;
         SpriteRenderer sprite;
         SpriteFlash flash;
-        float fireTimer;
+        readonly Dictionary<CharacterMechanic, float> cooldowns = new();
         float dashTimer;
-        float dashCooldown;
+        float dashSpeed;
+        float shieldTimer;
+        float boostTimer;
+        float boostPercent;
         float invulnerable;
         Vector2 dashDirection;
         Vector2 aim = Vector2.right;
@@ -30,7 +33,29 @@ namespace TheDungeon.Game
         public Faction Faction => Faction.Player;
         public bool IsAlive => !game.State.IsDead;
         public bool IsDashing => dashTimer > 0f;
-        public float DashReady => 1f - Mathf.Clamp01(dashCooldown / DashCooldown);
+        public bool IsShielded => shieldTimer > 0f;
+
+        float CurrentCriticalChance => Mathf.Clamp01(CriticalChance + game.State.SkillValue(SkillEffect.CriticalChance) / 100f);
+
+        /// <summary>Recharge réelle : les compétences « cadence de tir » et « recharge de l'esquive » la raccourcissent.</summary>
+        float Cooldown(CharacterMechanic mechanic)
+        {
+            var cooldown = game.State.ValuesOf(mechanic).Cooldown;
+            return mechanic.action switch
+            {
+                MechanicAction.Projectile or MechanicAction.Nova => cooldown / (1f + Mathf.Max(0f, game.State.SkillValue(SkillEffect.FireRate)) / 100f),
+                MechanicAction.Dash => cooldown * (1f - Mathf.Clamp(game.State.SkillValue(SkillEffect.DashCooldown) / 100f, 0f, 0.8f)),
+                _ => cooldown
+            };
+        }
+
+        /// <summary>0 juste après utilisation, 1 quand la mécanique est de nouveau prête.</summary>
+        public float Readiness(CharacterMechanic mechanic)
+        {
+            if (!cooldowns.TryGetValue(mechanic, out var left) || left <= 0f)
+                return 1f;
+            return 1f - Mathf.Clamp01(left / Mathf.Max(0.01f, Cooldown(mechanic)));
+        }
 
         public static PlayerController Spawn(DungeonGame game, Sprite sprite, Vector3 position)
         {
@@ -66,57 +91,103 @@ namespace TheDungeon.Game
                 return;
             }
 
-            fireTimer -= Time.deltaTime;
-            dashCooldown -= Time.deltaTime;
+            foreach (var mechanic in cooldowns.Keys.ToList())
+                cooldowns[mechanic] -= Time.deltaTime;
             invulnerable -= Time.deltaTime;
+            shieldTimer -= Time.deltaTime;
+            boostTimer -= Time.deltaTime;
 
             var screen = (Vector2)game.Camera.WorldToScreenPoint(transform.position);
             aim = GameInput.AimFrom(screen, aim);
             sprite.flipX = aim.x < 0f;
 
             var move = GameInput.Move;
-            if (GameInput.Dash && dashCooldown <= 0f)
-            {
-                dashDirection = move.sqrMagnitude > 0.01f ? move.normalized : aim;
-                dashTimer = DashDuration;
-                dashCooldown = DashCooldown;
-            }
+            foreach (var mechanic in game.State.Mechanics)
+                if (game.State.IsUnlocked(mechanic) && GameInput.Triggered(mechanic.input))
+                    TryUse(mechanic, move);
 
             if (dashTimer > 0f)
             {
                 dashTimer -= Time.deltaTime;
-                body.linearVelocity = dashDirection * DashSpeed;
+                body.linearVelocity = dashDirection * dashSpeed;
                 sprite.color = new Color(1f, 1f, 1f, 0.55f);
             }
             else
             {
-                body.linearVelocity = move * game.State.MoveSpeed;
-                if (sprite.color.a < 1f)
-                    sprite.color = Color.white;
+                var boost = boostTimer > 0f ? 1f + boostPercent / 100f : 1f;
+                body.linearVelocity = move * game.State.MoveSpeed * boost;
+                sprite.color = IsShielded ? new Color(0.6f, 0.9f, 1f) : Color.white;
             }
 
-            if (GameInput.Fire && fireTimer <= 0f)
-                Shoot();
             if (GameInput.UsePotion && !game.State.Use(game.State.FirstConsumable))
                 game.Toast("Aucun consommable (F)", new Color(1f, 0.6f, 0.5f));
             if (GameInput.Interact)
                 game.Nearest(transform.position)?.Interact(game);
         }
 
-        void Shoot()
+        /// <summary>Utilise une mécanique si elle est rechargée et si le joueur peut en payer le coût.</summary>
+        void TryUse(CharacterMechanic mechanic, Vector2 move)
         {
-            fireTimer = FireInterval;
-            var critical = Random.value < CriticalChance;
-            var damage = critical ? game.State.Attack * 2 : game.State.Attack;
+            if (cooldowns.TryGetValue(mechanic, out var left) && left > 0f)
+                return;
+            if (!game.State.TrySpend(mechanic))
+            {
+                if (GameInput.JustPressed(mechanic.input))
+                    GameFx.Float(transform.position, $"{game.State.CostStat(mechanic)?.displayName ?? "Ressource"} insuffisant(e)", new Color(0.7f, 0.7f, 0.75f), 0.8f);
+                return;
+            }
+            cooldowns[mechanic] = Cooldown(mechanic);
+            var values = game.State.ValuesOf(mechanic);
+            switch (mechanic.action)
+            {
+                case MechanicAction.Projectile:
+                    // Projectiles supplémentaires (compétence) : en éventail, 12° d'écart.
+                    var count = values.Count + Mathf.Clamp(Mathf.RoundToInt(game.State.SkillValue(SkillEffect.ExtraProjectiles)), 0, 8);
+                    for (var i = 0; i < count; i++)
+                        Shoot(Quaternion.Euler(0f, 0f, (i - (count - 1) / 2f) * Spread) * aim, values.Power);
+                    break;
+                case MechanicAction.Nova:
+                    for (var i = 0; i < values.Count; i++)
+                        Shoot(Quaternion.Euler(0f, 0f, 360f * i / values.Count) * aim, values.Power);
+                    game.CameraFollow.Shake(0.1f);
+                    break;
+                case MechanicAction.Dash:
+                    dashDirection = move.sqrMagnitude > 0.01f ? move.normalized : aim;
+                    dashTimer = Mathf.Max(0.05f, values.Duration);
+                    dashSpeed = values.Power / dashTimer;
+                    break;
+                case MechanicAction.Heal:
+                    var healed = Mathf.RoundToInt(values.Power);
+                    game.State.Heal(healed);
+                    flash.Flash(new Color(0.5f, 1f, 0.6f), 0.2f);
+                    GameFx.Float(transform.position, $"+{healed} PV", new Color(0.5f, 1f, 0.6f));
+                    break;
+                case MechanicAction.Shield:
+                    shieldTimer = Mathf.Max(shieldTimer, values.Duration);
+                    break;
+                case MechanicAction.SpeedBoost:
+                    boostTimer = values.Duration;
+                    boostPercent = values.Power;
+                    break;
+            }
+        }
+
+        /// <summary>Un projectile : dégâts = attaque × puissance (%), doublés sur un coup critique.</summary>
+        void Shoot(Vector2 direction, float power)
+        {
+            var critical = Random.value < CurrentCriticalChance;
+            var damage = Mathf.Max(1, Mathf.RoundToInt(game.State.Attack * power / 100f));
+            if (critical)
+                damage *= 2;
             var weapon = game.State.Weapon;
             var color = weapon != null ? game.Database.GetRarityColor(weapon.Rarity) : new Color(1f, 0.95f, 0.7f);
-            Projectile.Spawn(transform.position + (Vector3)(aim * 0.4f), aim, ProjectileSpeed, damage, Faction.Player, color,
+            Projectile.Spawn(transform.position + (Vector3)(direction * 0.4f), direction, ProjectileSpeed, damage, Faction.Player, color,
                 1f, weapon != null ? weapon.Effects : null, critical);
         }
 
         public void TakeHit(int damage, Vector2 direction, IReadOnlyList<ItemEffect> effects, bool critical)
         {
-            if (invulnerable > 0f || IsDashing || game.State.IsDead || !game.IsPlaying)
+            if (invulnerable > 0f || IsDashing || IsShielded || game.State.IsDead || !game.IsPlaying)
                 return;
             var dealt = game.State.TakeDamage(damage);
             invulnerable = HurtInvulnerability;

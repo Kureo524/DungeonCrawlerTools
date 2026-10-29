@@ -21,6 +21,7 @@ namespace TheDungeon.Editor.ContentDatabase
 
         protected override string NewAssetName => "Nouvelle table";
         protected override string Noun => "table de butin";
+        protected override bool FeminineNoun => true;
 
         protected override Color GetColor(LootTable table) => new(0.95f, 0.8f, 0.3f);
 

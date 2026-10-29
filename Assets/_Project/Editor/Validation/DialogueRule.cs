@@ -111,8 +111,8 @@ namespace TheDungeon.Editor.Validation
                         break;
                     case ConditionType.PlayerLevelAtLeast:
                     case ConditionType.PlayerLevelBelow:
-                        if (condition.value < 1 || condition.value > limits.maxLevel)
-                            yield return Error($"{where} : niveau {condition.value} hors limites (1 à {limits.maxLevel}).", npc);
+                        if (condition.value < 1 || condition.value > limits.maxLevelCap)
+                            yield return Error($"{where} : niveau {condition.value} hors limites (1 à {limits.maxLevelCap}).", npc);
                         break;
                     case ConditionType.FloorAtLeast:
                         if (condition.value < 1 || condition.value > limits.floorCount)

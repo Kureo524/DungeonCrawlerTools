@@ -29,3 +29,8 @@ Le GDD prévoit **3 étages de 10 salles**. Cet outil assemble les salles de cha
 
 ## Salles disponibles
 Une salle est proposée si elle est **valide**, si son **biome est autorisé à cet étage**, et si elle n'est **pas déjà utilisée sur un autre étage** (chaque salle appartient à un seul étage).
+
+## Feu de camp
+Chaque salle a un feu de camp : il brûle dès l'arrivée dans une salle sans ennemis, et s'allume dans une salle de combat une fois les ennemis vaincus. S'y reposer rend des PV, puis le joueur répartit ses points d'attributs.
+- **Soin au feu de camp (%)** (section Étage) : PV rendus en % des PV max, pour tout l'étage. 0 = aucun soin.
+- Une salle peut avoir sa propre règle (outil Salles, **Soin propre à la salle**) : elle remplace alors celle de l'étage.

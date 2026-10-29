@@ -278,7 +278,7 @@ namespace TheDungeon.Editor.Dialogues
         {
             statePanel.Clear();
             var limits = ForgeDesignLimits.Instance;
-            var level = new SliderInt("Niveau", 1, limits.maxLevel) { value = state.PlayerLevel, showInputField = true, tooltip = "Niveau du joueur, pour tester les conditions de niveau." };
+            var level = new SliderInt("Niveau", 1, limits.maxLevelCap) { value = state.PlayerLevel, showInputField = true, tooltip = "Niveau du joueur, pour tester les conditions de niveau." };
             level.RegisterValueChangedCallback(evt => { state.PlayerLevel = evt.newValue; Restart(); });
             statePanel.Add(level);
             var gold = new IntegerField("Or") { value = state.Gold, tooltip = "Or du joueur." };

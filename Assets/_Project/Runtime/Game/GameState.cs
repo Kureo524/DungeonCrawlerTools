@@ -17,6 +17,11 @@ namespace TheDungeon.Game
 
         readonly PlayerProgression progression;
         readonly HashSet<string> flags = new();
+        readonly Dictionary<string, int> invested = new();
+        readonly Dictionary<string, int> skillRanks = new();
+        readonly Dictionary<string, int> mechanicRanks = new();
+        // Niveau actuel des jauges (stats « jauge ») ; absent = pleine.
+        readonly Dictionary<string, float> resources = new();
 
         public int Level { get; private set; } = 1;
         public int Xp { get; private set; }
@@ -29,10 +34,14 @@ namespace TheDungeon.Game
         public ItemData Accessory { get; private set; }
         public List<ItemData> Inventory { get; } = new();
 
+        /// <summary>Points d'attributs gagnés et pas encore répartis.</summary>
+        public int AttributePoints { get; private set; }
+
         /// <summary>Soin progressif en cours (consommables « Régénération »).</summary>
         public float RegenPerSecond { get; private set; }
         float regenRemaining;
         float regenCarry;
+        float passiveRegenCarry;
 
         public event Action<string, Color> Message;
         public event Action LeveledUp;
@@ -40,24 +49,195 @@ namespace TheDungeon.Game
         public GameState(PlayerProgression progression)
         {
             this.progression = progression;
+            foreach (var mechanic in Mechanics.Where(m => m.unlockedAtStart))
+                mechanicRanks[mechanic.id] = 1;
+            ApplyRewards(1);
             Hp = MaxHp;
         }
 
-        LevelEntry Entry => progression != null && progression.Levels.Count > 0
-            ? progression.GetLevel(Level)
-            : new LevelEntry { maxHealth = 50 + Level * 10, damage = 5 + Level, xpRequired = 100 * Level };
+        int MaxLevel => progression != null && progression.MaxLevel > 0 ? progression.MaxLevel : 20;
 
-        int MaxLevel => progression != null && progression.Levels.Count > 0 ? progression.MaxLevel : 20;
+        /// <summary>Valeur de base d'un rôle au niveau actuel, ou la valeur de secours si la progression n'a pas cette stat.</summary>
+        float Base(StatRole role, float fallback)
+        {
+            var stat = progression != null ? progression.Find(role) : null;
+            return stat != null && stat.values.Count > 0 ? stat.GetValue(Level) + AttributeBonus(stat) : fallback;
+        }
+
+        /// <summary>Bonus des points investis dans les attributs pour cette stat.</summary>
+        float AttributeBonus(ProgressionStat stat) => progression == null ? 0f : progression.Attributes.Sum(a => a.BonusFor(stat.id, Points(a)));
 
         public IEnumerable<ItemData> Equipped => new[] { Weapon, Armor, Accessory }.Where(item => item != null);
 
         int Bonus(StatType stat) => Equipped.SelectMany(item => item.Stats).Where(s => s.stat == stat).Sum(s => s.value);
 
-        public int MaxHp => Mathf.Max(1, Entry.maxHealth + Bonus(StatType.Health));
-        public int Attack => Mathf.Max(1, Entry.damage + Bonus(StatType.Damage));
-        public int Defense => Mathf.Max(0, Bonus(StatType.Defense));
-        public float MoveSpeed => Mathf.Max(2f, BaseMoveSpeed + 0.15f * Bonus(StatType.Speed));
-        public int XpToNext => Level >= MaxLevel ? 0 : Mathf.Max(1, Entry.xpRequired);
+        public int MaxHp => Mathf.Max(1, Mathf.RoundToInt(Base(StatRole.MaxHealth, 50 + Level * 10)) + Bonus(StatType.Health));
+        public int Attack => Mathf.Max(1, Mathf.RoundToInt(Base(StatRole.Damage, 5 + Level)) + Bonus(StatType.Damage));
+        public int Defense => Mathf.Max(0, Mathf.RoundToInt(Base(StatRole.Defense, 0f)) + Bonus(StatType.Defense));
+        public float MoveSpeed => Mathf.Max(2f, Base(StatRole.Speed, BaseMoveSpeed) + 0.15f * Bonus(StatType.Speed));
+        public int XpToNext => Level >= MaxLevel ? 0 : Mathf.Max(1, Mathf.RoundToInt(Base(StatRole.XpToNext, 100 * Level)));
+
+        /// <summary>Stats montrées au joueur (celles de la progression, ou PV / dégâts / défense / XP à défaut).</summary>
+        public IEnumerable<ProgressionStat> Stats => progression != null && progression.Stats.Count > 0 ? progression.Stats : FallbackStats;
+
+        static readonly ProgressionStat[] FallbackStats =
+        {
+            new() { displayName = "PV", role = StatRole.MaxHealth, visibility = StatVisibility.Hud, format = StatFormat.Bar, color = new Color(0.86f, 0.25f, 0.28f) },
+            new() { displayName = "XP", role = StatRole.XpToNext, visibility = StatVisibility.Hud, format = StatFormat.Bar, color = new Color(0.3f, 0.6f, 1f) },
+            new() { displayName = "ATQ", role = StatRole.Damage, visibility = StatVisibility.Hud },
+            new() { displayName = "DÉF", role = StatRole.Defense, visibility = StatVisibility.Hud }
+        };
+
+        /// <summary>Valeur effective d'une stat : base de la progression + bonus d'équipement pour les stats qui ont un rôle.</summary>
+        public float Value(ProgressionStat stat) => stat.role switch
+        {
+            StatRole.MaxHealth => MaxHp,
+            StatRole.Damage => Attack,
+            StatRole.Defense => Defense,
+            StatRole.Speed => MoveSpeed,
+            StatRole.XpToNext => XpToNext,
+            _ => stat.GetValue(Level) + AttributeBonus(stat)
+        };
+
+        #region Attributs et compétences
+
+        public IReadOnlyList<ProgressionAttribute> Attributes => progression != null ? progression.Attributes : Array.Empty<ProgressionAttribute>();
+        public IEnumerable<ProgressionSkill> UnlockedSkills => progression != null ? progression.Skills.Where(s => SkillRank(s) > 0) : Enumerable.Empty<ProgressionSkill>();
+
+        public int Points(ProgressionAttribute attribute) => invested.TryGetValue(attribute.id, out var points) ? points : 0;
+
+        public bool CanInvest(ProgressionAttribute attribute) => AttributePoints > 0 && Points(attribute) < attribute.maxPoints;
+
+        /// <summary>Investit un point : les PV max gagnés sont aussi rendus au joueur.</summary>
+        public bool Invest(ProgressionAttribute attribute)
+        {
+            if (!CanInvest(attribute))
+                return false;
+            var maxHp = MaxHp;
+            AttributePoints--;
+            invested[attribute.id] = Points(attribute) + 1;
+            Hp = Mathf.Min(MaxHp, Hp + Mathf.Max(0, MaxHp - maxHp));
+            return true;
+        }
+
+        public int SkillRank(ProgressionSkill skill) => skillRanks.TryGetValue(skill.id, out var rank) ? rank : 0;
+
+        /// <summary>Somme des effets de ce type, au rang atteint de chaque compétence.</summary>
+        public float SkillValue(SkillEffect effect) =>
+            progression == null ? 0f : progression.Skills.Where(s => s.effect == effect).Sum(s => s.Value(SkillRank(s)));
+
+        /// <summary>Récompenses du niveau atteint : points à répartir, compétences débloquées ou améliorées, notes.</summary>
+        void ApplyRewards(int level)
+        {
+            if (progression == null)
+                return;
+            foreach (var reward in progression.RewardsAt(level))
+            {
+                switch (reward.type)
+                {
+                    case RewardType.AttributePoints when reward.amount > 0:
+                        AttributePoints += reward.amount;
+                        Message?.Invoke($"{reward.amount} point(s) d'attribut obtenu(s). Répartissez-les au prochain feu de camp.", new Color(1f, 0.85f, 0.3f));
+                        break;
+                    case RewardType.UnlockSkill or RewardType.UpgradeSkill:
+                        var skill = progression.FindSkill(reward.skillId);
+                        if (skill == null)
+                            break;
+                        var rank = SkillRank(skill);
+                        // Débloquer : seulement si la compétence ne l'est pas encore. Améliorer : seulement une compétence déjà débloquée.
+                        if ((reward.type == RewardType.UnlockSkill) != (rank == 0) || rank >= skill.MaxRank)
+                            break;
+
+                        skillRanks[skill.id] = rank + 1;
+                        Message?.Invoke(rank == 0 ? $"Compétence '{skill.displayName}' débloquée." : $"La compétence '{skill.displayName}' passe au rang {rank + 1}.", skill.color);
+                        break;
+                    case RewardType.Note when !string.IsNullOrWhiteSpace(reward.note):
+                        Message?.Invoke(reward.note, Color.white);
+                        break;
+                    case RewardType.UnlockMechanic or RewardType.UpgradeMechanic:
+                        var mechanic = progression.FindMechanic(reward.mechanicId);
+                        if (mechanic == null)
+                            break;
+                        var current = MechanicRank(mechanic);
+                        if ((reward.type == RewardType.UnlockMechanic) != (current == 0) || current >= mechanic.MaxRank)
+                            break;
+                        mechanicRanks[mechanic.id] = current + 1;
+                        Message?.Invoke(current == 0 ? $"Nouvelle action '{mechanic.displayName}' ({InputName(mechanic.input)})." : $"L'action '{mechanic.displayName}' passe au rang {current + 1}.",
+                            mechanic.color);
+                        break;
+                }
+            }
+        }
+
+        #endregion
+
+        #region Mécaniques et jauges
+
+        /// <summary>Actions du joueur : celles de la progression, ou tir + esquive à défaut.</summary>
+        public IReadOnlyList<CharacterMechanic> Mechanics => progression != null && progression.Mechanics.Count > 0 ? progression.Mechanics : FallbackMechanics;
+
+        static readonly CharacterMechanic[] FallbackMechanics =
+        {
+            new() { displayName = "Tir", action = MechanicAction.Projectile, input = MechanicInput.Primary, cooldown = 0.22f, power = 100f, count = 1 },
+            new() { displayName = "Esquive", action = MechanicAction.Dash, input = MechanicInput.Dash, cooldown = 0.7f, power = 3f, duration = 0.18f }
+        };
+
+        public int MechanicRank(CharacterMechanic mechanic) => mechanicRanks.TryGetValue(mechanic.id, out var rank) ? rank : 0;
+
+        public bool IsUnlocked(CharacterMechanic mechanic) => MechanicRank(mechanic) > 0;
+
+        public MechanicValues ValuesOf(CharacterMechanic mechanic) => mechanic.At(Mathf.Max(1, MechanicRank(mechanic)));
+
+        public ProgressionStat CostStat(CharacterMechanic mechanic) => progression != null ? progression.FindStat(mechanic.costStatId) : null;
+
+        /// <summary>Niveau actuel d'une stat : PV actuels, jauge actuelle, ou valeur effective pour les autres stats.</summary>
+        public float Current(ProgressionStat stat)
+        {
+            if (stat.role == StatRole.MaxHealth)
+                return Hp;
+            if (!stat.resource)
+                return Value(stat);
+            return resources.TryGetValue(stat.id, out var current) ? Mathf.Min(current, Value(stat)) : Value(stat);
+        }
+
+        /// <summary>Assez de la stat consommée ? Payer en PV ne peut jamais tuer le joueur.</summary>
+        public bool CanAfford(CharacterMechanic mechanic)
+        {
+            var stat = CostStat(mechanic);
+            var cost = ValuesOf(mechanic).Cost;
+            if (stat == null || cost <= 0f)
+                return true;
+            return stat.role == StatRole.MaxHealth ? Hp > cost : Current(stat) >= cost;
+        }
+
+        /// <summary>Paie le coût d'une utilisation. Renvoie false (sans rien payer) si la stat ne suffit pas.</summary>
+        public bool TrySpend(CharacterMechanic mechanic)
+        {
+            if (!CanAfford(mechanic))
+                return false;
+            var stat = CostStat(mechanic);
+            var cost = ValuesOf(mechanic).Cost;
+            if (stat == null || cost <= 0f)
+                return true;
+            if (stat.role == StatRole.MaxHealth)
+                Hp = Mathf.Max(1, Hp - Mathf.CeilToInt(cost));
+            else
+                resources[stat.id] = Current(stat) - cost;
+            return true;
+        }
+
+        public static string InputName(MechanicInput input) => input switch
+        {
+            MechanicInput.Primary => "clic gauche",
+            MechanicInput.Secondary => "clic droit",
+            MechanicInput.Dash => "Espace",
+            MechanicInput.Ability1 => "touche 1",
+            MechanicInput.Ability2 => "touche 2",
+            _ => "touche 3"
+        };
+
+        #endregion
+
         public bool IsDead => Hp <= 0;
 
         /// <summary>Dégâts subis après défense (au moins 1). Renvoie les dégâts réellement infligés.</summary>
@@ -82,8 +262,10 @@ namespace TheDungeon.Game
             {
                 Xp -= XpToNext;
                 Level++;
+                ApplyRewards(Level);
                 Hp = MaxHp;
-                Message?.Invoke($"Niveau {Level} !", new Color(1f, 0.85f, 0.3f));
+                resources.Clear();
+                Message?.Invoke($"Niveau {Level} atteint.", new Color(1f, 0.85f, 0.3f));
                 LeveledUp?.Invoke();
             }
             if (XpToNext == 0)
@@ -105,7 +287,23 @@ namespace TheDungeon.Game
 
         public void Tick(float deltaTime)
         {
+            // Les jauges se rechargent.
+            foreach (var stat in Stats.Where(s => s.resource && s.regenPerSecond > 0f))
+                resources[stat.id] = Mathf.Min(Value(stat), Current(stat) + stat.regenPerSecond * deltaTime);
+
+            // Régénération permanente des compétences.
+
+            var passive = SkillValue(SkillEffect.Regeneration);
+            if (passive > 0f && Hp < MaxHp)
+            {
+                passiveRegenCarry += passive * deltaTime;
+                var healed = Mathf.FloorToInt(passiveRegenCarry);
+                passiveRegenCarry -= healed;
+                Heal(healed);
+            }
+
             if (regenRemaining <= 0f)
+
             {
                 RegenPerSecond = 0f;
                 return;
@@ -129,11 +327,11 @@ namespace TheDungeon.Game
                 Equip(item);
                 if (previous != null)
                     Inventory.Add(previous);
-                Message?.Invoke($"Équipé : {item.DisplayName}", Color.white);
+                Message?.Invoke($"'{item.DisplayName}' équipé.", Color.white);
                 return;
             }
             Inventory.Add(item);
-            Message?.Invoke($"Ramassé : {item.DisplayName}", Color.white);
+            Message?.Invoke($"'{item.DisplayName}' ramassé.", Color.white);
         }
 
         public void RemoveItem(ItemData item)
@@ -186,7 +384,7 @@ namespace TheDungeon.Game
             // Un consommable sans effet de soin rend au moins un peu de vie (nourriture, potion…).
             if (!item.Effects.Any(e => e.type is EffectType.Heal or EffectType.Regeneration))
                 Heal(Mathf.Max(5, MaxHp / 5));
-            Message?.Invoke($"Utilisé : {item.DisplayName}", new Color(0.5f, 1f, 0.6f));
+            Message?.Invoke($"'{item.DisplayName}' utilisé.", new Color(0.5f, 1f, 0.6f));
             return true;
         }
 

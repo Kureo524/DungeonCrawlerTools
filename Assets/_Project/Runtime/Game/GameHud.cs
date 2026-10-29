@@ -16,7 +16,6 @@ namespace TheDungeon.Game
         static readonly Color Panel = new(0.06f, 0.05f, 0.09f, 0.82f);
         static readonly Color Gold = new(1f, 0.85f, 0.35f);
         static readonly Color Health = new(0.86f, 0.25f, 0.28f);
-        static readonly Color Experience = new(0.3f, 0.6f, 1f);
         static readonly Color Muted = new(0.75f, 0.72f, 0.68f);
 
         DungeonGame game;
@@ -54,12 +53,16 @@ namespace TheDungeon.Game
             {
                 case DungeonGame.Mode.Playing:
                     DrawPrompt();
+                    DrawMechanics();
                     break;
                 case DungeonGame.Mode.Dialogue:
                     DrawDialogue();
                     break;
                 case DungeonGame.Mode.Inventory:
                     DrawInventory();
+                    break;
+                case DungeonGame.Mode.Campfire:
+                    DrawCampfire();
                     break;
                 case DungeonGame.Mode.Paused:
                     DrawCenterScreen("Pause", "Échap : reprendre    R : recommencer la partie", Muted);
@@ -139,22 +142,35 @@ namespace TheDungeon.Game
         void DrawStatus()
         {
             var state = game.State;
-            var panel = new Rect(14, 14, 300, 116);
+            // Les stats « HUD » de la progression : barres d'abord, puis une ligne de valeurs (ATQ 12   DÉF 3…).
+            var hud = state.Stats.Where(s => s.visibility == StatVisibility.Hud).ToList();
+            var bars = hud.Where(s => s.format == StatFormat.Bar).ToList();
+            var numbers = string.Join("   ", hud.Where(s => s.format != StatFormat.Bar).Select(s => $"{s.displayName} {s.Format(state.Value(s))}"));
+            var panel = new Rect(14, 14, 300, 24 + bars.Sum(BarHeight) + bars.Count * 6 + 22 + (numbers.Length > 0 ? 22 : 0) + 4);
             Fill(panel, Panel);
-            Bar(new Rect(26, 26, 276, 20), state.Hp / (float)state.MaxHp, Health, $"PV  {state.Hp} / {state.MaxHp}");
-            var xpRatio = state.XpToNext > 0 ? state.Xp / (float)state.XpToNext : 1f;
-            Bar(new Rect(26, 52, 276, 14), xpRatio, Experience, state.XpToNext > 0 ? $"Niveau {state.Level}   {state.Xp} / {state.XpToNext} XP" : $"Niveau {state.Level} (max)");
-            GUI.Label(new Rect(26, 72, 140, 22), $"<color=#{ColorUtility.ToHtmlStringRGB(Gold)}>{state.Gold} or</color>", text);
-            var potions = state.Inventory.Count(i => i.Type == ItemType.Consumable);
-            GUI.Label(new Rect(120, 72, 190, 22), $"F : consommable ×{potions}", small);
-            GUI.Label(new Rect(26, 94, 200, 22), $"ATQ {state.Attack}   DÉF {state.Defense}", small);
-            if (game.Player != null)
-                Bar(new Rect(196, 98, 106, 8), game.Player.DashReady, Muted, null);
 
+            var y = 26f;
+            foreach (var stat in bars)
+            {
+                var (ratio, label) = BarContent(state, stat);
+                Bar(new Rect(26, y, 276, BarHeight(stat)), ratio, stat.color, label);
+                y += BarHeight(stat) + 6;
+            }
+            GUI.Label(new Rect(26, y, 140, 22), $"<color=#{ColorUtility.ToHtmlStringRGB(Gold)}>{state.Gold} or</color>", text);
+            var potions = state.Inventory.Count(i => i.Type == ItemType.Consumable);
+            GUI.Label(new Rect(120, y, 190, 22), $"F : consommable ×{potions}", small);
+            y += 22;
+            if (numbers.Length > 0)
+                GUI.Label(new Rect(26, y, 276, 22), numbers, small);
+
+            var slotsTop = panel.yMax + 6;
+            if (state.AttributePoints > 0)
+                GUI.Label(new Rect(14 + 3 * 52 + 6, slotsTop + 4, 220, 40),
+                    $"<color=#{ColorUtility.ToHtmlStringRGB(Gold)}><b>+{state.AttributePoints} point(s) à répartir</b></color>\nau prochain feu de camp", small);
             var slots = new[] { (state.Weapon, "Arme"), (state.Armor, "Armure"), (state.Accessory, "Accessoire") };
             for (var i = 0; i < slots.Length; i++)
             {
-                var rect = new Rect(14 + i * 52, 136, 46, 46);
+                var rect = new Rect(14 + i * 52, slotsTop, 46, 46);
                 var (item, label) = slots[i];
                 Fill(rect, Panel);
                 if (item != null)
@@ -166,6 +182,49 @@ namespace TheDungeon.Game
                 {
                     GUI.Label(rect, $"<color=#777777>{label}</color>", new GUIStyle(centered) { fontSize = 9 });
                 }
+            }
+        }
+
+        static float BarHeight(ProgressionStat stat) => stat.role == StatRole.XpToNext ? 14f : 20f;
+
+        /// <summary>Remplissage et texte d'une barre : PV actuels, XP vers le niveau suivant, ou valeur rapportée au maximum de la stat.</summary>
+        static (float ratio, string label) BarContent(GameState state, ProgressionStat stat) => stat.role switch
+        {
+            StatRole.MaxHealth => (state.Hp / (float)state.MaxHp, $"{stat.displayName}  {state.Hp} / {state.MaxHp}"),
+            StatRole.XpToNext => state.XpToNext > 0
+                ? (state.Xp / (float)state.XpToNext, $"Niveau {state.Level}   {state.Xp} / {state.XpToNext} {stat.displayName}")
+                : (1f, $"Niveau {state.Level} (max)"),
+            _ when stat.resource => (state.Value(stat) > 0f ? state.Current(stat) / state.Value(stat) : 0f,
+                $"{stat.displayName}  {Mathf.FloorToInt(state.Current(stat))} / {stat.Format(state.Value(stat))}"),
+            _ => (Mathf.InverseLerp(stat.min, stat.max, state.Value(stat)), $"{stat.displayName}  {stat.Format(state.Value(stat))}")
+        };
+
+        /// <summary>Barre d'actions en bas de l'écran : touche, recharge, et coût (en rouge si la jauge ne suffit pas).</summary>
+        void DrawMechanics()
+        {
+            if (game.Player == null)
+                return;
+            var state = game.State;
+            var mechanics = state.Mechanics.Where(state.IsUnlocked).Take(6).ToList();
+            const float boxWidth = 112f;
+            var left = width / 2 - (mechanics.Count * (boxWidth + 6) - 6) / 2;
+            var tiny = new GUIStyle(small) { fontSize = 10, alignment = TextAnchor.MiddleCenter };
+            for (var i = 0; i < mechanics.Count; i++)
+            {
+                var mechanic = mechanics[i];
+                var box = new Rect(left + i * (boxWidth + 6), ReferenceHeight - 64, boxWidth, 48);
+                Fill(box, Panel);
+                var ready = game.Player.Readiness(mechanic);
+                if (ready < 1f)
+                    Fill(new Rect(box.x, box.y, box.width * (1f - ready), box.height), new Color(0f, 0f, 0f, 0.55f));
+                Outline(box, ready >= 1f ? mechanic.color : new Color(mechanic.color.r, mechanic.color.g, mechanic.color.b, 0.35f), 2f);
+                GUI.Label(new Rect(box.x, box.y + 3, box.width, 18), $"<b>{mechanic.displayName}</b>", tiny);
+                var stat = state.CostStat(mechanic);
+                var cost = state.ValuesOf(mechanic).Cost;
+                var price = stat != null && cost > 0f
+                    ? $"  <color={(state.CanAfford(mechanic) ? "#bbbbbb" : "#ff6060")}>{cost:0.#} {stat.displayName}</color>"
+                    : string.Empty;
+                GUI.Label(new Rect(box.x, box.y + 24, box.width, 18), $"<color=#e8a05a>{GameState.InputName(mechanic.input)}</color>{price}", tiny);
             }
         }
 
@@ -344,14 +403,24 @@ namespace TheDungeon.Game
         void DrawInventory()
         {
             var state = game.State;
-            var panel = new Rect(width / 2 - 380, 90, 760, 520);
+            // Une colonne de plus pour les attributs et compétences, si la progression en a.
+            var side = state.Attributes.Count > 0 || state.UnlockedSkills.Any();
+            var panel = side ? new Rect(width / 2 - 520, 90, 1040, 520) : new Rect(width / 2 - 380, 90, 760, 520);
             Fill(new Rect(0, 0, width, ReferenceHeight), new Color(0f, 0f, 0f, 0.5f));
             Fill(panel, new Color(0.06f, 0.05f, 0.09f, 0.96f));
             Outline(panel, new Color(0.78f, 0.7f, 0.55f), 2f);
             GUI.Label(new Rect(panel.x, panel.y + 10, panel.width, 30), "Inventaire", big);
-            GUI.Label(new Rect(panel.x + 20, panel.y + 46, 300, 160),
-                $"<b>Niveau {state.Level}</b>\nPV {state.Hp} / {state.MaxHp}\nAttaque {state.Attack}\nDéfense {state.Defense}\nVitesse {state.MoveSpeed:0.0}\n" +
-                $"<color=#{ColorUtility.ToHtmlStringRGB(Gold)}>{state.Gold} or</color>\nEnnemis vaincus : {state.Kills}", text);
+            // Fiche du personnage : toutes les stats visibles (HUD ou fiche), avec les bonus d'équipement.
+            var sheet = state.Stats.Where(s => s.visibility != StatVisibility.Hidden)
+                .Select(s => s.role == StatRole.MaxHealth ? $"{s.displayName} {state.Hp} / {state.MaxHp}"
+                    : s.role == StatRole.XpToNext ? $"{s.displayName} {state.Xp} / {state.XpToNext}"
+                    : s.resource ? $"{s.displayName} {Mathf.FloorToInt(state.Current(s))} / {s.Format(state.Value(s))}"
+
+                    : $"{s.displayName} {s.Format(state.Value(s))}")
+                .Take(7);
+            GUI.Label(new Rect(panel.x + 20, panel.y + 46, 230, 170),
+                $"<b>Niveau {state.Level}</b>\n{string.Join("\n", sheet)}\n" +
+                $"<color=#{ColorUtility.ToHtmlStringRGB(Gold)}>{state.Gold} or</color>   Ennemis vaincus : {state.Kills}", small);
 
             GUI.Label(new Rect(panel.x + 260, panel.y + 46, 300, 22), "<b>Équipé</b>", text);
             var equipped = state.Equipped.ToList();
@@ -376,8 +445,75 @@ namespace TheDungeon.Game
                     ItemRow(rect, item, null, null);
                 row++;
             }
+            if (side)
+                DrawCharacter(state, new Rect(panel.x + 760, panel.y + 46, 260, panel.height - 80), false);
             GUI.Label(new Rect(panel.x, panel.yMax - 30, panel.width, 22), "<color=#999999>I ou Échap : fermer</color>", centered);
         }
+
+        /// <summary>Feu de camp : on y répartit ses points d'attributs (bouton « + »), à la Elden Ring.</summary>
+        void DrawCampfire()
+        {
+            var state = game.State;
+            var panel = new Rect(width / 2 - 170, 110, 340, 480);
+            Fill(new Rect(0, 0, width, ReferenceHeight), new Color(0f, 0f, 0f, 0.5f));
+            Fill(panel, new Color(0.06f, 0.05f, 0.09f, 0.96f));
+            Outline(panel, new Color(1f, 0.55f, 0.15f), 2f);
+            GUI.Label(new Rect(panel.x, panel.y + 10, panel.width, 30), "<color=#ff9a3c>Feu de camp</color>", big);
+            DrawCharacter(state, new Rect(panel.x + 30, panel.y + 50, panel.width - 60, panel.height - 90), true);
+            GUI.Label(new Rect(panel.x, panel.yMax - 30, panel.width, 22), "<color=#999999>E ou Échap : reprendre la route</color>", centered);
+        }
+
+        /// <summary>
+        /// Attributs et compétences débloquées. Les points ne se répartissent (bouton « + ») qu'au feu de camp ;
+        /// ailleurs, la fiche rappelle seulement qu'il en reste.
+        /// </summary>
+        void DrawCharacter(GameState state, Rect area, bool canInvest)
+        {
+            var points = state.AttributePoints > 0
+                ? $"  <color=#{ColorUtility.ToHtmlStringRGB(Gold)}>{state.AttributePoints} à répartir{(canInvest ? string.Empty : " (feu de camp)")}</color>"
+                : string.Empty;
+            GUI.Label(new Rect(area.x, area.y, area.width, 22), $"<b>Attributs</b>{points}", text);
+            var y = area.y + 26;
+            foreach (var attribute in state.Attributes.Take(6))
+            {
+                var row = new Rect(area.x, y, area.width, 38);
+                Fill(row, new Color(1f, 1f, 1f, 0.04f));
+                Fill(new Rect(row.x, row.y, 4, row.height), attribute.color);
+                var current = state.Points(attribute);
+                GUI.Label(new Rect(row.x + 10, row.y + 1, 190, 20), $"<b>{attribute.displayName}</b>  <color=#999999>{current} / {attribute.maxPoints}</color>", small);
+                var bonuses = attribute.bonuses
+                    .Select(b => (bonus: b, stat: state.Stats.FirstOrDefault(s => s.id == b.statId)))
+                    .Where(p => p.stat != null)
+                    .Select(p => $"{p.stat.displayName} +{p.stat.Format(p.bonus.Total(current))}");
+                var detail = new GUIStyle(small) { fontSize = 10 };
+                GUI.Label(new Rect(row.x + 10, row.y + 18, 200, 18), $"<color=#999999>{string.Join("  ", bonuses)}</color>", detail);
+                if (canInvest && state.CanInvest(attribute) && GUI.Button(new Rect(row.xMax - 34, row.y + 6, 28, 26), "+"))
+
+                    state.Invest(attribute);
+                y += 42;
+            }
+            if (state.Attributes.Count == 0)
+            {
+                GUI.Label(new Rect(area.x, y, area.width, 20), "<color=#777777>Aucun attribut</color>", small);
+                y += 22;
+            }
+
+            y += 8;
+            GUI.Label(new Rect(area.x, y, area.width, 22), "<b>Compétences</b>", text);
+            y += 26;
+            var skills = state.UnlockedSkills.ToList();
+            foreach (var skill in skills.Take(Mathf.Max(0, Mathf.FloorToInt((area.yMax - y) / 34f))))
+            {
+                var rank = state.SkillRank(skill);
+                GUI.Label(new Rect(area.x, y, area.width, 18),
+                    $"<color=#{ColorUtility.ToHtmlStringRGB(skill.color)}><b>{skill.displayName}</b></color>  <color=#999999>rang {rank} / {skill.MaxRank}</color>", small);
+                GUI.Label(new Rect(area.x, y + 16, area.width, 18), $"<color=#999999>{skill.EffectText(rank)}</color>", new GUIStyle(small) { fontSize = 10 });
+                y += 34;
+            }
+            if (skills.Count == 0)
+                GUI.Label(new Rect(area.x, y, area.width, 20), "<color=#777777>Aucune compétence débloquée</color>", small);
+        }
+
 
         void ItemRow(Rect rect, ItemData item, string action, System.Action onAction)
         {

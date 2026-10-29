@@ -22,8 +22,12 @@ namespace TheDungeon.Data
         List<FloorRoomSlot> rooms = new();
         [SerializeField, Tooltip("Salle où le joueur arrive sur l'étage.")]
         RoomData entrance;
+        [SerializeField, Range(0, 100), Tooltip("PV rendus en se reposant à un feu de camp, en % des PV max (0 = aucun soin). Une salle peut avoir sa propre règle.")]
+        int campfireHealPercent = 100;
 
         public int FloorNumber => floorNumber;
+        public int CampfireHealPercent => campfireHealPercent;
+
         public IReadOnlyList<FloorRoomSlot> Rooms => rooms;
         public RoomData Entrance => entrance;
 

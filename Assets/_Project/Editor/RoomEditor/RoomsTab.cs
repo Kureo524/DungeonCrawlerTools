@@ -43,6 +43,7 @@ namespace TheDungeon.Editor.RoomEditor
 
         protected override string NewAssetName => "Nouvelle salle";
         protected override string Noun => "salle";
+        protected override bool FeminineNoun => true;
         protected override float ListWidth => 220;
 
         protected override Color GetColor(RoomData asset) => asset.Biome != null ? asset.Biome.Color : Color.gray;
@@ -133,6 +134,17 @@ namespace TheDungeon.Editor.RoomEditor
             identity.Add(ForgeUI.Enum<RoomType>("Type", "roomType",
                 "Départ : apparition du joueur. Combat : au moins un ennemi. Trésor : au moins un coffre. Boss : exactement un boss."));
             identity.Add(ForgeUI.Slider("Difficulté", "difficulty", Limits.roomDifficulty, "Difficulté ressentie, de 1 (facile) à 5 (très dur)."));
+
+            // Soin au feu de camp : la règle de l'étage, sauf si la salle a la sienne.
+            var healOverride = ForgeUI.Toggle("Soin propre à la salle", "overrideCampfireHeal",
+                "Cochée : le feu de camp de cette salle suit le réglage ci-dessous. Décochée : il suit la règle de l'étage (outil Étages).");
+            var heal = ForgeUI.Slider("Soin au feu de camp (%)", "campfireHealPercent", new IntRange(0, 100),
+                "PV rendus en se reposant au feu de camp de cette salle, en % des PV max (0 = aucun soin).");
+            heal.SetEnabled(draft.OverridesCampfireHeal);
+            healOverride.RegisterValueChangedCallback(e => heal.SetEnabled(e.newValue));
+            identity.Add(healOverride);
+            identity.Add(heal);
+
 
             var shape = ForgeUI.Section("Dimensions et entrées", properties);
             widthSlider = new SliderInt("Largeur", Limits.roomWidth.min, Limits.roomWidth.max)

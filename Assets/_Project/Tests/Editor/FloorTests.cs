@@ -13,6 +13,24 @@ namespace TheDungeon.Editor.Tests
     /// <summary>Règles du GDD sur les étages et générateur de plans, sur des données en mémoire.</summary>
     public class FloorTests
     {
+        /// <summary>Soin au feu de camp : la règle de l'étage, sauf si la salle a la sienne ; 100 % sans étage.</summary>
+        [Test]
+        public void CampfireHeal_RoomRuleOverridesFloorRule()
+        {
+            var floor = TestData.Create<FloorData>("FLR_1", so => so.FindProperty("campfireHealPercent").intValue = 40);
+            var room = TestData.Create<RoomData>("RM_Test");
+            var custom = TestData.Create<RoomData>("RM_Custom", so =>
+            {
+                so.FindProperty("overrideCampfireHeal").boolValue = true;
+                so.FindProperty("campfireHealPercent").intValue = 0;
+            });
+
+            Assert.AreEqual(40, room.CampfireHealPercent(floor));
+            Assert.AreEqual(0, custom.CampfireHealPercent(floor));
+            Assert.AreEqual(100, room.CampfireHealPercent(null));
+            TestData.Destroy(floor, room, custom);
+        }
+
         readonly List<Object> created = new();
         ForgeDesignLimits limits;
         EnemyData boss;

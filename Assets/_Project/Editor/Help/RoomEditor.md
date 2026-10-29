@@ -28,3 +28,7 @@ Dessinez les salles du donjon sur une grille, comme dans un jeu de type Soul Kni
 - Tout élément posé doit être accessible depuis les entrées.
 - **Départ** : apparition du joueur obligatoire. **Combat** : au moins un ennemi. **Trésor** : au moins un coffre. **Boss** : exactement un boss, et les boss sont interdits ailleurs.
 - Nombre maximum d'ennemis et de coffres fixé par les limites de l'équipe.
+
+## Feu de camp
+- Par défaut, le feu de camp de la salle soigne selon la règle de son étage (outil Étages).
+- Cochez **Soin propre à la salle** pour lui donner sa propre valeur (en % des PV max, 0 = aucun soin) : par exemple aucun soin avant le boss, ou un soin complet dans une salle de repos.

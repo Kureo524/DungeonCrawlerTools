@@ -51,7 +51,7 @@ namespace TheDungeon.Editor.Dialogues
 
         static Func<int, IntRange> ValueRange(List<ConditionType> types) => index => types[index] switch
         {
-            ConditionType.PlayerLevelAtLeast or ConditionType.PlayerLevelBelow => new IntRange(1, ForgeDesignLimits.Instance.maxLevel),
+            ConditionType.PlayerLevelAtLeast or ConditionType.PlayerLevelBelow => new IntRange(1, ForgeDesignLimits.Instance.maxLevelCap),
             ConditionType.FloorAtLeast => new IntRange(1, ForgeDesignLimits.Instance.floorCount),
             _ => new IntRange(0, 10000)
         };

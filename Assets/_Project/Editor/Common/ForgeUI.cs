@@ -9,15 +9,21 @@ namespace TheDungeon.Editor.Common
     /// <summary>Petits constructeurs d'éléments d'interface partagés par tous les outils.</summary>
     public static class ForgeUI
     {
-        /// <summary>Feuille de style commune + classe de thème (les couleurs suivent le thème clair ou sombre de l'éditeur).</summary>
+        /// <summary>
+        /// Feuille de style commune + skin « Encre ». Un seul skin, sombre, même si l'éditeur est en thème clair :
+        /// la direction artistique « Verre d'encre » est pensée pour un fond de nuit.
+        /// </summary>
         public static void ApplyStyle(VisualElement root)
         {
             var sheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(DungeonPaths.StyleSheet);
             if (sheet != null)
                 root.styleSheets.Add(sheet);
             root.AddToClassList("forge-theme");
-            root.AddToClassList(EditorGUIUtility.isProSkin ? "forge-theme--dark" : "forge-theme--light");
+            root.AddToClassList("forge-theme--dark");
+            ForgeDropdowns.Attach(root);
         }
+
+
 
         public static Label Label(string text, string className = null)
         {

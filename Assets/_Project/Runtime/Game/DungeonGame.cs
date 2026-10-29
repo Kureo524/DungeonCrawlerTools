@@ -23,6 +23,7 @@ namespace TheDungeon.Game
             Playing,
             Dialogue,
             Inventory,
+            Campfire,
             Paused,
             GameOver,
             Victory
@@ -33,6 +34,9 @@ namespace TheDungeon.Game
         readonly List<MonoBehaviour> interactables = new();
         readonly List<GameObject> tracked = new();
         readonly System.Random random = new();
+        // Cases déjà prises sur l'étage (décors, coffres, PNJ, portail…) : un feu de camp allumé plus tard ne s'y pose pas.
+        HashSet<Vector3> occupied = new();
+        int campfireOpenedFrame = -1;
 
         string testRoom;
         int testFloor = -1;
@@ -116,6 +120,11 @@ namespace TheDungeon.Game
                 case Mode.Inventory:
                     if (GameInput.Inventory || GameInput.Pause) SetMode(Mode.Playing);
                     break;
+                case Mode.Campfire:
+                    // La touche qui a ouvert le feu de camp ne doit pas le refermer dans la même image.
+                    if (Time.frameCount != campfireOpenedFrame && (GameInput.Interact || GameInput.Inventory || GameInput.Pause))
+                        SetMode(Mode.Playing);
+                    break;
                 case Mode.Paused:
                     if (GameInput.Pause) SetMode(Mode.Playing);
                     else if (GameInput.Restart) BeginRun();
@@ -157,10 +166,13 @@ namespace TheDungeon.Game
                 entrance = room;
                 FloorNumber = room.Biome != null ? room.Biome.MinFloor : 1;
                 FloorTitle = $"Test de la salle « {room.DisplayName} »";
+                // En test, la salle suit les règles de l'étage où elle est placée (s'il y en a un).
+                currentFloor = database.floors.FirstOrDefault(f => f != null && f.Rooms.Any(s => s.room == room));
             }
             else
             {
                 var floor = database.floors[index];
+                currentFloor = floor;
                 layout = new Dictionary<Vector2Int, RoomData>();
                 foreach (var slot in floor.Rooms.Where(s => s.room != null))
                     layout[slot.cell] = slot.room;
@@ -176,7 +188,7 @@ namespace TheDungeon.Game
             var entranceRoom = World.Rooms.First(r => r.Data == entrance);
             var spawn = entrance.HasPlayerSpawn ? entranceRoom.ToWorld(entrance.PlayerSpawn) : NearestFloor(entranceRoom, entranceRoom.Center);
 
-            var occupied = new HashSet<Vector3>();
+            occupied = new HashSet<Vector3>();
             foreach (var instance in World.Rooms)
                 PopulateRoom(instance, occupied);
             PlaceNpcs(occupied);
@@ -218,7 +230,37 @@ namespace TheDungeon.Game
                 PlaceShop(room, occupied);
             if (data.HasPlayerSpawn)
                 occupied.Add(room.ToWorld(data.PlayerSpawn));
+            // Salle sans ennemis : le feu de camp brûle dès l'arrivée.
+            if (!room.IsCombat)
+                PlaceCampfire(room, occupied);
         }
+
+        /// <summary>Feu de camp de la salle, un peu sous son centre (le centre est réservé au portail du boss).</summary>
+        void PlaceCampfire(RoomInstance room, HashSet<Vector3> taken)
+        {
+            var position = NearestFloor(room, room.Center + new Vector3(0f, -1.5f, 0f), taken);
+            Campfire.Spawn(this, position, room.Data.CampfireHealPercent(currentFloor));
+            taken.Add(position);
+        }
+
+        FloorData currentFloor;
+
+        /// <summary>
+        /// Repos au feu de camp : soigne selon la règle de la salle (ou de son étage), puis ouvre la répartition des points d'attributs.
+        /// </summary>
+        public void OpenCampfire(int healPercent)
+        {
+            var healed = Mathf.Min(State.MaxHp - State.Hp, Mathf.RoundToInt(State.MaxHp * healPercent / 100f));
+            if (healed > 0)
+            {
+                State.Heal(healed);
+                GameFx.Float(Player.transform.position, $"+{healed} PV", new Color(0.5f, 1f, 0.6f));
+                Toast($"Vous vous reposez. {healed} PV rendus.", new Color(0.5f, 1f, 0.6f));
+            }
+            campfireOpenedFrame = Time.frameCount;
+            SetMode(Mode.Campfire);
+        }
+
 
         /// <summary>Boutique : trois objets tirés des tables de coffre du biome, vendus à leur prix.</summary>
         void PlaceShop(RoomInstance room, HashSet<Vector3> occupied)
@@ -327,7 +369,7 @@ namespace TheDungeon.Game
                 EnemyController.Spawn(this, spawn.enemy, FloorNumber, room, room.ToWorld(spawn.position));
             World.LockDoors(room);
             var boss = room.Alive.FirstOrDefault(e => e.IsBoss);
-            Toast(boss != null ? $"{boss.Data.DisplayName} vous barre la route !" : "Les portes se referment !",
+            Toast(boss != null ? $"'{boss.Data.DisplayName}' vous barre la route." : "Les portes se referment.",
                 boss != null ? new Color(1f, 0.4f, 0.35f) : new Color(1f, 0.75f, 0.5f));
             CameraFollow.Shake(boss != null ? 0.4f : 0.15f);
         }
@@ -339,13 +381,17 @@ namespace TheDungeon.Game
             if (room.Data.RoomType == RoomType.Boss || room.Data.ContainsBoss())
             {
                 var last = IsTestRun || currentFloorIndex + 1 >= database.floors.Count;
-                Portal.Spawn(this, NearestFloor(room, room.Center), last);
-                Toast(last ? "Le donjon est vaincu ! Un portail s'ouvre." : "Le boss est vaincu ! Un portail s'ouvre.", new Color(0.6f, 0.9f, 1f));
+                var portal = NearestFloor(room, room.Center, occupied);
+                Portal.Spawn(this, portal, last);
+                occupied.Add(portal);
+                Toast(last ? "Le donjon est vaincu. Un portail s'ouvre." : "Le boss est vaincu. Un portail s'ouvre.", new Color(0.6f, 0.9f, 1f));
             }
             else
             {
-                Toast("Salle nettoyée", new Color(0.6f, 1f, 0.6f));
+                Toast("Salle nettoyée. Un feu de camp s'allume.", new Color(0.6f, 1f, 0.6f));
             }
+            PlaceCampfire(room, occupied);
+
         }
 
         public void OnEnemyKilled(EnemyController enemy, RoomInstance room)
@@ -436,7 +482,10 @@ namespace TheDungeon.Game
                 SetMode(State.IsDead ? Mode.GameOver : Mode.Playing);
         }
 
-        public void Toast(string text, Color color) => Toasts.Add((text, color, Time.unscaledTime));
+        /// <summary>Message système à l'écran, écrit comme dans le roman : entre crochets.</summary>
+        public void Toast(string text, Color color) =>
+            Toasts.Add((text.StartsWith("[") ? text : $"[{text.Trim()}]", color, Time.unscaledTime));
+
 
         #endregion
     }

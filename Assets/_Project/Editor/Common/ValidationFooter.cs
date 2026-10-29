@@ -69,6 +69,8 @@ namespace TheDungeon.Editor.Common
                 status.text += " · pas encore créé";
             else if (isDirty)
                 status.text += " · modifications non enregistrées";
+            status.text = ForgeText.System(status.text);
+
             statusIcon.image = EditorGUIUtility.IconContent(icon).image;
         }
     }

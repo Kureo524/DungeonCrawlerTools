@@ -7,6 +7,7 @@ using TheDungeon.Editor.Common;
 using TheDungeon.Editor.ContentDatabase;
 using TheDungeon.Editor.Dialogues;
 using TheDungeon.Editor.Floors;
+using TheDungeon.Editor.Progression;
 using TheDungeon.Editor.RoomEditor;
 using TheDungeon.Editor.Validation;
 using UnityEditor;
@@ -117,8 +118,8 @@ namespace TheDungeon.Editor.Studio
                 "ContentDatabase", "SPR_Goblin", typeof(EnemyData), () => new EnemiesTab(this));
             yield return Content(LootTables, "Contenu", "Tables de butin", "Ce que lâchent les ennemis et les coffres.",
                 "ContentDatabase", "SPR_Chest", typeof(LootTable), () => new LootTablesTab(this));
-            yield return new ForgeSection(Progression, "Contenu", "Progression", "PV, dégâts et XP du joueur pour chaque niveau.",
-                "ContentDatabase", "SPR_PotionRed", typeof(PlayerProgression), () => new ProgressionTab(this).Build());
+            yield return Content(Progression, "Contenu", "Progression", "Stats du joueur niveau par niveau : courbes, fonctions, import et export SVG.",
+                "Progression", "SPR_PotionRed", typeof(PlayerProgression), () => new ProgressionTab(this));
             yield return Content(Dialogues, "Contenu", "Dialogues", "PNJ et arbres de dialogue, écrits comme une messagerie et jouables en aperçu.",
                 "Dialogues", "SPR_ScrollBlue", typeof(NpcData), () => new DialoguesTab(this));
             yield return Content(Biomes, "Monde", "Biomes", "Presets de biome : visuels, ennemis, décors et butin. Les salles s'appuient dessus.",
@@ -151,6 +152,12 @@ namespace TheDungeon.Editor.Studio
             var root = rootVisualElement;
             ForgeUI.ApplyStyle(root);
             root.AddToClassList("forge-studio");
+            // Ciel de constellations derrière les panneaux en verre, et reflet qui suit le curseur.
+            root.style.backgroundImage = ForgeSky.Texture;
+            root.Add(new ForgeSkyAnimation());
+            GlassLight.Attach(root);
+
+
 
             sections.Clear();
             navItems.Clear();
@@ -194,7 +201,7 @@ namespace TheDungeon.Editor.Studio
             brand.Add(names);
             sidebar.Add(brand);
 
-            var scroll = new ScrollView();
+            var scroll = new ScrollView(ScrollViewMode.Vertical) { horizontalScrollerVisibility = ScrollerVisibility.Hidden };
             scroll.style.flexGrow = 1;
             foreach (var group in sections.GroupBy(s => s.Group))
             {
@@ -210,6 +217,7 @@ namespace TheDungeon.Editor.Studio
 
             sidebarStatus = new Label { enableRichText = true, tooltip = "État de validation de tout le projet. Cliquez pour ouvrir le tableau de bord." };
             sidebarStatus.AddToClassList("forge-sidebar__status");
+            sidebarStatus.AddToClassList("forge-mono");
             sidebarStatus.RegisterCallback<ClickEvent>(_ => ShowSection(Home));
             sidebar.Add(sidebarStatus);
             return sidebar;
@@ -281,8 +289,14 @@ namespace TheDungeon.Editor.Studio
                 child.style.display = child == content ? DisplayStyle.Flex : DisplayStyle.None;
 
             // Fondu d'apparition : la classe est retirée juste après, la transition CSS fait le reste.
+            // Les graphiques et les barres rejouent leur animation à chaque ouverture.
             content.AddToClassList("forge-fade");
-            content.schedule.Execute(() => content.RemoveFromClassList("forge-fade")).StartingIn(20);
+            content.schedule.Execute(() =>
+            {
+                content.RemoveFromClassList("forge-fade");
+                TheDungeon.Editor.Common.Charts.ChartAnimation.ReplayAll(content);
+            }).StartingIn(20);
+
 
             foreach (var (navId, item) in navItems)
                 item.EnableInClassList("forge-nav--active", navId == section.Id);
@@ -354,8 +368,8 @@ namespace TheDungeon.Editor.Studio
             var errorCount = issues.Count(i => i.Severity == Severity.Error);
             var warningCount = issues.Count - errorCount;
             sidebarStatus.text = errorCount == 0 && warningCount == 0
-                ? "<color=#3fb950>●</color>  Toutes les données sont valides"
-                : $"<color=#f85149>●</color> {errorCount} erreur(s)     <color=#d29922>●</color> {warningCount} avertissement(s)";
+                ? "[<color=#9ebd85>●</color> Données valides]"
+                : $"[<color=#e0606a>●</color> {errorCount} erreur{(errorCount > 1 ? "s" : "")} · <color=#e7b52f>●</color> {warningCount} alerte{(warningCount > 1 ? "s" : "")}]";
         }
 
         static Sprite LoadIcon(string name)

@@ -9,7 +9,7 @@ namespace TheDungeon.Editor.Studio
     {
         public static VisualElement Build()
         {
-            var scroll = new ScrollView();
+            var scroll = new ScrollView(ScrollViewMode.Vertical) { horizontalScrollerVisibility = ScrollerVisibility.Hidden };
             scroll.AddToClassList("forge-details");
             var warning = new HelpBox(
                 "Ces valeurs encadrent le travail des designers : les champs des outils sont bridés à ces bornes, " +

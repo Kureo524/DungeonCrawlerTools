@@ -92,6 +92,9 @@ namespace TheDungeon.Editor.Floors
                 "Profondeur de l'étage. Détermine les biomes et les salles autorisés."));
             entranceLabel = ForgeUI.Label(string.Empty);
             settings.Add(entranceLabel);
+            settings.Add(ForgeUI.Slider("Soin au feu de camp (%)", "campfireHealPercent", new IntRange(0, 100),
+                "PV rendus en se reposant à un feu de camp, en % des PV max (0 = aucun soin). Règle de tout l'étage ; une salle peut avoir la sienne (outil Salles)."));
+
 
             var generator = ForgeUI.Section("Génération automatique", container);
             generator.Add(ForgeUI.Label(

@@ -62,6 +62,10 @@ namespace TheDungeon.Data
         int difficulty = 1;
         [SerializeField, Tooltip("Mots-clés libres pour filtrer les salles (ex : piège, trésor).")]
         List<string> tags = new();
+        [SerializeField, Tooltip("La salle a sa propre règle de soin au feu de camp, au lieu de celle de son étage.")]
+        bool overrideCampfireHeal;
+        [SerializeField, Range(0, 100), Tooltip("PV rendus au feu de camp de cette salle, en % des PV max (0 = aucun soin).")]
+        int campfireHealPercent = 100;
 
         public string DisplayName => displayName;
         public BiomeData Biome => biome;
@@ -76,6 +80,12 @@ namespace TheDungeon.Data
         public bool HasPlayerSpawn => playerSpawn != NoSpawn;
         public int Difficulty => difficulty;
         public IReadOnlyList<string> Tags => tags;
+        public bool OverridesCampfireHeal => overrideCampfireHeal;
+
+        /// <summary>Soin au feu de camp de cette salle (% des PV max) : sa propre règle, sinon celle de l'étage (100 % sans étage).</summary>
+        public int CampfireHealPercent(FloorData floor) =>
+            overrideCampfireHeal ? campfireHealPercent : floor != null ? floor.CampfireHealPercent : 100;
+
         public bool HasValidTiles => tiles != null && tiles.Length == width * height;
 
         public bool HasDoor(Doors side) => (doors & side) != 0;

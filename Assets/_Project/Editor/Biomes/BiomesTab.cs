@@ -48,7 +48,7 @@ namespace TheDungeon.Editor.Biomes
         {
             var identity = ForgeUI.Section("Identité", container);
             identity.Add(ForgeUI.Text("Nom", "displayName", "Nom du biome. Le fichier sera nommé BIO_<Nom> automatiquement."));
-            identity.Add(new ColorField("Couleur") { bindingPath = "color", tooltip = "Couleur du biome dans les listes et sur le plan des étages." });
+            identity.Add(new ColorField("Couleur") { showAlpha = false, bindingPath = "color", tooltip = "Couleur du biome dans les listes et sur le plan des étages." });
             var floors = new IntRange(1, Limits.floorCount);
             identity.Add(ForgeUI.Slider("Étage minimum", "minFloor", floors, "Premier étage où le biome peut apparaître."));
             identity.Add(ForgeUI.Slider("Étage maximum", "maxFloor", floors, "Dernier étage où le biome peut apparaître."));

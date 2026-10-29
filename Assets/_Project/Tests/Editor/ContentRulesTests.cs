@@ -2,6 +2,7 @@ using System.Linq;
 using NUnit.Framework;
 using TheDungeon.Data;
 using TheDungeon.Editor.Common;
+using TheDungeon.Editor.Progression;
 using TheDungeon.Editor.Validation;
 using UnityEngine;
 
@@ -60,20 +61,114 @@ namespace TheDungeon.Editor.Tests
         {
             var progression = TestData.Create<PlayerProgression>("PRG_Player", so =>
             {
-                var levels = so.FindProperty("levels");
-                levels.arraySize = limits.maxLevel;
-                for (var i = 0; i < levels.arraySize; i++)
-                {
-                    var level = levels.GetArrayElementAtIndex(i);
-                    level.FindPropertyRelative("maxHealth").intValue = i == 5 ? 1 : 100 + i * 10;
-                    level.FindPropertyRelative("damage").intValue = 5 + i;
-                    level.FindPropertyRelative("xpRequired").intValue = 100 + i * 50;
-                }
+                ProgressionEditing.Reset(so, limits);
+                ProgressionEditing.SetValues(so, 0, Enumerable.Range(0, limits.maxLevel).Select(i => i == 5 ? 100f : 100f + i * 10).ToList());
             });
 
             var issues = new ProgressionRule().Run(Context(progressions: new[] { progression })).ToList();
 
-            Assert.AreEqual(1, issues.Count(i => i.Message.Contains("PV baissent")));
+            Assert.AreEqual(1, issues.Count(i => i.Message.Contains("baisse au niveau 6")));
+            TestData.Destroy(progression);
+        }
+
+        [Test]
+        public void Progression_WithoutXpStat_IsAnError()
+        {
+            var progression = TestData.Create<PlayerProgression>("PRG_Player", so =>
+            {
+                ProgressionEditing.Reset(so, limits);
+                ProgressionEditing.RemoveStat(so, 3);
+            });
+
+            var issues = new ProgressionRule().Run(Context(progressions: new[] { progression })).ToList();
+
+            Assert.IsTrue(issues.Any(i => i.Severity == Severity.Error && i.Message.Contains("XP pour le niveau suivant")));
+            TestData.Destroy(progression);
+        }
+
+        [Test]
+        public void Progression_SkillUpgradedBeforeUnlock_IsAnError()
+        {
+            var progression = TestData.Create<PlayerProgression>("PRG_Player", so =>
+            {
+                ProgressionEditing.Reset(so, limits);
+                var skill = ProgressionEditing.Skill("Ruée", SkillEffect.DashCooldown, Color.white, 10f, 20f);
+                ProgressionEditing.AddSkill(so, skill);
+                ProgressionEditing.AddReward(so, new LevelReward { level = 4, type = RewardType.UpgradeSkill, skillId = skill.id });
+                ProgressionEditing.AddReward(so, new LevelReward { level = 6, type = RewardType.UnlockSkill, skillId = skill.id });
+            });
+
+            var issues = new ProgressionRule().Run(Context(progressions: new[] { progression })).ToList();
+
+            Assert.IsTrue(issues.Any(i => i.Severity == Severity.Error && i.Message.Contains("améliorée avant d'être débloquée")));
+            TestData.Destroy(progression);
+        }
+
+        [Test]
+        public void Progression_MechanicsOnSameKeyOrCostingANonGauge_AreErrors()
+        {
+            var progression = TestData.Create<PlayerProgression>("PRG_Player", so =>
+            {
+                ProgressionEditing.Reset(so, limits);
+                var attack = so.FindProperty("stats").GetArrayElementAtIndex(1).FindPropertyRelative("id").stringValue;
+                ProgressionEditing.AddMechanic(so, ProgressionEditing.Mechanic("Frappe", MechanicAction.Projectile, MechanicInput.Primary, Color.white, attack, 5f));
+            });
+
+            var issues = new ProgressionRule().Run(Context(progressions: new[] { progression })).ToList();
+
+            Assert.IsTrue(issues.Any(i => i.Severity == Severity.Error && i.Message.Contains("Plusieurs mécaniques utilisent la touche")));
+            Assert.IsTrue(issues.Any(i => i.Severity == Severity.Error && i.Message.Contains("n'est pas une jauge")));
+            TestData.Destroy(progression);
+        }
+
+        [Test]
+        public void Progression_LevelCount_CanChangeWithinTheCap()
+        {
+            var longer = TestData.Create<PlayerProgression>("PRG_Player", so =>
+            {
+                ProgressionEditing.Reset(so, limits);
+                ProgressionEditing.SetLevelCount(so, 40);
+            });
+            var single = TestData.Create<PlayerProgression>("PRG_Player", so =>
+            {
+                ProgressionEditing.Reset(so, limits);
+                ProgressionEditing.SetLevelCount(so, 1);
+            });
+
+            var rule = new ProgressionRule();
+            Assert.IsFalse(rule.Run(Context(progressions: new[] { longer })).Any(i => i.Message.Contains("niveaux :")));
+            Assert.IsTrue(rule.Run(Context(progressions: new[] { single })).Any(i => i.Severity == Severity.Error && i.Message.Contains("il en faut entre 2")));
+            TestData.Destroy(longer);
+            TestData.Destroy(single);
+        }
+
+        [Test]
+        public void Progression_PointsWithoutAttributes_IsAnError()
+
+
+        {
+            var progression = TestData.Create<PlayerProgression>("PRG_Player", so =>
+            {
+                ProgressionEditing.Reset(so, limits);
+                so.FindProperty("attributes").arraySize = 0;
+                so.ApplyModifiedProperties();
+            });
+
+            var issues = new ProgressionRule().Run(Context(progressions: new[] { progression })).ToList();
+
+            Assert.IsTrue(issues.Any(i => i.Severity == Severity.Error && i.Message.Contains("aucun attribut")));
+            TestData.Destroy(progression);
+        }
+
+        [Test]
+        public void DefaultProgression_IsValid()
+
+        {
+            var progression = TestData.Create<PlayerProgression>("PRG_Player", so => ProgressionEditing.Reset(so, limits));
+
+            var issues = new ProgressionRule().Run(Context(progressions: new[] { progression })).ToList();
+
+            CollectionAssert.IsEmpty(issues.Select(i => i.Message));
             TestData.Destroy(progression);
         }
 

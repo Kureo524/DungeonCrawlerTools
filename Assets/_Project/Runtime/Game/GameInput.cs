@@ -1,3 +1,4 @@
+using TheDungeon.Data;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -43,11 +44,32 @@ namespace TheDungeon.Game
             return direction.sqrMagnitude > 1f ? direction.normalized : fallback;
         }
 
-        public static bool Fire =>
-            (Mouse.current != null && Mouse.current.leftButton.isPressed) ||
-            (Gamepad.current != null && Gamepad.current.rightTrigger.isPressed);
+        /// <summary>
+        /// Touche d'une mécanique. Les clics (tirs) se maintiennent pour un tir continu ; les autres touches se déclenchent à l'appui.
+        /// </summary>
+        public static bool Triggered(MechanicInput input)
+        {
+            var mouse = Mouse.current;
+            var pad = Gamepad.current;
+            return input switch
+            {
+                MechanicInput.Primary => (mouse != null && mouse.leftButton.isPressed) || (pad != null && pad.rightTrigger.isPressed),
+                MechanicInput.Secondary => (mouse != null && mouse.rightButton.isPressed) || (pad != null && pad.leftTrigger.isPressed),
+                MechanicInput.Dash => Pressed(Key.Space) || Pressed(Key.LeftShift) || (pad?.buttonEast.wasPressedThisFrame ?? false),
+                MechanicInput.Ability1 => Pressed(Key.Digit1) || Pressed(Key.Numpad1) || (pad?.leftShoulder.wasPressedThisFrame ?? false),
+                MechanicInput.Ability2 => Pressed(Key.Digit2) || Pressed(Key.Numpad2) || (pad?.rightShoulder.wasPressedThisFrame ?? false),
+                _ => Pressed(Key.Digit3) || Pressed(Key.Numpad3) || (pad?.buttonWest.wasPressedThisFrame ?? false)
+            };
+        }
 
-        public static bool Dash => Pressed(Key.Space) || Pressed(Key.LeftShift) || (Gamepad.current?.buttonEast.wasPressedThisFrame ?? false);
+        /// <summary>Vrai à l'appui seulement (même pour un clic maintenu) : sert à n'afficher « jauge vide » qu'une fois.</summary>
+        public static bool JustPressed(MechanicInput input) => input switch
+        {
+            MechanicInput.Primary => (Mouse.current?.leftButton.wasPressedThisFrame ?? false) || (Gamepad.current?.rightTrigger.wasPressedThisFrame ?? false),
+            MechanicInput.Secondary => (Mouse.current?.rightButton.wasPressedThisFrame ?? false) || (Gamepad.current?.leftTrigger.wasPressedThisFrame ?? false),
+            _ => Triggered(input)
+        };
+
         public static bool Interact => Pressed(Key.E) || (Gamepad.current?.buttonSouth.wasPressedThisFrame ?? false);
         public static bool UsePotion => Pressed(Key.F) || (Gamepad.current?.buttonNorth.wasPressedThisFrame ?? false);
         public static bool Inventory => Pressed(Key.I) || Pressed(Key.Tab) || (Gamepad.current?.selectButton.wasPressedThisFrame ?? false);

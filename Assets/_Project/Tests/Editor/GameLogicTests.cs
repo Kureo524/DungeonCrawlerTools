@@ -1,7 +1,9 @@
 using System.Linq;
 using NUnit.Framework;
 using TheDungeon.Data;
+using TheDungeon.Editor.Common;
 using TheDungeon.Editor.Dialogues;
+using TheDungeon.Editor.Progression;
 using TheDungeon.Editor.RoomEditor;
 using TheDungeon.Game;
 using UnityEditor;
@@ -22,14 +24,13 @@ namespace TheDungeon.Editor.Tests
 
         static PlayerProgression Progression() => TestData.Create<PlayerProgression>("PRG_Player", so =>
         {
-            var levels = so.FindProperty("levels");
-            levels.arraySize = 20;
-            for (var i = 0; i < 20; i++)
-            {
-                levels.GetArrayElementAtIndex(i).FindPropertyRelative("maxHealth").intValue = 100 + i * 10;
-                levels.GetArrayElementAtIndex(i).FindPropertyRelative("damage").intValue = 10 + i;
-                levels.GetArrayElementAtIndex(i).FindPropertyRelative("xpRequired").intValue = 50;
-            }
+            var limits = ScriptableObject.CreateInstance<ForgeDesignLimits>();
+            ProgressionEditing.Reset(so, limits);
+            TestData.Destroy(limits);
+            ProgressionEditing.SetValues(so, 0, Enumerable.Range(0, 20).Select(i => 100f + i * 10).ToList());
+            ProgressionEditing.SetValues(so, 1, Enumerable.Range(0, 20).Select(i => 10f + i).ToList());
+            ProgressionEditing.SetValues(so, 2, Enumerable.Repeat(0f, 20).ToList());
+            ProgressionEditing.SetValues(so, 3, Enumerable.Repeat(50f, 20).ToList());
         });
 
         static ItemData Item(ItemType type, Rarity rarity, StatType stat, int value) => TestData.Create<ItemData>("ITM_Test", so =>

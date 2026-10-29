@@ -8,7 +8,7 @@ using UnityEngine.UIElements;
 namespace TheDungeon.Editor.Common.Charts
 {
     /// <summary>
-    /// Courbe(s) sur un seul axe vertical partant de zéro. Survol : ligne de repère + infobulle avec toutes les valeurs.
+    /// Courbe(s) sur un seul axe vertical partant de zéro (ou couvrant une plage imposée). Survol : ligne de repère + infobulle avec toutes les valeurs.
     /// Les points signalés (ex : valeur qui baisse) sont marqués en rouge.
     /// </summary>
     public sealed class LineChart : VisualElement
@@ -39,6 +39,7 @@ namespace TheDungeon.Editor.Common.Charts
         Func<float, string> format = v => v.ToString("0");
         HashSet<int> alerts = new();
         string xName = string.Empty;
+        float yMin;
         float yMax = 1f;
         int hover = -1;
 
@@ -73,8 +74,9 @@ namespace TheDungeon.Editor.Common.Charts
 
         /// <param name="xName">Nom de l'axe horizontal affiché dans l'infobulle (ex : « Niveau »).</param>
         /// <param name="alertPoints">Index des points à signaler en rouge.</param>
+        /// <param name="range">Plage de l'axe vertical (élargie si des valeurs en sortent), ou null pour partir de zéro.</param>
         public void SetData(string xName, string[] xLabels, IEnumerable<Series> data, Func<float, string> valueFormat = null,
-            IEnumerable<int> alertPoints = null)
+            IEnumerable<int> alertPoints = null, (float min, float max)? range = null)
         {
             this.xName = xName;
             this.xLabels = xLabels;
@@ -82,8 +84,19 @@ namespace TheDungeon.Editor.Common.Charts
             format = valueFormat ?? (v => v.ToString("0"));
             alerts = alertPoints != null ? new HashSet<int>(alertPoints) : new HashSet<int>();
 
-            var max = series.Count == 0 ? 0f : series.SelectMany(s => s.Values).DefaultIfEmpty(0f).Max();
-            yMax = NiceCeiling(Mathf.Max(1f, max * 1.05f));
+            var all = series.SelectMany(s => s.Values).ToList();
+            if (range.HasValue)
+            {
+                yMin = Mathf.Min(range.Value.min, all.DefaultIfEmpty(range.Value.min).Min());
+                yMax = Mathf.Max(range.Value.max, all.DefaultIfEmpty(range.Value.max).Max());
+                if (yMax - yMin < 0.0001f)
+                    yMax = yMin + 1f;
+            }
+            else
+            {
+                yMin = 0f;
+                yMax = NiceCeiling(Mathf.Max(1f, all.DefaultIfEmpty(0f).Max() * 1.05f));
+            }
 
             legendHost.Clear();
             if (series.Count >= 2)
@@ -109,7 +122,7 @@ namespace TheDungeon.Editor.Common.Charts
         {
             var inner = Inner;
             var step = Count > 1 ? inner.width / (Count - 1) : 0f;
-            return new Vector2(inner.x + step * index, inner.yMax - inner.height * Mathf.Clamp01(value / yMax));
+            return new Vector2(inner.x + step * index, inner.yMax - inner.height * Mathf.Clamp01((value - yMin) / (yMax - yMin)));
         }
 
         int IndexAt(float x)
@@ -211,7 +224,7 @@ namespace TheDungeon.Editor.Common.Charts
             var inner = Inner;
             for (var i = 0; i <= 4; i++)
             {
-                var label = new Label(format(yMax * i / 4f));
+                var label = new Label(format(yMin + (yMax - yMin) * i / 4f));
                 label.AddToClassList("forge-chart__axis-label");
                 label.AddToClassList("forge-chart__axis-label--y");
                 label.style.top = inner.yMax - inner.height * i / 4f - 7f;

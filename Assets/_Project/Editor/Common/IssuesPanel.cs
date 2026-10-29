@@ -28,7 +28,7 @@ namespace TheDungeon.Editor.Common
             Clear();
             if (issues.Count == 0)
             {
-                var ok = Row(null, "Aucun problème détecté.", "forge-issue--ok");
+                var ok = Row(null, ForgeText.System("Aucun problème détecté."), "forge-issue--ok");
                 Add(ok);
                 return;
             }
@@ -36,7 +36,7 @@ namespace TheDungeon.Editor.Common
             foreach (var issue in issues)
             {
                 var isError = issue.Severity == Severity.Error;
-                var message = showContext && issue.Context != null ? $"<b>{issue.Context.name}</b> : {issue.Message}" : issue.Message;
+                var message = ForgeText.System(showContext && issue.Context != null ? $"<b>{issue.Context.name}</b> : {issue.Message}" : issue.Message);
                 var row = Row(isError ? "console.erroricon.sml" : "console.warnicon.sml", message,
                     isError ? "forge-issue--error" : "forge-issue--warning");
                 row.tooltip = $"Règle : {issue.RuleName}\n{(issue.Fix != null ? "Une correction automatique est disponible." : "À corriger à la main.")}";
@@ -67,8 +67,10 @@ namespace TheDungeon.Editor.Common
                 image.style.marginRight = 6;
                 row.Add(image);
             }
-            var label = ForgeUI.Label(message);
+            var label = ForgeUI.Label(message, "forge-mono");
             label.style.flexGrow = 1;
+            label.style.whiteSpace = WhiteSpace.Normal;
+
             row.Add(label);
             return row;
         }

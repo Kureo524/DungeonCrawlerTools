@@ -44,6 +44,12 @@ namespace TheDungeon.Editor.Common
         /// <summary>Nom du type au singulier, ex. « objet ».</summary>
         protected abstract string Noun { get; }
 
+        /// <summary>Accorde les messages (« une nouvelle salle », « cette table »…).</summary>
+        protected virtual bool FeminineNoun => false;
+
+        string A => FeminineNoun ? "une" : "un";
+        string This => FeminineNoun ? "cette" : "ce";
+
         protected abstract void BuildDetails(VisualElement container, SerializedObject serializedObject, T draft);
 
         protected virtual string GetLabel(T asset) =>
@@ -87,7 +93,7 @@ namespace TheDungeon.Editor.Common
         {
             if (session == null || session.IsNew)
             {
-                ForgeLists.Notify($"Validez d'abord ce {Noun} pour pouvoir le tester.");
+                ForgeLists.Notify($"Validez d'abord {This} {Noun} pour pouvoir le tester.");
                 return false;
             }
             return !session.IsDirty || ForgeDialogs.Confirm("Modifications non validées",
@@ -101,7 +107,8 @@ namespace TheDungeon.Editor.Common
 
             var right = new VisualElement();
             right.AddToClassList("forge-details-pane");
-            details = new ScrollView();
+            // Défilement vertical seulement : la fiche s'adapte à la largeur au lieu de déborder.
+            details = new ScrollView(ScrollViewMode.Vertical) { horizontalScrollerVisibility = ScrollerVisibility.Hidden };
             details.AddToClassList("forge-details");
             details.style.flexGrow = 1;
             right.Add(details);
@@ -128,9 +135,9 @@ namespace TheDungeon.Editor.Common
 
             var toolbar = new VisualElement();
             toolbar.AddToClassList("forge-toolbar");
-            toolbar.Add(ForgeUI.Button("+ Nouveau", $"Prépare un nouveau {Noun}. Il ne sera créé qu'après validation.", CreateNew, "forge-button--primary"));
-            toolbar.Add(ForgeUI.Button("Dupliquer", $"Prépare une copie du {Noun} sélectionné, à valider.", DuplicateSelected));
-            toolbar.Add(ForgeUI.Button("Supprimer", $"Supprime le {Noun} sélectionné (avec confirmation).", DeleteSelected, "forge-button--danger"));
+            toolbar.Add(ForgeUI.Button("+ Nouveau", FeminineNoun ? $"Prépare une nouvelle {Noun}. Elle ne sera créée qu'après validation." : $"Prépare un nouveau {Noun}. Il ne sera créé qu'après validation.", CreateNew, "forge-button--primary"));
+            toolbar.Add(ForgeUI.Button("Dupliquer", FeminineNoun ? $"Prépare une copie de la {Noun} sélectionnée, à valider." : $"Prépare une copie du {Noun} sélectionné, à valider.", DuplicateSelected));
+            toolbar.Add(ForgeUI.Button("Supprimer", FeminineNoun ? $"Supprime la {Noun} sélectionnée (avec confirmation)." : $"Supprime le {Noun} sélectionné (avec confirmation).", DeleteSelected, "forge-button--danger"));
             pane.Add(toolbar);
 
             search = new ToolbarSearchField { tooltip = "Filtre la liste par nom." };
@@ -295,10 +302,16 @@ namespace TheDungeon.Editor.Common
             };
         }
 
+        /// <summary>Recalcule l'en-tête, les problèmes et les éléments calculés de la fiche.</summary>
+        protected void RefreshDetails() => RefreshDraft();
+
+        /// <summary>Ouvre une copie de travail préparée par l'onglet (import…), après confirmation si des modifications sont en attente.</summary>
+        protected void OpenDraft(System.Func<DraftSession<T>> open) => TryOpen(open);
+
         void ShowEmpty()
         {
             details.Clear();
-            details.Add(ForgeUI.EmptyState($"Aucun {Noun} pour l'instant.\nCliquez sur « + Nouveau » pour en préparer un."));
+            details.Add(ForgeUI.EmptyState($"{(FeminineNoun ? "Aucune" : "Aucun")} {Noun} pour l'instant.\nCliquez sur « + Nouveau » pour en préparer {A}."));
             footer.style.display = DisplayStyle.None;
             Window.SetUnsaved(this, false);
         }
@@ -367,6 +380,8 @@ namespace TheDungeon.Editor.Common
             var fileName = session.IsNew ? $"{draft.name} (non créé)" : session.Original.name;
             detailsTitle.text = $"{GetLabel(draft)}  <color=#888888><size=11>{fileName}</size></color>";
             detailsPreview.sprite = GetPreview(draft);
+            detailsPreview.style.display = detailsPreview.sprite != null ? DisplayStyle.Flex : DisplayStyle.None;
+
             detailsBadges.Clear();
             foreach (var badge in GetBadges(draft))
                 detailsBadges.Add(badge);
@@ -420,7 +435,7 @@ namespace TheDungeon.Editor.Common
         {
             if (!CanCreate(out var reason))
             {
-                ForgeDialogs.Inform($"Impossible de créer un {Noun}", reason);
+                ForgeDialogs.Inform($"Impossible de créer {A} {Noun}", reason);
                 return;
             }
             TryOpen(() =>

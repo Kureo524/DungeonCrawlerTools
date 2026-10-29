@@ -4,6 +4,7 @@ using System.Linq;
 using TheDungeon.Data;
 using TheDungeon.Editor.Common;
 using TheDungeon.Editor.Common.Charts;
+using TheDungeon.Editor.Play;
 using TheDungeon.Editor.Validation;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -37,7 +38,7 @@ namespace TheDungeon.Editor.Studio
 
         public VisualElement Build()
         {
-            var scroll = new ScrollView();
+            var scroll = new ScrollView(ScrollViewMode.Vertical) { horizontalScrollerVisibility = ScrollerVisibility.Hidden };
             scroll.AddToClassList("forge-dashboard");
 
             scroll.Add(ForgeUI.Label("Avancement de la production", "forge-dashboard__heading"));
@@ -203,8 +204,8 @@ namespace TheDungeon.Editor.Studio
             rings["npcs"].SetValue(context.Npcs.Count, limits.targetNpcs, Errors(context.Npcs));
             rings["lines"].SetValue(context.Npcs.Sum(n => n.LineCount), limits.targetDialogueLines, Errors(context.Npcs));
             RefreshGddRules(context, issues);
-            var progression = context.Progressions.FirstOrDefault();
-            rings["levels"].SetValue(progression != null ? progression.Levels.Count : 0, limits.maxLevel, Errors(context.Progressions));
+            var progression = GameLauncher.ActiveProgression;
+            rings["levels"].SetValue(progression != null ? progression.MaxLevel : 0, limits.maxLevel, Errors(context.Progressions));
 
             var errorCount = issues.Count(i => i.Severity == Severity.Error);
             var assetCount = context.AllAssets().Count();
@@ -236,9 +237,10 @@ namespace TheDungeon.Editor.Studio
                     .OrderByDescending(bar => bar.Value),
                 "Aucun biome pour l'instant.");
 
-            if (progression != null && progression.Levels.Count > 0)
-                playerHealth.SetData("Niveau", Enumerable.Range(1, progression.Levels.Count).Select(l => l.ToString()).ToArray(),
-                    new[] { new LineChart.Series { Name = "PV max", Color = ChartColors.Series(0), Values = progression.Levels.Select(l => (float)l.maxHealth).ToArray() } });
+            var health = progression != null ? progression.Find(StatRole.MaxHealth) : null;
+            if (health != null && health.values.Count > 0)
+                playerHealth.SetData("Niveau", Enumerable.Range(1, health.values.Count).Select(l => l.ToString()).ToArray(),
+                    new[] { new LineChart.Series { Name = health.displayName, Color = ChartColors.Series(0), Values = health.values.ToArray() } });
             else
                 playerHealth.SetData("Niveau", Array.Empty<string>(), Array.Empty<LineChart.Series>());
         }
