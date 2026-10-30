@@ -103,6 +103,10 @@ namespace TheDungeon.Editor.Progression
                         action.Summary = $"{N(v.Duration, "0.##")} s d'invincibilité";
                         action.Details.Add($"recharge {N(v.Cooldown, "0.##")} s");
                         break;
+                    case MechanicAction.WeaponSkill:
+                        action.Summary = "compétence de l'arme équipée";
+                        action.Details.Add($"recharge {N(v.Cooldown, "0.##")} s");
+                        break;
                     default:
                         action.Summary = $"+{N(v.Power, "0")} % de vitesse";
                         action.Details.Add($"pendant {N(v.Duration, "0.##")} s");

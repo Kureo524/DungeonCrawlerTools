@@ -70,7 +70,8 @@ namespace TheDungeon.Data
         Dash,
         Heal,
         Shield,
-        SpeedBoost
+        SpeedBoost,
+        WeaponSkill
     }
 
     /// <summary>Touche qui déclenche une mécanique (clavier / manette).</summary>

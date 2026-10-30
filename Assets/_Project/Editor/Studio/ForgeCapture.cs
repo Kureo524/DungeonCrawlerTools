@@ -198,6 +198,30 @@ namespace TheDungeon.Editor.Studio
                     case "release":
                         steps.Enqueue((() => Release(Window().rootVisualElement, value), StepDelay));
                         break;
+                    case "dumpclass":
+                        steps.Enqueue((() =>
+                        {
+                            var element = Window().rootVisualElement.Query(className: value).Where(IsShown).First() ?? throw new ArgumentException($"aucun .{value}");
+                            for (var e = element; e != null && e != Window().rootVisualElement; e = e.parent)
+                                results.Add($"{e.GetType().Name} .{string.Join(" .", e.GetClasses())} {e.layout.width:0}x{e.layout.height:0} dir={e.resolvedStyle.flexDirection} wrap={e.resolvedStyle.flexWrap} grow={e.resolvedStyle.flexGrow} w={e.style.width} min={e.resolvedStyle.minWidth} max={e.resolvedStyle.maxWidth} basis={e.resolvedStyle.flexBasis} shrink={e.resolvedStyle.flexShrink}");
+                        }, StepDelay));
+                        break;
+                    case "menu":
+                        steps.Enqueue((() =>
+                        {
+                            // Élément d'un menu déroulant ouvert (ajouté à la racine du panneau) : vrai clic sur son libellé.
+                            var tree = Window().rootVisualElement.panel.visualTree;
+                            var label = tree.Query<Label>().Where(l => l.text != null && l.text.Contains(value) && IsShown(l)).Last()
+                                        ?? throw new ArgumentException($"aucun élément de menu « {value} »");
+                            SendPointer(label, EventType.MouseDown, label.worldBound.center);
+                            SendPointer(label, EventType.MouseUp, label.worldBound.center);
+                            results.Add($"menu : « {value} »");
+                        }, StepDelay));
+                        break;
+                    case "deleteasset":
+                        // Outil de test : supprime un asset créé pendant une vérification (par Unity, pour qu'il ne soit pas réécrit).
+                        steps.Enqueue((() => results.Add(AssetDatabase.DeleteAsset(value) ? $"supprimé : {value}" : $"introuvable : {value}"), StepDelay));
+                        break;
                     case "tests":
                         steps.Enqueue((() => RunTests(value), StepDelay));
                         break;
@@ -276,9 +300,17 @@ namespace TheDungeon.Editor.Studio
         /// <summary>Clique sur les boutons dont le texte (ou celui d'un libellé enfant) correspond, comme le ferait un clic de souris.</summary>
         static void Click(VisualElement root, string text)
         {
+            // « click=+ Ajouter#2 » : le 2e bouton visible portant ce texte.
+            var nth = 1;
+            var hash = text.LastIndexOf('#');
+            if (hash > 0 && int.TryParse(text[(hash + 1)..], out var parsed))
+            {
+                nth = parsed;
+                text = text[..hash];
+            }
             // Boutons visibles d'abord : une vue masquée peut avoir un bouton de même texte (« Annuler les modifications »…).
             var buttons = root.Query<Button>().Where(b => b.text == text || b.Query<Label>().ToList().Any(l => l.text == text))
-                .ToList().OrderBy(b => IsShown(b) ? 0 : 1).ToList();
+                .ToList().OrderBy(b => IsShown(b) ? 0 : 1).Skip(nth - 1).ToList();
             if (buttons.Count == 0)
             {
                 // Éléments cliquables qui ne sont pas des boutons (lignes de liste, cases de la frise…) : on envoie un vrai clic.

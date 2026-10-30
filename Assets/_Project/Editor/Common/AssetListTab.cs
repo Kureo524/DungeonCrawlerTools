@@ -85,6 +85,9 @@ namespace TheDungeon.Editor.Common
 
         protected T Draft => session?.Draft;
 
+        /// <summary>Racine de l'onglet (pour les éléments flottants, comme la copie d'une carte pendant un glisser-déposer).</summary>
+        protected VisualElement Root => root;
+
         /// <summary>Asset enregistré correspondant à la copie de travail, ou null s'il n'est pas encore créé.</summary>
         protected T Original => session?.Original;
 
@@ -161,7 +164,9 @@ namespace TheDungeon.Editor.Common
                 fixedItemHeight = 32,
                 selectionType = SelectionType.Single,
                 makeItem = MakeListItem,
-                bindItem = BindListItem
+                bindItem = BindListItem,
+                // Liste vide : le message est déjà dans la fiche (« Aucun … pour l'instant »), pas de « List is empty ».
+                makeNoneElement = () => new VisualElement()
             };
             list.style.flexGrow = 1;
             list.selectionChanged += selection =>

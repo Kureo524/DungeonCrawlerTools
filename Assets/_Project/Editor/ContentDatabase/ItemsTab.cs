@@ -199,6 +199,17 @@ namespace TheDungeon.Editor.ContentDatabase
             container.Add(stats);
 
             container.Add(BuildEffects(serializedObject, item, rule));
+
+            // Arme : attaque (touche de tir) et compétence, faites dans l'outil Attaques.
+            if (item.Type == ItemType.Weapon)
+            {
+                var attacks = ForgeUI.Section("Attaques de l'arme", container,
+                    "Faites dans l'outil Attaques (coups, combos, attaques chargées, compétences). Sans attaque, l'arme tire le projectile de base.");
+                attacks.Add(new AssetPicker<AttackData>("Attaque", serializedObject.FindProperty("attack"),
+                    "Jouée par la touche de tir (mécanique « projectile visé »).", a => a.User == AttackUser.Weapon));
+                attacks.Add(new AssetPicker<AttackData>("Compétence", serializedObject.FindProperty("skill"),
+                    "Jouée par la mécanique « Compétence de l'arme » (outil Progression > Mécaniques).", a => a.User == AttackUser.Skill));
+            }
         }
 
         VisualElement BuildEffects(SerializedObject serializedObject, ItemData item, RarityRule rule)

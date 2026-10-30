@@ -10,6 +10,7 @@ namespace TheDungeon.Editor.Common
         public const string Data = Root + "/Data";
         public const string Items = Data + "/Items";
         public const string Enemies = Data + "/Enemies";
+        public const string Attacks = Data + "/Attacks";
         public const string LootTables = Data + "/LootTables";
         public const string Rooms = Data + "/Rooms";
         public const string Floors = Data + "/Floors";
@@ -25,6 +26,7 @@ namespace TheDungeon.Editor.Common
         {
             if (type == typeof(ItemData)) return Items;
             if (type == typeof(EnemyData)) return Enemies;
+            if (type == typeof(AttackData)) return Attacks;
             if (type == typeof(LootTable)) return LootTables;
             if (type == typeof(RoomData)) return Rooms;
             if (type == typeof(FloorData)) return Floors;

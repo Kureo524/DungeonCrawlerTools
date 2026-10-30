@@ -4320,34 +4320,34 @@
     color: var(--forge-text-2);
 }
 
-/* Les autres cartes glissent pour ouvrir la place visée. */
-.forge-rarity-card {
+/* Glisser-déposer (ForgeReorder) : les autres cartes glissent pour ouvrir la place visée. */
+.forge-reorder-item {
     transition-property: translate;
     transition-duration: 0.15s;
     transition-timing-function: ease-out;
 }
 
 /* Place de la carte déplacée : estompée et bordée, en attendant le lâcher. */
-.forge-theme .forge-rarity-card--placeholder {
+.forge-theme .forge-reorder--placeholder {
     opacity: 0.35;
     border-color: var(--forge-lavender);
 }
 
-.forge-theme .forge-rarity-ghost {
+.forge-theme .forge-reorder-ghost {
     padding: 12px 16px;
+    border-width: 1px;
+    border-radius: 14px;
     border-color: var(--forge-lavender);
-    background-color: var(--forge-bg-sidebar);
-    opacity: 0.95;
 }
 
-.forge-rarity-ghost__swatch {
+.forge-reorder-ghost__swatch {
     width: 20px;
     height: 20px;
     margin-right: 10px;
     border-radius: 6px;
 }
 
-.forge-theme .forge-rarity-ghost__name {
+.forge-theme .forge-reorder-ghost__name {
     -unity-font-style: bold;
 }
 
@@ -4385,4 +4385,428 @@
     margin-top: 6px;
     border-top-width: 1px;
     border-top-color: var(--forge-border);
+}
+
+/* ---------- Ennemis : vue « Comportement » (règles, éditeur, arène) ---------- */
+.forge-behaviour {
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.forge-behaviour__rules {
+    width: 320px;
+    flex-shrink: 0;
+    margin-right: 12px;
+}
+
+.forge-behaviour__main {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.forge-theme .forge-rule-card {
+    margin: 0 0 6px 0;
+    padding: 8px 10px 8px 6px;
+    border-width: 1px;
+    border-radius: 12px;
+    border-color: var(--forge-border);
+    background-color: var(--forge-surface-raised);
+}
+
+.forge-theme .forge-rule-card:hover {
+    border-color: var(--forge-border-strong);
+}
+
+.forge-theme .forge-rule-card--selected,
+.forge-theme .forge-rule-card--selected:hover {
+    border-color: var(--forge-lavender);
+    background-color: var(--forge-accent-soft);
+}
+
+.forge-theme .forge-rule-card--otherwise {
+    margin-top: 4px;
+    padding-left: 12px;
+    border-style: solid;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.forge-theme .forge-rule-card__number {
+    flex-shrink: 0;
+    margin-right: 8px;
+    padding: 2px 9px;
+    border-radius: 10px;
+    background-color: var(--forge-lavender-soft);
+    color: var(--forge-text);
+    -unity-font-style: bold;
+}
+
+.forge-theme .forge-rule-card__name {
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--forge-text);
+    -unity-font-style: bold;
+}
+
+.forge-theme .forge-rule-card__line {
+    margin: 3px 0 0 6px;
+    white-space: normal;
+    font-size: 11px;
+    color: var(--forge-text-2);
+}
+
+/* Pastille verte : la règle qui s'applique dans l'arène de test. */
+.forge-rule-card__dot {
+    width: 9px;
+    height: 9px;
+    flex-shrink: 0;
+    margin-left: 8px;
+    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.forge-theme .forge-rule-card--active .forge-rule-card__dot {
+    background-color: var(--forge-success);
+}
+
+.forge-theme .forge-rule-editor__name .unity-base-text-field__input {
+    font-size: 15px;
+    -unity-font-style: bold;
+}
+
+.forge-theme .forge-rule-editor__heading {
+    margin: 16px 0 8px 0;
+    color: var(--forge-lavender);
+    font-size: 13px;
+    -unity-font-style: bold;
+}
+
+.forge-theme .forge-rule-editor__warning {
+    margin: 0 0 4px 0;
+    white-space: normal;
+    font-size: 11px;
+    color: var(--forge-warning);
+}
+
+.forge-rule-editor__group {
+    flex-direction: row;
+    align-items: flex-start;
+    margin-bottom: 6px;
+}
+
+.forge-theme .forge-rule-editor__label {
+    width: 96px;
+    flex-shrink: 0;
+    margin-top: 8px;
+    color: var(--forge-text-2);
+}
+
+/* Conditions et réglages en pastilles : « joueur à moins de [3] cases ✕ ». */
+.forge-chips {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.forge-theme .forge-chip {
+    flex-direction: row;
+    align-items: center;
+    min-height: 30px;
+    margin: 0 8px 8px 0;
+    padding: 2px 4px 2px 12px;
+    border-width: 1px;
+    border-radius: 15px;
+    border-color: var(--forge-lavender-soft);
+    background-color: rgba(165, 151, 192, 0.12);
+}
+
+.forge-theme .forge-chip--setting {
+    padding-right: 12px;
+    border-color: var(--forge-border);
+    background-color: var(--forge-surface-raised);
+}
+
+.forge-theme .forge-chip--empty {
+    padding-right: 12px;
+    font-size: 12px;
+    color: var(--forge-text-2);
+    border-style: dashed;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.forge-theme .forge-chip__text {
+    margin: 0 4px;
+    color: var(--forge-text);
+}
+
+.forge-chip__group {
+    flex-direction: row;
+    align-items: center;
+}
+
+.forge-theme .forge-chip__field {
+    width: 56px;
+    flex-grow: 0;
+    margin: 0 2px;
+}
+
+.forge-theme .forge-chip__field--wide {
+    width: 150px;
+}
+
+.forge-theme .forge-chip__remove {
+    margin-left: 4px;
+}
+
+.forge-theme .forge-chip-add {
+    min-height: 30px;
+    margin: 0 8px 8px 0;
+    border-radius: 15px;
+    border-style: dashed;
+}
+
+/* Actions en tuiles illustrées. */
+.forge-tiles {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.forge-theme .forge-action-tile {
+    width: 96px;
+    height: 74px;
+    margin: 0 8px 8px 0;
+    padding: 6px 4px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-width: 1px;
+    border-radius: 12px;
+    border-color: var(--forge-border);
+    background-color: var(--forge-surface-raised);
+    color: var(--forge-text-2);
+}
+
+.forge-theme .forge-action-tile:hover {
+    border-color: var(--forge-border-strong);
+    color: var(--forge-text);
+}
+
+.forge-theme .forge-action-tile--selected,
+.forge-theme .forge-action-tile--selected:hover {
+    border-color: var(--forge-lavender);
+    background-color: var(--forge-accent-soft);
+    color: var(--forge-text);
+}
+
+.forge-action-tile__icon {
+    width: 46px;
+    height: 30px;
+    margin-bottom: 6px;
+}
+
+.forge-theme .forge-action-tile__label {
+    font-size: 11px;
+    -unity-text-align: middle-center;
+    color: var(--forge-text-2);
+}
+
+.forge-theme .forge-action-tile--selected .forge-action-tile__label {
+    color: var(--forge-text);
+}
+
+/* Arène de test. */
+.forge-theme .forge-arena__canvas {
+    height: 280px;
+    margin: 6px 0 8px 0;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.forge-arena__icon {
+    position: absolute;
+}
+
+.forge-theme .forge-arena__status {
+    margin-bottom: 8px;
+    white-space: normal;
+}
+
+.forge-theme .forge-arena__controls {
+    margin-top: 4px;
+}
+
+/* Valeurs d'attaque côté ennemi : grisées = celles de l'attaque (clic pour remplacer), lavande = remplacées pour cet ennemi. */
+.forge-theme .forge-chip--inherited {
+    opacity: 0.6;
+    border-style: dashed;
+}
+
+.forge-theme .forge-chip--inherited:hover {
+    opacity: 1;
+    border-color: var(--forge-lavender);
+}
+
+.forge-theme .forge-chip__inherited {
+    margin: 0 4px;
+    padding: 2px 6px;
+    color: var(--forge-text-2);
+    -unity-font-definition: url("Fonts/IBMPlexMono-Regular.ttf");
+}
+
+.forge-theme .forge-chip--overridden {
+    border-color: var(--forge-lavender);
+    background-color: rgba(165, 151, 192, 0.18);
+}
+
+.forge-theme .forge-chip__reset {
+    width: 22px;
+    min-width: 22px;
+    height: 22px;
+    min-height: 22px;
+    margin-left: 4px;
+    padding: 0;
+    border-radius: 11px;
+}
+
+/* Frise du rythme d'une attaque. */
+.forge-timeline {
+    margin: 2px 0 6px 0;
+}
+
+.forge-theme .forge-timeline__bar {
+    flex-direction: row;
+    align-items: stretch;
+    height: 26px;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: var(--forge-surface-raised);
+}
+
+.forge-timeline__segment {
+    justify-content: center;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.forge-theme .forge-timeline__label {
+    margin: 0 6px;
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--forge-text);
+}
+
+.forge-theme .forge-timeline__windup { background-color: rgba(231, 181, 47, 0.45); }
+.forge-theme .forge-timeline__recovery { background-color: rgba(158, 189, 133, 0.35); }
+.forge-theme .forge-timeline__cooldown { background-color: rgba(120, 140, 190, 0.25); }
+
+.forge-theme .forge-timeline__hit {
+    width: 4px;
+    background-color: #e0606a;
+}
+
+/* ---------- Attaques : étapes ---------- */
+.forge-theme .forge-step-card {
+    margin: 0 0 10px 0;
+    padding: 10px 12px;
+    border-width: 1px;
+    border-radius: 14px;
+    border-color: var(--forge-border);
+    background-color: var(--forge-surface-raised);
+}
+
+.forge-theme .forge-step-card__when {
+    margin: 8px 0;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background-color: rgba(165, 151, 192, 0.08);
+}
+
+.forge-theme .forge-step-card__trigger {
+    width: 280px;
+    flex-grow: 0;
+    margin: 0 8px 6px 4px;
+}
+
+.forge-step-card__details {
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.forge-step-card__fields {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.forge-theme .forge-step-preview {
+    width: 220px;
+    height: 140px;
+    flex-shrink: 0;
+    margin: 6px 0 0 12px;
+    border-radius: 10px;
+    background-color: rgba(7, 8, 12, 0.6);
+}
+
+.forge-theme .forge-tiles--small .forge-action-tile {
+    height: 60px;
+}
+
+.forge-theme .forge-step-line {
+    margin: 2px 0;
+    white-space: normal;
+}
+
+.forge-theme .forge-timeline__segment--conditional {
+    opacity: 0.55;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.35);
+    border-left-width: 0;
+    border-right-width: 0;
+}
+
+.forge-timeline__label {
+    -unity-text-align: middle-center;
+}
+
+/* Options d'une étape (« + Option ») : une ligne par option utilisée. */
+.forge-step-options {
+    margin-top: 6px;
+}
+
+.forge-theme .forge-step-option {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 0 0 6px 0;
+    padding: 4px 6px 0 10px;
+    border-width: 1px;
+    border-radius: 12px;
+    border-color: var(--forge-lavender-soft);
+    background-color: rgba(165, 151, 192, 0.06);
+}
+
+.forge-theme .forge-step-option__name {
+    width: 170px;
+    flex-shrink: 0;
+    margin-bottom: 6px;
+    color: var(--forge-lavender);
+    -unity-font-style: bold;
+}
+
+/* Chance d'une attaque d'être lancée dans la situation de l'arène. */
+.forge-theme .forge-rule-card__chance {
+    flex-shrink: 0;
+    margin-left: 6px;
+    font-size: 11px;
+    color: var(--forge-text-3);
+    -unity-font-definition: url("Fonts/IBMPlexMono-Regular.ttf");
+}
+
+.forge-theme .forge-rule-card--active .forge-rule-card__chance {
+    color: var(--forge-success);
+    -unity-font-style: bold;
 }

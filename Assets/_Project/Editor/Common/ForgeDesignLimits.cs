@@ -145,6 +145,42 @@ namespace TheDungeon.Editor.Common
         public FloatRange enemySpeed = new(0f, 8f);
         public IntRange enemyXp = new(1, 500);
         public FloatRange enemyFloorScaling = new(0f, 1f);
+        [Tooltip("Nombre maximum de règles de déplacement par ennemi.")]
+        public int maxEnemyPatterns = 6;
+        [Tooltip("Nombre maximum d'attaques par ennemi.")]
+        public int maxEnemyAttacks = 6;
+        [Tooltip("Nombre maximum de conditions par règle ou par attaque.")]
+        public int maxPatternConditions = 4;
+        [Tooltip("Vitesse d'une règle de déplacement, en pourcentage de la vitesse de l'ennemi.")]
+        public IntRange patternSpeed = new(0, 300);
+        [Tooltip("Portée d'une attaque, en cases.")]
+        public FloatRange attackRange = new(0f, 15f);
+        [Tooltip("Préparation d'une attaque (secondes).")]
+        public FloatRange attackWindup = new(0f, 3f);
+        [Tooltip("Récupération après une attaque (secondes).")]
+        public FloatRange attackRecovery = new(0f, 3f);
+        [Tooltip("Recharge d'une attaque (secondes).")]
+        public FloatRange attackCooldown = new(0.1f, 30f);
+        [Tooltip("Projectiles par attaque.")]
+        public IntRange attackProjectiles = new(1, 24);
+        [Tooltip("Dégâts d'une attaque ou d'une étape, en pourcentage des dégâts de l'ennemi (0 = aucun dégât).")]
+        public IntRange attackDamage = new(0, 500);
+        [Tooltip("Ouverture d'un éventail, en degrés.")]
+        public FloatRange attackSpread = new(10f, 360f);
+        [Tooltip("Vitesse des projectiles, en cases par seconde.")]
+        public FloatRange projectileSpeed = new(1f, 15f);
+        [Tooltip("Nombre maximum d'étapes dans une attaque.")]
+        public int maxAttackSteps = 8;
+        [Tooltip("Taille d'une zone de frappe (rayon ou longueur), en cases.")]
+        public FloatRange zoneSize = new(0.3f, 12f);
+        [Tooltip("Distance d'une ruée, en cases.")]
+        public FloatRange dashDistance = new(0.5f, 12f);
+        [Tooltip("Vitesse d'une ruée, en cases par seconde.")]
+        public FloatRange dashSpeed = new(2f, 30f);
+        [Tooltip("Cadence d'une attaque (100 % = durées normales).")]
+        public IntRange attackTempo = new(25, 300);
+        [Tooltip("Ennemis invoqués par une étape.")]
+        public IntRange summons = new(1, 3);
 
         [Header("Tables de butin")]
         [Tooltip("Nombre maximum d'objets différents dans une table.")]

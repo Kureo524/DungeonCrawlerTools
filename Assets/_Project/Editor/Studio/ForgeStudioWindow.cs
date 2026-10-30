@@ -26,6 +26,7 @@ namespace TheDungeon.Editor.Studio
         public const string Home = "home";
         public const string Items = "items";
         public const string Enemies = "enemies";
+        public const string Attacks = "attacks";
         public const string LootTables = "loot";
         public const string Progression = "progression";
         public const string Biomes = "biomes";
@@ -124,6 +125,8 @@ namespace TheDungeon.Editor.Studio
                 "ContentDatabase", "SPR_LongSword", typeof(ItemData), () => new ItemsTab(this));
             yield return Content(Enemies, "Contenu", "Ennemis", "Ennemis et boss, avec leurs stats à chaque étage.",
                 "ContentDatabase", "SPR_Goblin", typeof(EnemyData), () => new EnemiesTab(this));
+            yield return Content(Attacks, "Contenu", "Attaques", "Attaques réutilisables : type, portée, rythme. Les ennemis les utilisent et peuvent en ajuster les valeurs.",
+                "ContentDatabase", "SPR_BattleAxe", typeof(AttackData), () => new AttacksTab(this));
             yield return Content(LootTables, "Contenu", "Tables de butin", "Ce que lâchent les ennemis et les coffres.",
                 "ContentDatabase", "SPR_Chest", typeof(LootTable), () => new LootTablesTab(this));
             yield return Content(Progression, "Contenu", "Progression", "Stats du joueur niveau par niveau : courbes, fonctions, import et export SVG.",

@@ -111,6 +111,7 @@ namespace TheDungeon.Editor.Progression
                 MechanicAction.Dash => (3f, 1, 0.18f, 0.6f),
                 MechanicAction.Heal => (20f, 1, 0f, 6f),
                 MechanicAction.Shield => (0f, 1, 1.5f, 8f),
+                MechanicAction.WeaponSkill => (0f, 1, 0f, 1f),
                 _ => (50f, 1, 3f, 8f)
             };
         }
@@ -375,11 +376,12 @@ namespace TheDungeon.Editor.Progression
             var v = mechanic.At(rank);
             var action = mechanic.action switch
             {
-                MechanicAction.Projectile => $"tire {v.Count} projectile(s) à {v.Power:0.#} % de l'attaque",
+                MechanicAction.Projectile => $"tire {v.Count} projectile(s) à {v.Power:0.#} % de l'attaque (ou joue l'attaque de l'arme)",
                 MechanicAction.Nova => $"{v.Count} projectiles tout autour à {v.Power:0.#} % de l'attaque",
                 MechanicAction.Dash => $"ruée de {v.Power:0.#} cases en {v.Duration:0.##} s (invincible)",
                 MechanicAction.Heal => $"rend {v.Power:0.#} PV",
                 MechanicAction.Shield => $"invincible pendant {v.Duration:0.##} s",
+                MechanicAction.WeaponSkill => "joue la compétence de l'arme équipée (outil Attaques)",
                 _ => $"+{v.Power:0.#} % de vitesse pendant {v.Duration:0.##} s"
             };
             var stat = progression.FindStat(mechanic.costStatId);
@@ -395,12 +397,14 @@ namespace TheDungeon.Editor.Progression
             MechanicAction.Dash => ("Distance (cases)", null, "Durée (s)"),
             MechanicAction.Heal => ("PV rendus", null, null),
             MechanicAction.Shield => (null, null, "Invincibilité (s)"),
+            MechanicAction.WeaponSkill => (null, null, null),
             _ => ("Vitesse en plus (%)", null, "Durée (s)")
         };
 
         public static string ActionLabel(MechanicAction action) => action switch
         {
-            MechanicAction.Projectile => "Attaque : projectile visé",
+            MechanicAction.Projectile => "Attaque : projectile visé (ou attaque de l'arme)",
+            MechanicAction.WeaponSkill => "Attaque : compétence de l'arme",
             MechanicAction.Nova => "Attaque : onde tout autour",
             MechanicAction.Dash => "Mouvement : ruée",
             MechanicAction.Heal => "Soin",

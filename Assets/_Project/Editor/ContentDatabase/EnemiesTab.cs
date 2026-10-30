@@ -22,6 +22,10 @@ namespace TheDungeon.Editor.ContentDatabase
         LineChart healthChart;
         LineChart damageChart;
         LineChart xpChart;
+        EnemyBehaviourView behaviourView;
+
+        /// <summary>Vue affichée dans la fiche (« Fiche » ou « Comportement »), gardée d'un ennemi à l'autre.</summary>
+        static bool showBehaviour;
 
         public EnemiesTab(IToolHost window) : base(window)
         {
@@ -37,7 +41,9 @@ namespace TheDungeon.Editor.ContentDatabase
         {
             if (enemy.IsBoss)
                 yield return ForgeUI.Badge("BOSS", BossColor, "Ennemi de fin d'étage.");
-            yield return ForgeUI.Badge(enemy.Behaviour.ToString(), new Color(0.7f, 0.7f, 0.7f), "Comportement de combat.");
+            yield return ForgeUI.Badge(EnemyPatternText.Label(enemy.Behaviour), new Color(0.7f, 0.7f, 0.7f), "Comportement de base (« Sinon »).");
+            if (enemy.Patterns.Count > 0)
+                yield return ForgeUI.Badge($"{enemy.Patterns.Count} règle(s)", new Color(0.65f, 0.59f, 0.75f), "Règles de comportement (vue « Comportement »).");
             yield return ForgeUI.Badge(enemy.LootTable != null ? enemy.LootTable.name : "Sans butin",
                 enemy.LootTable != null ? new Color(0.95f, 0.8f, 0.3f) : new Color(0.6f, 0.6f, 0.6f), "Table de butin.");
         }
@@ -52,13 +58,39 @@ namespace TheDungeon.Editor.ContentDatabase
         protected override bool PassesFilters(EnemyData enemy) =>
             kindFilter.value == AllEnemies || (kindFilter.value == OnlyBosses) == enemy.IsBoss;
 
-        protected override void BuildDetails(VisualElement container, SerializedObject serializedObject, EnemyData enemy)
+        protected override void BuildDetails(VisualElement root, SerializedObject serializedObject, EnemyData enemy)
         {
+            // Deux vues : la fiche (identité, stats, butin) et le comportement (règles et arène de test).
+            var switcher = new VisualElement();
+            switcher.AddToClassList("forge-view-switch");
+            switcher.style.flexShrink = 0;
+            root.Add(switcher);
+            var container = new VisualElement();
+            root.Add(container);
+            behaviourView = new EnemyBehaviourView(serializedObject, () => enemy, Window.Reveal);
+            root.Add(behaviourView);
+            Button sheetButton = null;
+            Button behaviourButton = null;
+            void ShowView(bool behaviour)
+            {
+                showBehaviour = behaviour;
+                container.style.display = behaviour ? DisplayStyle.None : DisplayStyle.Flex;
+                behaviourView.style.display = behaviour ? DisplayStyle.Flex : DisplayStyle.None;
+                sheetButton.EnableInClassList("forge-view-switch__button--active", !behaviour);
+                behaviourButton.EnableInClassList("forge-view-switch__button--active", behaviour);
+                if (behaviour)
+                    behaviourView.Refresh();
+            }
+            sheetButton = ForgeUI.Button("Fiche", "Identité, statistiques, évolution par étage et butin.", () => ShowView(false), "forge-view-switch__button");
+            behaviourButton = ForgeUI.Button("Comportement", "Règles « Quand… alors… » et arène pour les tester.", () => ShowView(true), "forge-view-switch__button");
+            switcher.Add(sheetButton);
+            switcher.Add(behaviourButton);
+            ShowView(showBehaviour);
+
             var identity = ForgeUI.Section("Identité", container);
             identity.Add(ForgeUI.Text("Nom", "displayName", "Nom affiché au joueur. Le fichier sera nommé ENM_<Nom> (ou BOSS_<Nom>) automatiquement."));
             identity.Add(new SpriteField("Visuel", serializedObject.FindProperty("sprite"), "Enemies", "Visuel de l'ennemi. Cliquez pour ouvrir la galerie."));
             identity.Add(ForgeUI.Toggle("Boss", "isBoss", "Un boss garde la salle de boss d'un étage. Chaque étage doit en avoir exactement un."));
-            identity.Add(ForgeUI.Enum<EnemyBehaviour>("Comportement", "behaviour", "Façon dont l'ennemi combat."));
 
             var stats = ForgeUI.Section("Statistiques à l'étage 1", container);
             stats.Add(ForgeUI.Slider("Points de vie", "baseHealth", Limits.enemyHealth, "PV à l'étage 1."));
@@ -86,6 +118,7 @@ namespace TheDungeon.Editor.ContentDatabase
 
         protected override void OnRefresh(EnemyData enemy)
         {
+            behaviourView.Refresh();
             var floors = Enumerable.Range(1, Limits.floorCount).ToArray();
             var labels = floors.Select(f => f.ToString()).ToArray();
             var peers = AssetFactory.LoadAll<EnemyData>().Where(e => e.IsBoss == enemy.IsBoss && e.name != enemy.name).ToList();

@@ -126,7 +126,7 @@ namespace TheDungeon.Editor.Dialogues
         }
 
         /// <summary>Mécanique de la progression utilisée en jeu, et le niveau qu'elle doit avoir au minimum.</summary>
-        static VisualElement MechanicField(SerializedProperty element)
+        public static VisualElement MechanicField(SerializedProperty element)
         {
             var row = new VisualElement();
             row.AddToClassList("forge-row");
@@ -171,7 +171,7 @@ namespace TheDungeon.Editor.Dialogues
         }
 
         /// <summary>Nom de marqueur, avec la liste des marqueurs déjà utilisés pour éviter les fautes de frappe.</summary>
-        static VisualElement FlagField(SerializedProperty property, Func<IEnumerable<string>> knownFlags)
+        public static VisualElement FlagField(SerializedProperty property, Func<IEnumerable<string>> knownFlags)
         {
             var field = new TextField
             {

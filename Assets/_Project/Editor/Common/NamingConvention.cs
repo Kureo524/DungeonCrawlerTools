@@ -8,17 +8,18 @@ namespace TheDungeon.Editor.Common
 {
     /// <summary>
     /// Convention de nommage des assets : PRÉFIXE_NomEnPascalCase.
-    /// ITM_ objets, ENM_ ennemis, BOSS_ boss, LT_ tables de butin, BIO_ biomes, RM_ salles, FLR_ étages, PRG_ progression, NPC_ personnages.
+    /// ITM_ objets, ENM_ ennemis, BOSS_ boss, ATK_ attaques, LT_ tables de butin, BIO_ biomes, RM_ salles, FLR_ étages, PRG_ progression, NPC_ personnages.
     /// </summary>
     public static class NamingConvention
     {
         static readonly Regex ValidBody = new("^[A-Z0-9][A-Za-z0-9]*(_[A-Za-z0-9]+)*$");
-        static readonly Regex AnyPrefix = new("^(ITM|ENM|BOSS|LT|BIO|RM|FLR|PRG|NPC)_");
+        static readonly Regex AnyPrefix = new("^(ITM|ENM|BOSS|ATK|LT|BIO|RM|FLR|PRG|NPC)_");
 
         public static string GetPrefix(Object asset) => asset switch
         {
             ItemData => "ITM_",
             EnemyData enemy => enemy.IsBoss ? "BOSS_" : "ENM_",
+            AttackData => "ATK_",
             LootTable => "LT_",
             BiomeData => "BIO_",
             NpcData => "NPC_",

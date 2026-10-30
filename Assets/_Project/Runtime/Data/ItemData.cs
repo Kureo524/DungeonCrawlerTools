@@ -46,6 +46,10 @@ namespace TheDungeon.Data
         int price;
         [SerializeField, TextArea(2, 5), Tooltip("Description affichée dans l'infobulle en jeu.")]
         string description;
+        [SerializeField, Tooltip("Arme : attaque jouée par la touche de tir (outil Attaques). Vide : le tir de base.")]
+        AttackData attack;
+        [SerializeField, Tooltip("Arme : compétence jouée par la mécanique « Compétence d'arme » (outil Attaques).")]
+        AttackData skill;
 
         public string DisplayName => displayName;
         public Sprite Icon => icon;
@@ -60,5 +64,7 @@ namespace TheDungeon.Data
         public float PassiveTotal(EffectType type) => PassiveEffects.Where(e => e.type == type).Sum(e => e.value);
         public int Price => price;
         public string Description => description;
+        public AttackData WeaponAttack => attack;
+        public AttackData WeaponSkill => skill;
     }
 }

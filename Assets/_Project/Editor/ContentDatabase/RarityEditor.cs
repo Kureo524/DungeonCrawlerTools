@@ -33,6 +33,7 @@ namespace TheDungeon.Editor.ContentDatabase
         Dictionary<int, int> usage = new();
         readonly VisualElement cards;
         readonly ScrollView scroll;
+        readonly ForgeReorder reorder;
         readonly IssuesPanel issuesPanel;
         readonly ValidationFooter footer;
         readonly Label orphanBanner;
@@ -63,6 +64,13 @@ namespace TheDungeon.Editor.ContentDatabase
 
             cards = new VisualElement();
             scroll.Add(cards);
+            reorder = new ForgeReorder(cards, this, scroll, (from, to) =>
+            {
+                var moved = working[from];
+                working.RemoveAt(from);
+                working.Insert(to, moved);
+                RebuildCards();
+            });
 
             var issues = ForgeUI.Section("Problèmes détectés", scroll);
             issuesPanel = new IssuesPanel();
@@ -88,8 +96,7 @@ namespace TheDungeon.Editor.ContentDatabase
         VisualElement Card(int index, int itemCount)
         {
             var rule = working[index];
-            // Rang d'origine de la carte : retrouvé après un glisser-déposer pour réordonner la liste.
-            var card = new VisualElement { userData = index };
+            var card = new VisualElement();
             card.AddToClassList("forge-section");
             card.AddToClassList("forge-rarity-card");
 
@@ -110,7 +117,9 @@ namespace TheDungeon.Editor.ContentDatabase
             down.SetEnabled(index < working.Count - 1);
             var delete = ForgeUI.Button("Supprimer", "Supprime la rareté (avec confirmation si des objets l'utilisent).", () => Delete(index, itemCount),
                 "forge-button--danger");
-            card.Add(ForgeLists.Row(DragHandle(card), color, name, used, up, down, delete));
+            var handle = reorder.Handle(card, () => GhostContent(working[index]),
+                "Maintenez et glissez pour placer la rareté où vous voulez (en haut : la plus commune).");
+            card.Add(ForgeLists.Row(handle, color, name, used, up, down, delete));
 
             var priceMin = new IntegerField("Prix minimum") { value = rule.price.min, tooltip = "Prix d'achat le plus bas autorisé, en or." };
             priceMin.RegisterValueChangedCallback(evt => Edit(index, (ref RarityRule r) => r.price.min = evt.newValue));
@@ -149,151 +158,13 @@ namespace TheDungeon.Editor.ContentDatabase
             return ForgeLists.Row(left, right);
         }
 
-        /// <summary>Trois traits dans le coin haut gauche de la carte : maintenir et glisser pour la placer n'importe où dans la liste.</summary>
-        VisualElement DragHandle(VisualElement card)
+        /// <summary>Contenu de la copie qui suit le pointeur pendant un glisser-déposer : couleur et nom.</summary>
+        static VisualElement GhostContent(RarityRule rule)
         {
-            var handle = new VisualElement { tooltip = "Maintenez et glissez pour placer la rareté où vous voulez (en haut : la plus commune)." };
-            handle.AddToClassList("forge-drag-handle");
-            handle.generateVisualContent += context =>
-            {
-                var center = handle.contentRect.center;
-                var painter = context.painter2D;
-                painter.strokeColor = handle.resolvedStyle.color;
-                painter.lineWidth = 2f;
-                painter.lineCap = LineCap.Round;
-                painter.BeginPath();
-                for (var line = -1; line <= 1; line++)
-                {
-                    painter.MoveTo(center + new Vector2(-8f, line * 5.5f));
-                    painter.LineTo(center + new Vector2(8f, line * 5.5f));
-                }
-                painter.Stroke();
-            };
-            handle.RegisterCallback<PointerDownEvent>(evt =>
-            {
-                if (evt.button != 0 || drag != null)
-                    return;
-                handle.CapturePointer(evt.pointerId);
-                StartDrag(card, evt.position);
-                evt.StopPropagation();
-            });
-            handle.RegisterCallback<PointerMoveEvent>(evt =>
-            {
-                if (drag != null && drag.Card == card && handle.HasPointerCapture(evt.pointerId))
-                    DragTo(evt.position);
-            });
-            handle.RegisterCallback<PointerUpEvent>(evt =>
-            {
-                if (handle.HasPointerCapture(evt.pointerId))
-                    handle.ReleasePointer(evt.pointerId);
-                EndDrag();
-            });
-            handle.RegisterCallback<PointerCaptureOutEvent>(_ => EndDrag());
-            return handle;
-        }
-
-        /// <summary>Glisser-déposer en cours : la carte reste dans la liste (sa place est marquée), une copie suit le pointeur.</summary>
-        sealed class DragState
-        {
-            public VisualElement Card;
-            public VisualElement Ghost;
-            public int From;
-            public int To;
-            public float Step;
-            public float GrabOffset;
-            public float[] Centers;
-        }
-
-        DragState drag;
-
-        void StartDrag(VisualElement card, Vector2 pointer)
-        {
-            var children = cards.Children().ToList();
-            var from = children.IndexOf(card);
-            // Écart entre deux cartes, marge comprise (elles ont toutes la même hauteur) : la place que la carte libère ou occupe.
-            var step = children.Count > 1 ? children[1].layout.y - children[0].layout.y : card.layout.height;
-            var local = this.WorldToLocal(pointer);
-            var cardTop = this.WorldToLocal(card.worldBound.position);
-
-            // Copie légère de la carte (poignée, couleur, nom), au-dessus de tout le reste.
-            var rule = working[(int)card.userData];
-            var ghost = new VisualElement { pickingMode = PickingMode.Ignore };
-            ghost.AddToClassList("forge-section");
-            ghost.AddToClassList("forge-rarity-ghost");
-            ghost.style.position = Position.Absolute;
-            ghost.style.left = cardTop.x;
-            ghost.style.width = card.worldBound.width;
-            ghost.style.top = cardTop.y;
-            // Opaque : la copie passe au-dessus des autres cartes sans se mélanger à leur texte.
-            ghost.style.backgroundColor = new Color(0.10f, 0.11f, 0.16f, 1f);
             var swatch = new VisualElement();
-            swatch.AddToClassList("forge-rarity-ghost__swatch");
+            swatch.AddToClassList("forge-reorder-ghost__swatch");
             swatch.style.backgroundColor = rule.color;
-            ghost.Add(ForgeLists.Row(swatch, ForgeUI.Label(rule.DisplayName, "forge-rarity-ghost__name")));
-            Add(ghost);
-
-            card.AddToClassList("forge-rarity-card--placeholder");
-            drag = new DragState
-            {
-                Card = card, Ghost = ghost, From = from, To = from, Step = step, GrabOffset = local.y - cardTop.y,
-                Centers = children.Select(c => c.layout.center.y).ToArray()
-            };
-        }
-
-        void DragTo(Vector2 pointer)
-        {
-            // Défilement automatique près des bords de la liste.
-            var viewport = scroll.contentViewport.worldBound;
-            if (pointer.y < viewport.yMin + 40f)
-                scroll.scrollOffset -= new Vector2(0f, 14f);
-            else if (pointer.y > viewport.yMax - 40f)
-                scroll.scrollOffset += new Vector2(0f, 14f);
-
-            var local = this.WorldToLocal(pointer);
-            drag.Ghost.style.top = local.y - drag.GrabOffset;
-
-            // Place visée : nombre de cartes (hors celle déplacée) dont le milieu est au-dessus du pointeur.
-            var pointerInList = cards.WorldToLocal(pointer).y;
-            var to = 0;
-            for (var i = 0; i < drag.Centers.Length; i++)
-                if (i != drag.From && drag.Centers[i] < pointerInList)
-                    to++;
-            if (to == drag.To)
-                return;
-            drag.To = to;
-
-            // Les cartes entre l'ancienne et la nouvelle place glissent d'un cran pour ouvrir la place.
-            var children = cards.Children().ToList();
-            for (var i = 0; i < children.Count; i++)
-            {
-                float offset = 0f;
-                if (i == drag.From)
-                    offset = (to - drag.From) * drag.Step;
-                else if (drag.From < i && i <= to)
-                    offset = -drag.Step;
-                else if (to <= i && i < drag.From)
-                    offset = drag.Step;
-                children[i].style.translate = new Translate(0f, offset);
-            }
-        }
-
-        /// <summary>Lâcher : la liste de travail prend le nouvel ordre.</summary>
-        void EndDrag()
-        {
-            if (drag == null)
-                return;
-            var (from, to) = (drag.From, drag.To);
-            drag.Ghost.RemoveFromHierarchy();
-            foreach (var card in cards.Children())
-                card.style.translate = StyleKeyword.Null;
-            drag.Card.RemoveFromClassList("forge-rarity-card--placeholder");
-            drag = null;
-            if (from == to)
-                return;
-            var rule = working[from];
-            working.RemoveAt(from);
-            working.Insert(to, rule);
-            RebuildCards();
+            return ForgeLists.Row(swatch, ForgeUI.Label(rule.DisplayName, "forge-reorder-ghost__name"));
         }
 
         delegate void RuleEdit(ref RarityRule rule);

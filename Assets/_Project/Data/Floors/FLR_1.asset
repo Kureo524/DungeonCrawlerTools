@@ -18,12 +18,12 @@ MonoBehaviour:
     cell: {x: 3, y: 3}
   - room: {fileID: 11400000, guid: 83182d7fb7b59cac4959bbe66b83eb06, type: 2}
     cell: {x: 3, y: 4}
-  - room: {fileID: 11400000, guid: d4177dc2067cb693dafceec65ff73329, type: 2}
-    cell: {x: 4, y: 4}
   - room: {fileID: 11400000, guid: 0fce6787b423c230888278a2437f784e, type: 2}
     cell: {x: 3, y: 5}
   - room: {fileID: 11400000, guid: d638cef78c5caf2e0844014dac9279c9, type: 2}
     cell: {x: 2, y: 4}
+  - room: {fileID: 11400000, guid: d4177dc2067cb693dafceec65ff73329, type: 2}
+    cell: {x: 4, y: 4}
   - room: {fileID: 11400000, guid: 7855619b502bf76aa8be0c73fdb973c1, type: 2}
     cell: {x: 4, y: 5}
   - room: {fileID: 11400000, guid: 0163afcd5213becf19133c1609d8f170, type: 2}

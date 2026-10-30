@@ -1,0 +1,129 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5090da9da79f6a28e92c0a1e5dcefa04, type: 3}
+  m_Name: ATK_BondStellaire
+  m_EditorClassIdentifier: TheDungeon.Runtime::TheDungeon.Data.AttackData
+  displayName: Bond stellaire
+  description: "Zone qui soul\xE8ve, puis d\xE9g\xE2ts \xE0 la retomb\xE9e, que la
+    premi\xE8re ait touch\xE9 ou non."
+  user: 0
+  settings:
+    minRange: 0
+    maxRange: 3
+    cooldown: 6
+    damagePercent: 100
+    tempoPercent: 100
+  steps:
+  - name: "Soul\xE8vement"
+    action: 0
+    trigger: 0
+    hitCount: 2
+    conditions: []
+    fallback: 0
+    windup: 0.9
+    recovery: 0.3
+    trackDuringWindup: 0
+    damagePercent: 60
+    shape: 0
+    anchor: 0
+    radius: 3
+    innerRadius: 1
+    angle: 90
+    width: 1
+    pattern: 0
+    projectiles: 1
+    spreadAngle: 60
+    projectileSpeed: 6.5
+    dashDirection: 0
+    dashDistance: 4
+    dashSpeed: 12
+    summons: 1
+    repeat: 1
+    moveDuring: 0
+    moveSpeed: 2
+    anchorDistance: 3
+    zoneCount: 1
+    activeDuration: 0
+    tickInterval: 0.5
+    travelSpeed: 0
+    growth: 0
+    sweepAngle: 0
+    channel: 0
+    homing: 0
+    airborne: 0
+    teleportTo: 0
+    summon: {fileID: 0}
+    buff: 0
+    buffPower: 20
+    buffDuration: 8
+    phase: 1
+    status: 0
+    statusPower: 5
+    statusDuration: 3
+    guardPercent: 0
+    superArmor: 0
+    healthCost: 0
+    chargeable: 0
+    chargeTime: 1
+    chargeBonus: 100
+  - name: "Retomb\xE9e"
+    action: 0
+    trigger: 0
+    hitCount: 2
+    conditions: []
+    fallback: 0
+    windup: 0.6
+    recovery: 0.7
+    trackDuringWindup: 0
+    damagePercent: 120
+    shape: 0
+    anchor: 0
+    radius: 3.5
+    innerRadius: 1
+    angle: 90
+    width: 1
+    pattern: 0
+    projectiles: 1
+    spreadAngle: 60
+    projectileSpeed: 6.5
+    dashDirection: 0
+    dashDistance: 4
+    dashSpeed: 12
+    summons: 1
+    repeat: 1
+    moveDuring: 0
+    moveSpeed: 2
+    anchorDistance: 3
+    zoneCount: 1
+    activeDuration: 0
+    tickInterval: 0.5
+    travelSpeed: 0
+    growth: 0
+    sweepAngle: 0
+    channel: 0
+    homing: 0
+    airborne: 0
+    teleportTo: 0
+    summon: {fileID: 0}
+    buff: 0
+    buffPower: 20
+    buffDuration: 8
+    phase: 1
+    status: 0
+    statusPower: 5
+    statusDuration: 3
+    guardPercent: 0
+    superArmor: 0
+    healthCost: 0
+    chargeable: 0
+    chargeTime: 1
+    chargeBonus: 100

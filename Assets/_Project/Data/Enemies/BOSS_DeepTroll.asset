@@ -16,6 +16,82 @@ MonoBehaviour:
   sprite: {fileID: 21300000, guid: 23ca9db6b21df9dfa988b3fe266ede60, type: 3}
   isBoss: 1
   behaviour: 0
+  patterns:
+  - name: "Nouvelle r\xE8gle"
+    conditions:
+    - type: 0
+      value: 4
+      flag: 
+      biome: {fileID: 0}
+      roomType: 4
+    movement: 0
+    speedPercent: 100
+  - name: "Nouvelle r\xE8gle"
+    conditions:
+    - type: 1
+      value: 4
+      flag: 
+      biome: {fileID: 0}
+      roomType: 4
+    movement: 0
+    speedPercent: 135
+  attacks:
+  - attack: {fileID: 11400000, guid: 84c3cee417de29e2db950caf78d973de, type: 2}
+    conditions:
+    - type: 0
+      value: 2
+      flag: 
+      biome: {fileID: 0}
+      roomType: 4
+    weight: 100
+    overridden: 0
+    overrides:
+      minRange: 0
+      maxRange: 0
+      cooldown: 0
+      damagePercent: 0
+      tempoPercent: 0
+  - attack: {fileID: 11400000, guid: 02d2493d5cab6965ba89075762bbc904, type: 2}
+    conditions:
+    - type: 0
+      value: 2
+      flag: 
+      biome: {fileID: 0}
+      roomType: 4
+    weight: 50
+    overridden: 0
+    overrides:
+      minRange: 0
+      maxRange: 0
+      cooldown: 0
+      damagePercent: 0
+      tempoPercent: 0
+  - attack: {fileID: 11400000, guid: 10fd88a1b40de6ef0a8c09e86281e2ab, type: 2}
+    conditions:
+    - type: 1
+      value: 8
+      flag: 
+      biome: {fileID: 0}
+      roomType: 4
+    weight: 100
+    overridden: 0
+    overrides:
+      minRange: 0
+      maxRange: 0
+      cooldown: 0
+      damagePercent: 0
+      tempoPercent: 0
+  - attack: {fileID: 11400000, guid: 4e85ce75462337263ad2d741a019c131, type: 2}
+    conditions: []
+    weight: 75
+    overridden: 0
+    overrides:
+      minRange: 0
+      maxRange: 0
+      cooldown: 0
+      damagePercent: 0
+      tempoPercent: 0
+  phases: []
   baseHealth: 55
   baseDamage: 3
   baseDefense: 3
