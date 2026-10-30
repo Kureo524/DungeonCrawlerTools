@@ -20,7 +20,9 @@ namespace TheDungeon.Data
         FlagSet,
         FlagNotSet,
         GoldAtLeast,
-        FloorAtLeast
+        FloorAtLeast,
+        FloorIn,
+        MechanicAtLeast
     }
 
     public enum ConsequenceType
@@ -41,9 +43,9 @@ namespace TheDungeon.Data
     {
         [Tooltip("Ce qui est vérifié.")]
         public ConditionType type;
-        [Tooltip("Valeur numérique (niveau, or, étage).")]
+        [Tooltip("Valeur numérique (niveau, or, étage). Pour « Étages précis » : les étages cochés (voir FloorSet).")]
         public int value = 1;
-        [Tooltip("Nom du marqueur d'histoire (ex : quete_forgeron_acceptee).")]
+        [Tooltip("Nom du marqueur d'histoire (ex : quete_forgeron_acceptee). Pour « Mécanique » : identifiant de la mécanique.")]
         public string flag;
         [Tooltip("Objet concerné.")]
         public ItemData item;
@@ -75,6 +77,16 @@ namespace TheDungeon.Data
         public List<DialogueCondition> conditions = new();
         [Tooltip("Effets appliqués quand le joueur choisit cette réponse.")]
         public List<DialogueConsequence> consequences = new();
+        [Tooltip("La réponse a ses propres couleurs au lieu de celles du personnage.")]
+        public bool customLook;
+        [Tooltip("Fond de cette réponse (si elle a ses propres couleurs).")]
+        public Color background = new(0.1f, 0.09f, 0.12f);
+        [Tooltip("Contour de cette réponse (si elle a ses propres couleurs).")]
+        public Color border = new(0.78f, 0.7f, 0.55f, 0.45f);
+        [Tooltip("Texte de cette réponse (si elle a ses propres couleurs).")]
+        public Color textColor = new(0.94f, 0.92f, 0.89f);
+        [Tooltip("Dans l'arbre de l'outil Dialogues, le lien part du côté gauche de la réponse (sans effet en jeu).")]
+        public bool linkFromLeft;
     }
 
     /// <summary>Une réplique de l'arbre de dialogue.</summary>
@@ -93,6 +105,36 @@ namespace TheDungeon.Data
         public List<DialogueChoice> choices = new();
         [Tooltip("Effets appliqués quand la réplique est affichée.")]
         public List<DialogueConsequence> consequences = new();
+        [Tooltip("Position de la réplique dans l'arbre de l'outil Dialogues (sans effet en jeu).")]
+        public Vector2 graphPosition;
+        [Tooltip("La réplique a été déplacée à la main dans l'arbre ; sinon elle est rangée automatiquement.")]
+        public bool placed;
+    }
+
+    /// <summary>Couleurs de la boîte de dialogue de ce personnage, en jeu et dans l'aperçu.</summary>
+    [Serializable]
+    public class DialogueStyle
+    {
+        [Tooltip("Fond de la boîte de dialogue.")]
+        public Color boxBackground = new(0.05f, 0.04f, 0.07f, 0.94f);
+        [Tooltip("Contour de la boîte de dialogue et du portrait.")]
+        public Color boxBorder = new(0.78f, 0.7f, 0.55f);
+        [Tooltip("Texte des répliques.")]
+        public Color text = new(0.94f, 0.92f, 0.89f);
+        [Tooltip("Texte de la plaque de nom.")]
+        public Color nameText = Color.white;
+        [Tooltip("Plaque de nom quand c'est le joueur qui parle.")]
+        public Color playerPlate = new(0.3f, 0.6f, 0.4f);
+        [Tooltip("Fond des réponses du joueur.")]
+        public Color choiceBackground = new(0.1f, 0.09f, 0.12f);
+        [Tooltip("Contour des réponses du joueur.")]
+        public Color choiceBorder = new(0.78f, 0.7f, 0.55f, 0.45f);
+        [Tooltip("Texte des réponses du joueur.")]
+        public Color choiceText = new(0.94f, 0.92f, 0.89f);
+
+        /// <summary>Couleurs d'une réponse : les siennes si elle en a, sinon celles du personnage.</summary>
+        public (Color background, Color border, Color text) ChoiceLook(DialogueChoice choice) =>
+            choice != null && choice.customLook ? (choice.background, choice.border, choice.textColor) : (choiceBackground, choiceBorder, choiceText);
     }
 
     /// <summary>Début alternatif : utilisé à la place du début normal si ses conditions sont remplies (ex : quête déjà acceptée).</summary>
@@ -117,7 +159,11 @@ namespace TheDungeon.Data
         Sprite portrait;
         [SerializeField, Tooltip("Couleur des bulles et de la plaque de nom.")]
         Color color = new(0.35f, 0.55f, 0.85f);
-        [SerializeField, Tooltip("Étage où l'on rencontre ce personnage.")]
+        [SerializeField, Tooltip("Couleurs de la boîte de dialogue.")]
+        DialogueStyle style = new();
+        [SerializeField, Tooltip("Étages où l'on peut rencontrer ce personnage (voir FloorSet).")]
+        int floors;
+        [SerializeField, HideInInspector, Tooltip("Ancien réglage : un seul étage. Utilisé tant que « floors » est vide.")]
         int floor = 1;
         [SerializeField, Tooltip("Première réplique quand aucun début alternatif ne s'applique.")]
         int startNode = -1;
@@ -132,7 +178,12 @@ namespace TheDungeon.Data
         public string Role => role;
         public Sprite Portrait => portrait;
         public Color Color => color;
-        public int Floor => floor;
+        public DialogueStyle Style => style ??= new DialogueStyle();
+        /// <summary>Étages où le personnage apparaît (voir FloorSet).</summary>
+        public int Floors => floors != 0 ? floors : FloorSet.Of(floor);
+        /// <summary>Premier de ses étages (fond de l'aperçu, filtres).</summary>
+        public int Floor => FloorSet.First(Floors);
+        public bool AppearsOn(int floorNumber) => FloorSet.Contains(Floors, floorNumber);
         public int StartNode => startNode;
         public IReadOnlyList<DialogueEntry> Entries => entries;
         public IReadOnlyList<DialogueNode> Nodes => nodes;

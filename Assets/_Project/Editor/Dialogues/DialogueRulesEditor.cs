@@ -20,7 +20,7 @@ namespace TheDungeon.Editor.Dialogues
             return ForgeLists.Array(npc, path, title, tooltip, limits.maxDialogueRules,
                 (element, _) => Row(element, types.Select(t => DialogueText.Label(t)).ToList(),
                     index => (DialogueText.UsesValue(types[index]), DialogueText.UsesFlag(types[index]), DialogueText.UsesItem(types[index])),
-                    knownFlags, ValueRange(types)),
+                    knownFlags, ValueRange(types), index => DialogueText.UsesFloors(types[index]), index => DialogueText.UsesMechanic(types[index])),
                 element =>
                 {
                     element.FindPropertyRelative("type").enumValueIndex = (int)ConditionType.FlagSet;
@@ -58,7 +58,7 @@ namespace TheDungeon.Editor.Dialogues
 
         /// <summary>Une ligne : liste déroulante du type, puis le champ correspondant (nombre, marqueur ou objet).</summary>
         static VisualElement Row(SerializedProperty element, List<string> labels, Func<int, (bool value, bool flag, bool item)> uses,
-            Func<IEnumerable<string>> knownFlags, Func<int, IntRange> range)
+            Func<IEnumerable<string>> knownFlags, Func<int, IntRange> range, Func<int, bool> usesFloors = null, Func<int, bool> usesMechanic = null)
         {
             var row = new VisualElement();
             row.AddToClassList("forge-rule-row");
@@ -75,7 +75,23 @@ namespace TheDungeon.Editor.Dialogues
                 valueArea.Clear();
                 var index = typeProperty.enumValueIndex;
                 var (usesValue, usesFlag, usesItem) = uses(index);
-                if (usesValue)
+                if (usesMechanic != null && usesMechanic(index))
+                {
+                    valueArea.Add(MechanicField(element));
+                }
+                else if (usesFloors != null && usesFloors(index))
+                {
+                    // Étages précis : une pastille par étage, la réponse n'est proposée que sur les étages cochés.
+                    var floors = element.FindPropertyRelative("value");
+                    if (!FloorSet.Floors(floors.intValue).Any(f => f <= ForgeDesignLimits.Instance.floorCount))
+                    {
+                        element.serializedObject.Update();
+                        floors.intValue = FloorSet.Of(1);
+                        element.serializedObject.ApplyModifiedProperties();
+                    }
+                    valueArea.Add(new FloorMaskField(null, floors, ForgeDesignLimits.Instance.floorCount, "Étages où la condition est remplie."));
+                }
+                else if (usesValue)
                 {
                     var bounds = range(index);
                     var value = new IntegerField { tooltip = $"Valeur ({bounds})." };
@@ -106,6 +122,51 @@ namespace TheDungeon.Editor.Dialogues
                 BuildValue();
             });
             BuildValue();
+            return row;
+        }
+
+        /// <summary>Mécanique de la progression utilisée en jeu, et le niveau qu'elle doit avoir au minimum.</summary>
+        static VisualElement MechanicField(SerializedProperty element)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("forge-row");
+            row.style.flexGrow = 1;
+            var mechanics = TheDungeon.Editor.Play.GameLauncher.ActiveProgression?.Mechanics.ToList() ?? new List<CharacterMechanic>();
+            if (mechanics.Count == 0)
+            {
+                row.Add(ForgeUI.Label("La progression utilisée en jeu n'a aucune mécanique (outil Progression).", "forge-hint"));
+                return row;
+            }
+            var id = element.FindPropertyRelative("flag");
+            var level = element.FindPropertyRelative("value");
+            var names = mechanics.Select(m => m.displayName).ToList();
+            var index = mechanics.FindIndex(m => m.id == id.stringValue);
+            if (index < 0)
+            {
+                // Pas encore de mécanique choisie : la première, débloquée (niveau 1).
+                element.serializedObject.Update();
+                index = 0;
+                id.stringValue = mechanics[0].id;
+                level.intValue = Mathf.Clamp(level.intValue, 1, mechanics[0].MaxRank);
+                element.serializedObject.ApplyModifiedProperties();
+            }
+            var picker = new DropdownField(names, index) { tooltip = "Mécanique du personnage (outil Progression > Mécaniques)." };
+            picker.style.flexGrow = 1;
+            var levelField = new SliderInt(1, Math.Max(1, mechanics[index].MaxRank))
+                { showInputField = true, tooltip = "Niveau minimum de la mécanique : 1 = débloquée, puis chaque amélioration." };
+            levelField.style.flexGrow = 1;
+            levelField.BindProperty(level);
+            picker.RegisterValueChangedCallback(evt =>
+            {
+                var chosen = mechanics[Mathf.Max(0, names.IndexOf(evt.newValue))];
+                element.serializedObject.Update();
+                id.stringValue = chosen.id;
+                level.intValue = Mathf.Clamp(level.intValue, 1, chosen.MaxRank);
+                element.serializedObject.ApplyModifiedProperties();
+                levelField.highValue = Math.Max(1, chosen.MaxRank);
+            });
+            row.Add(picker);
+            row.Add(levelField);
             return row;
         }
 

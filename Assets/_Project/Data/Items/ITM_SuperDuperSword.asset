@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d6628d587abcb5cf78fd5752967e2e36, type: 3}
+  m_Name: ITM_SuperDuperSword
+  m_EditorClassIdentifier: TheDungeon.Runtime::TheDungeon.Data.ItemData
+  displayName: Super Duper Sword
+  icon: {fileID: 21300000, guid: 1d05ed1775ea19a27b719e4698b1a444, type: 3}
+  rarity: 4
+  type: 0
+  stats:
+  - stat: 0
+    value: 10
+  - stat: 1
+    value: 40
+  - stat: 2
+    value: 12
+  - stat: 3
+    value: 35
+  effects:
+  - type: 1
+    value: 40.8
+    duration: 0
+    trigger: 0
+  price: 3000
+  description: A super sword for super adventurers !!! you'll need it to slay tha
+    Apocalypse Dragon !

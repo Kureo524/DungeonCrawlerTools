@@ -120,7 +120,7 @@ namespace TheDungeon.Editor.Floors
 
             var left = new VisualElement();
             left.AddToClassList("forge-floor-side");
-            left.Add(ForgeUI.Label("Salles disponibles", "forge-palette__title"));
+            left.Add(ForgeUI.Label(ForgeText.WindowRich("Salles disponibles"), "forge-palette__title"));
             left.Add(ForgeUI.Label("Cliquez une salle puis une case du plan. Les cases vertes acceptent ses portes.", "forge-hint"));
             var paletteScroll = new ScrollView();
             paletteScroll.AddToClassList("forge-palette-scroll");
@@ -128,7 +128,7 @@ namespace TheDungeon.Editor.Floors
             paletteScroll.Add(palette);
             left.Add(paletteScroll);
 
-            left.Add(ForgeUI.Label("Salle sélectionnée", "forge-palette__title"));
+            left.Add(ForgeUI.Label(ForgeText.WindowRich("Salle sélectionnée"), "forge-palette__title"));
             entranceButton = ForgeUI.Button("Définir comme entrée", "Le joueur arrive sur l'étage par cette salle.", () =>
             {
                 if (canvas.SelectedRoom != null)

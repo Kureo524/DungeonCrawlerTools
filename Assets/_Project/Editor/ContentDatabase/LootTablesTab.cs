@@ -63,16 +63,16 @@ namespace TheDungeon.Editor.ContentDatabase
                 element =>
                 {
                     element.FindPropertyRelative("item").objectReferenceValue = null;
-                    element.FindPropertyRelative("weight").intValue = Limits.GetRarity(Rarity.Common).defaultLootWeight;
+                    element.FindPropertyRelative("weight").intValue = Limits.FirstRarity.defaultLootWeight;
                     return true;
                 }));
 
             var shortcuts = ForgeUI.Section("Raccourcis", container);
-            var rarity = new EnumField("Rareté", Rarity.Common) { tooltip = "Rareté des objets à ajouter." };
+            var rarity = new RarityField("Rareté", Limits.FirstRarity.id, "Rareté des objets à ajouter.");
             shortcuts.Add(ForgeLists.Row(rarity,
                 ForgeUI.Button("Ajouter tous les objets valides de cette rareté",
                     "Ajoute les objets valides de la rareté choisie absents de la table, avec le poids par défaut de leur rareté.",
-                    () => AddAllOfRarity(serializedObject, (Rarity)rarity.value))));
+                    () => AddAllOfRarity(serializedObject, rarity.Id))));
             shortcuts.Add(ForgeUI.Button("Appliquer les poids par défaut des raretés",
                 "Remplace chaque poids par celui défini pour la rareté de l'objet (Forge Studio > Limites (dev)).",
                 () => ApplyDefaultWeights(serializedObject)));
@@ -88,7 +88,7 @@ namespace TheDungeon.Editor.ContentDatabase
             preview.Add(row);
         }
 
-        void AddAllOfRarity(SerializedObject serializedObject, Rarity rarity)
+        void AddAllOfRarity(SerializedObject serializedObject, int rarity)
         {
             var entries = serializedObject.FindProperty("entries");
             var present = new HashSet<Object>();
@@ -96,7 +96,7 @@ namespace TheDungeon.Editor.ContentDatabase
                 present.Add(entries.GetArrayElementAtIndex(i).FindPropertyRelative("item").objectReferenceValue);
 
             var added = 0;
-            foreach (var item in AssetFactory.LoadAll<ItemData>().Where(item => item.Rarity == rarity && !present.Contains(item) && ValidationCache.IsValid(item)))
+            foreach (var item in AssetFactory.LoadAll<ItemData>().Where(item => item.RarityId == rarity && !present.Contains(item) && ValidationCache.IsValid(item)))
             {
                 if (entries.arraySize >= Limits.maxLootEntries)
                 {
@@ -111,7 +111,7 @@ namespace TheDungeon.Editor.ContentDatabase
             }
             serializedObject.ApplyModifiedProperties();
             if (added == 0)
-                ForgeLists.Notify($"Aucun nouvel objet {rarity} valide à ajouter.");
+                ForgeLists.Notify($"Aucun nouvel objet {Limits.GetRarity(rarity).DisplayName} valide à ajouter.");
         }
 
         void ApplyDefaultWeights(SerializedObject serializedObject)
@@ -121,7 +121,7 @@ namespace TheDungeon.Editor.ContentDatabase
             {
                 var element = entries.GetArrayElementAtIndex(i);
                 if (element.FindPropertyRelative("item").objectReferenceValue is ItemData item)
-                    element.FindPropertyRelative("weight").intValue = Limits.GetRarity(item.Rarity).defaultLootWeight;
+                    element.FindPropertyRelative("weight").intValue = Limits.GetRarity(item.RarityId).defaultLootWeight;
             }
             serializedObject.ApplyModifiedProperties();
         }

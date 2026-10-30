@@ -21,7 +21,8 @@ namespace TheDungeon.Editor.Dialogues
 
         readonly SimulatedState state = new();
         readonly VisualElement screen;
-        readonly Label hud;
+        readonly VisualElement hud;
+        readonly VisualElement box;
         readonly Image portrait;
         readonly Label namePlate;
         readonly Label text;
@@ -46,11 +47,11 @@ namespace TheDungeon.Editor.Dialogues
             left.AddToClassList("forge-preview-game__left");
             screen = new VisualElement();
             screen.AddToClassList("forge-preview-game__screen");
-            hud = new Label { enableRichText = true };
+            hud = new VisualElement();
             hud.AddToClassList("forge-preview-game__hud");
             screen.Add(hud);
 
-            var box = new VisualElement();
+            box = new VisualElement();
             box.AddToClassList("forge-preview-game__box");
             portrait = new Image { scaleMode = ScaleMode.ScaleToFit };
             portrait.AddToClassList("forge-preview-game__portrait");
@@ -91,10 +92,13 @@ namespace TheDungeon.Editor.Dialogues
 
             var right = new VisualElement();
             right.AddToClassList("forge-preview-game__right");
-            right.Add(ForgeUI.Label("Joueur simulé", "forge-section-title"));
+            right.Add(ForgeUI.Label(ForgeText.WindowRich("Joueur simulé"), "forge-section-title"));
             statePanel = new VisualElement();
+            ForgeLabels.Track(statePanel);
             right.Add(statePanel);
-            right.Add(ForgeUI.Label("Journal", "forge-section-title"));
+            var journalTitle = ForgeUI.Label(ForgeText.WindowRich("Journal"), "forge-section-title");
+            journalTitle.AddToClassList("forge-preview-game__journal-title");
+            right.Add(journalTitle);
             var journalScroll = new ScrollView();
             journalScroll.AddToClassList("forge-preview-game__journal");
             journal = new VisualElement();
@@ -123,7 +127,7 @@ namespace TheDungeon.Editor.Dialogues
         void Restart()
         {
             journal.Clear();
-            Log($"Début de la conversation avec {Name(DialogueSpeaker.Npc)}", "forge-journal--system");
+            Log($"Début de la conversation avec {ForgeText.Name(Name(DialogueSpeaker.Npc))}.", "forge-journal--system");
             Show(npc == null ? null : DialogueLogic.Start(npc, state));
         }
 
@@ -141,15 +145,18 @@ namespace TheDungeon.Editor.Dialogues
             DialogueLogic.ApplyAll(node.consequences, state);
             foreach (var consequence in node.consequences)
                 Log(DialogueText.Describe(consequence), "forge-journal--effect");
-            Log($"{Name(node.speaker)} : {node.text}", "forge-journal--line");
+            Log($"{Name(node.speaker)} : {ForgeText.Quote(node.text)}", "forge-journal--line");
 
             var isNarration = node.speaker == DialogueSpeaker.Narrator;
             portrait.style.display = isNarration ? DisplayStyle.None : DisplayStyle.Flex;
             portrait.sprite = node.speaker == DialogueSpeaker.Player ? PlayerSprite() : npc.Portrait;
             namePlate.style.display = isNarration ? DisplayStyle.None : DisplayStyle.Flex;
             namePlate.text = Name(node.speaker);
-            namePlate.style.backgroundColor = node.speaker == DialogueSpeaker.Npc ? npc.Color : new Color(0.3f, 0.6f, 0.4f);
+            var look = npc.Style;
+            namePlate.style.backgroundColor = node.speaker == DialogueSpeaker.Npc ? npc.Color : look.playerPlate;
+            namePlate.style.color = look.nameText;
             text.EnableInClassList("forge-preview-game__text--narration", isNarration);
+            ApplyLook();
 
             fullText = node.text ?? string.Empty;
             shown = 0;
@@ -208,6 +215,7 @@ namespace TheDungeon.Editor.Dialogues
                     continue;
                 var button = new Button(() => Choose(choice)) { text = $"{index++}. {choice.text}" };
                 button.AddToClassList("forge-preview-game__choice");
+                StyleChoice(button, choice);
                 if (!unlocked)
                 {
                     button.SetEnabled(false);
@@ -217,12 +225,12 @@ namespace TheDungeon.Editor.Dialogues
                 choices.Add(button);
             }
             if (available.Count == 0)
-                prompt.text = "Aucune réponse disponible dans cet état : la conversation est bloquée.";
+                prompt.text = ForgeText.System("Aucune réponse disponible dans cet état : la conversation est bloquée.");
         }
 
         void Choose(DialogueChoice choice)
         {
-            Log($"Vous : {choice.text}", "forge-journal--player");
+            Log($"Vous : {ForgeText.Quote(choice.text)}", "forge-journal--player");
             DialogueLogic.ApplyAll(choice.consequences, state);
             foreach (var consequence in choice.consequences)
                 Log(DialogueText.Describe(consequence), "forge-journal--effect");
@@ -251,14 +259,19 @@ namespace TheDungeon.Editor.Dialogues
             typing?.Pause();
             portrait.style.display = DisplayStyle.None;
             namePlate.style.display = DisplayStyle.None;
-            text.text = npc == null || npc.Nodes.Count == 0 ? "La conversation est vide." : "— Fin de la conversation —";
+            text.text = ForgeText.System(npc == null || npc.Nodes.Count == 0 ? "La conversation est vide." : "Fin de la conversation.");
             text.EnableInClassList("forge-preview-game__text--narration", true);
+            if (npc != null)
+                ApplyLook();
             prompt.text = "Cliquez sur « Rejouer » pour recommencer.";
-            Log("Fin de la conversation", "forge-journal--system");
+            Log("Fin de la conversation.", "forge-journal--system");
         }
 
         void Log(string message, string className)
         {
+            // Messages du système (début, effets, erreurs) écrits comme dans le roman : [entre crochets].
+            if (className is "forge-journal--system" or "forge-journal--effect" or "forge-journal--error")
+                message = ForgeText.System(message);
             var entry = new Label(message);
             entry.AddToClassList("forge-journal");
             entry.AddToClassList(className);
@@ -270,16 +283,83 @@ namespace TheDungeon.Editor.Dialogues
 
         static Sprite PlayerSprite() => AssetDatabase.LoadAssetAtPath<Sprite>($"{DungeonPaths.Art}/Common/SPR_Player.png");
 
-        void RefreshHud() =>
-            hud.text = $"Niv. <b>{state.PlayerLevel}</b>   <color=#f2cc4d>{state.Gold} or</color>   Étage {state.Floor}   PV soignés {state.Healed}   XP +{state.Xp}";
+        /// <summary>Couleurs du personnage (outil Dialogues > Apparence) sur la boîte, le portrait et le texte.</summary>
+        void ApplyLook()
+        {
+            var look = npc.Style;
+            box.style.backgroundColor = look.boxBackground;
+            SetBorder(box, look.boxBorder);
+            SetBorder(portrait, look.boxBorder);
+            text.style.color = text.ClassListContains("forge-preview-game__text--narration")
+                ? new Color(look.text.r, look.text.g, look.text.b, look.text.a * 0.8f)
+                : look.text;
+            prompt.style.color = look.boxBorder;
+        }
+
+        /// <summary>Réponse du joueur aux couleurs du personnage, plus marquée au survol.</summary>
+        void StyleChoice(Button button, DialogueChoice choice)
+        {
+            var (background, border, color) = npc.Style.ChoiceLook(choice);
+            var solid = new Color(border.r, border.g, border.b, 1f);
+            void Normal()
+            {
+                button.style.backgroundColor = background;
+                SetBorder(button, border);
+            }
+            Normal();
+            button.style.color = color;
+            button.RegisterCallback<PointerEnterEvent>(_ =>
+            {
+                button.style.backgroundColor = Color.Lerp(background, solid, 0.3f);
+                SetBorder(button, solid);
+            });
+            button.RegisterCallback<PointerLeaveEvent>(_ => Normal());
+        }
+
+        static void SetBorder(VisualElement element, Color color) =>
+            element.style.borderTopColor = element.style.borderBottomColor = element.style.borderLeftColor = element.style.borderRightColor = color;
+
+        /// <summary>Barre d'état du joueur simulé : une pastille par valeur.</summary>
+        void RefreshHud()
+        {
+            hud.Clear();
+            foreach (var (label, value, className) in new[]
+                     {
+                         ("Niv.", state.PlayerLevel.ToString(), null),
+                         ("Or", state.Gold.ToString(), "forge-preview-game__stat--gold"),
+                         ("Étage", state.Floor.ToString(), null),
+                         ("PV soignés", state.Healed.ToString(), null),
+                         ("XP", $"+{state.Xp}", null)
+                     })
+            {
+                var stat = new VisualElement();
+                stat.AddToClassList("forge-preview-game__stat");
+                if (className != null)
+                    stat.AddToClassList(className);
+                stat.Add(ForgeUI.Label(label, "forge-preview-game__stat-label"));
+                stat.Add(ForgeUI.Label(value, "forge-preview-game__stat-value"));
+                hud.Add(stat);
+            }
+        }
 
         /// <summary>Contrôles de l'état simulé : niveau, or, étage, marqueurs et inventaire.</summary>
         void RefreshState()
         {
             statePanel.Clear();
             var limits = ForgeDesignLimits.Instance;
-            var level = new SliderInt("Niveau", 1, limits.maxLevelCap) { value = state.PlayerLevel, showInputField = true, tooltip = "Niveau du joueur, pour tester les conditions de niveau." };
-            level.RegisterValueChangedCallback(evt => { state.PlayerLevel = evt.newValue; Restart(); });
+            // Le niveau ne dépasse pas le niveau maximum de la progression utilisée en jeu.
+            var progression = TheDungeon.Editor.Play.GameLauncher.ActiveProgression;
+            var maxLevel = progression != null ? Mathf.Clamp(progression.MaxLevel, 1, limits.maxLevelCap) : limits.maxLevelCap;
+            state.PlayerLevel = Mathf.Clamp(state.PlayerLevel, 1, maxLevel);
+            var level = new SliderInt("Niveau", 1, maxLevel)
+            {
+                value = state.PlayerLevel,
+                showInputField = true,
+                tooltip = progression != null
+                    ? $"Niveau du joueur, pour tester les conditions de niveau (1 à {maxLevel}, progression '{progression.DisplayName}')."
+                    : "Niveau du joueur, pour tester les conditions de niveau."
+            };
+            level.RegisterValueChangedCallback(evt => { state.PlayerLevel = Mathf.Clamp(evt.newValue, 1, maxLevel); Restart(); });
             statePanel.Add(level);
             var gold = new IntegerField("Or") { value = state.Gold, tooltip = "Or du joueur." };
             gold.RegisterValueChangedCallback(evt => { state.Gold = Mathf.Max(0, evt.newValue); Restart(); });
@@ -287,6 +367,23 @@ namespace TheDungeon.Editor.Dialogues
             var floor = new SliderInt("Étage", 1, limits.floorCount) { value = state.Floor, showInputField = true, tooltip = "Étage où a lieu la rencontre." };
             floor.RegisterValueChangedCallback(evt => { state.Floor = evt.newValue; Restart(); });
             statePanel.Add(floor);
+
+            // Mécaniques citées par les conditions : leur niveau (0 = pas encore débloquée).
+            var mechanicIds = npc == null ? new List<string>() : npc.Entries.SelectMany(e => e.conditions)
+                .Concat(npc.Nodes.SelectMany(n => n.choices).SelectMany(c => c.conditions))
+                .Where(c => c.type == ConditionType.MechanicAtLeast && !string.IsNullOrEmpty(c.flag)).Select(c => c.flag).Distinct().ToList();
+            if (mechanicIds.Count > 0)
+            {
+                statePanel.Add(ForgeUI.Label("Mécaniques", "forge-palette__title"));
+                foreach (var id in mechanicIds)
+                {
+                    var mechanic = DialogueText.FindMechanic(id);
+                    var slider = new SliderInt(mechanic != null ? mechanic.displayName : ForgeText.Redacted, 0, Mathf.Max(1, mechanic?.MaxRank ?? 1))
+                        { value = state.MechanicLevel(id), showInputField = true, tooltip = "Niveau de la mécanique (0 = pas encore débloquée)." };
+                    slider.RegisterValueChangedCallback(evt => { state.SetMechanicLevel(id, evt.newValue); Restart(); });
+                    statePanel.Add(slider);
+                }
+            }
 
             statePanel.Add(ForgeUI.Label("Marqueurs d'histoire", "forge-palette__title"));
             var flags = npc == null ? new List<string>() : DialogueRulesEditor.FlagsUsedIn(new[] { npc }).Distinct().OrderBy(f => f).ToList();
@@ -330,6 +427,7 @@ namespace TheDungeon.Editor.Dialogues
         {
             readonly HashSet<string> flags = new();
             readonly List<ItemData> items = new();
+            readonly Dictionary<string, int> mechanics = new();
 
             public event Action Changed;
             public int PlayerLevel { get; set; } = 1;
@@ -340,6 +438,13 @@ namespace TheDungeon.Editor.Dialogues
 
             public bool HasFlag(string flag) => flags.Contains(flag);
             public bool HasItem(ItemData item) => items.Contains(item);
+            public int MechanicLevel(string mechanicId) => mechanics.TryGetValue(mechanicId ?? string.Empty, out var level) ? level : 0;
+
+            public void SetMechanicLevel(string mechanicId, int level)
+            {
+                mechanics[mechanicId] = Mathf.Max(0, level);
+                Changed?.Invoke();
+            }
 
             public void SetFlag(string flag, bool value)
             {
@@ -384,6 +489,7 @@ namespace TheDungeon.Editor.Dialogues
             {
                 flags.Clear();
                 items.Clear();
+                mechanics.Clear();
                 PlayerLevel = 1;
                 Gold = 0;
                 Xp = 0;

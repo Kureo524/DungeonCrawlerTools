@@ -2,15 +2,6 @@ using System;
 
 namespace TheDungeon.Data
 {
-    public enum Rarity
-    {
-        Common,
-        Uncommon,
-        Rare,
-        Epic,
-        Legendary
-    }
-
     public enum ItemType
     {
         Weapon,
@@ -28,6 +19,7 @@ namespace TheDungeon.Data
         Speed
     }
 
+    /// <summary>Nouvelles valeurs toujours ajoutées à la fin : les objets enregistrent le numéro de l'effet.</summary>
     public enum EffectType
     {
         Heal,
@@ -35,7 +27,20 @@ namespace TheDungeon.Data
         Burn,
         Regeneration,
         LifeSteal,
-        Stun
+        Stun,
+        AttackBoost,
+        CriticalChance,
+        LastStand,
+        KillHeal,
+        DamageReduction,
+        MoveSpeed
+    }
+
+    /// <summary>Actif : à l'impact (arme) ou à l'utilisation (consommable). Passif : permanent tant que l'arme est équipée.</summary>
+    public enum EffectTrigger
+    {
+        Active,
+        Passive
     }
 
     public enum EnemyBehaviour
@@ -60,7 +65,8 @@ namespace TheDungeon.Data
         Combat,
         Treasure,
         Shop,
-        Boss
+        Boss,
+        Npc
     }
 
     [Flags]

@@ -31,6 +31,17 @@ namespace TheDungeon.Data
         public Vector2Int position;
     }
 
+    [Serializable]
+    public struct NpcSpawn
+    {
+        [Tooltip("Personnage placé dans la salle (outil Dialogues).")]
+        public NpcData npc;
+        [Tooltip("Case de la salle (0,0 = coin bas gauche).")]
+        public Vector2Int position;
+        [Tooltip("Salle de combat : le personnage n'apparaît qu'une fois tous les ennemis vaincus.")]
+        public bool afterClear;
+    }
+
     [CreateAssetMenu(menuName = "The Dungeon/Room", fileName = "RM_NewRoom")]
     public class RoomData : ScriptableObject, IDisplayNamed
     {
@@ -56,6 +67,8 @@ namespace TheDungeon.Data
         List<ChestSpawn> chests = new();
         [SerializeField, Tooltip("Décors placés dans la salle.")]
         List<PropSpawn> props = new();
+        [SerializeField, Tooltip("Personnages placés dans la salle.")]
+        List<NpcSpawn> npcs = new();
         [SerializeField, Tooltip("Case d'apparition du joueur (salles de départ uniquement).")]
         Vector2Int playerSpawn = NoSpawn;
         [SerializeField, Tooltip("Difficulté ressentie, de 1 (facile) à 5 (très dur).")]
@@ -76,6 +89,7 @@ namespace TheDungeon.Data
         public IReadOnlyList<EnemySpawn> Enemies => enemies;
         public IReadOnlyList<ChestSpawn> Chests => chests;
         public IReadOnlyList<PropSpawn> Props => props;
+        public IReadOnlyList<NpcSpawn> Npcs => npcs;
         public Vector2Int PlayerSpawn => playerSpawn;
         public bool HasPlayerSpawn => playerSpawn != NoSpawn;
         public int Difficulty => difficulty;

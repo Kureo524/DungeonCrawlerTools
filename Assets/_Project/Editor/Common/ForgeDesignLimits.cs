@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TheDungeon.Data;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace TheDungeon.Editor.Common
 {
@@ -43,8 +44,11 @@ namespace TheDungeon.Editor.Common
     [Serializable]
     public struct RarityRule
     {
-        [Tooltip("Rareté concernée.")]
-        public Rarity rarity;
+        [Tooltip("Identifiant enregistré dans les objets : il ne change jamais, même si la rareté est renommée.")]
+        [FormerlySerializedAs("rarity")]
+        public int id;
+        [Tooltip("Nom affiché dans les outils.")]
+        public string name;
         [Tooltip("Couleur utilisée dans tous les outils.")]
         public Color color;
         [Tooltip("Bonus de statistique maximum autorisé pour un objet de cette rareté.")]
@@ -53,6 +57,10 @@ namespace TheDungeon.Editor.Common
         public IntRange price;
         [Tooltip("Poids proposé par défaut quand l'objet est ajouté à une table de butin.")]
         public int defaultLootWeight;
+        [Tooltip("Nombre maximum de passifs d'une arme de cette rareté.")]
+        public int passiveSlots;
+
+        public string DisplayName => string.IsNullOrWhiteSpace(name) ? $"Rareté n°{id}" : name;
     }
 
     /// <summary>
@@ -109,17 +117,23 @@ namespace TheDungeon.Editor.Common
         public FloatRange biomeRarityBoost = new(0f, 5f);
 
         [Header("Objets")]
+        [Tooltip("Raretés, de la plus commune à la plus rare. Éditées dans Objets > Raretés.")]
+        [HideInInspector]
         public List<RarityRule> rarities = new()
         {
-            new RarityRule { rarity = Rarity.Common, color = new Color(0.75f, 0.75f, 0.75f), maxStatValue = 5, price = new IntRange(1, 50), defaultLootWeight = 100 },
-            new RarityRule { rarity = Rarity.Uncommon, color = new Color(0.35f, 0.8f, 0.35f), maxStatValue = 10, price = new IntRange(20, 150), defaultLootWeight = 50 },
-            new RarityRule { rarity = Rarity.Rare, color = new Color(0.3f, 0.55f, 1f), maxStatValue = 18, price = new IntRange(100, 400), defaultLootWeight = 20 },
-            new RarityRule { rarity = Rarity.Epic, color = new Color(0.7f, 0.35f, 0.95f), maxStatValue = 28, price = new IntRange(300, 1000), defaultLootWeight = 6 },
-            new RarityRule { rarity = Rarity.Legendary, color = new Color(1f, 0.6f, 0.1f), maxStatValue = 40, price = new IntRange(800, 3000), defaultLootWeight = 1 }
+            new RarityRule { id = 0, name = "Commun", color = new Color(0.75f, 0.75f, 0.75f), maxStatValue = 5, price = new IntRange(1, 50), defaultLootWeight = 100, passiveSlots = 0 },
+            new RarityRule { id = 1, name = "Peu commun", color = new Color(0.35f, 0.8f, 0.35f), maxStatValue = 10, price = new IntRange(20, 150), defaultLootWeight = 50, passiveSlots = 1 },
+            new RarityRule { id = 2, name = "Rare", color = new Color(0.3f, 0.55f, 1f), maxStatValue = 18, price = new IntRange(100, 400), defaultLootWeight = 20, passiveSlots = 2 },
+            new RarityRule { id = 3, name = "Épique", color = new Color(0.7f, 0.35f, 0.95f), maxStatValue = 28, price = new IntRange(300, 1000), defaultLootWeight = 6, passiveSlots = 2 },
+            new RarityRule { id = 4, name = "Légendaire", color = new Color(1f, 0.6f, 0.1f), maxStatValue = 40, price = new IntRange(800, 3000), defaultLootWeight = 1, passiveSlots = 3 }
         };
+        [Tooltip("Nombre maximum de raretés.")]
+        public int maxRarities = 10;
+        [Tooltip("Nombre maximum de passifs qu'une rareté peut accorder à une arme.")]
+        public int maxPassiveSlots = 5;
         [Tooltip("Nombre maximum de bonus de stats par objet.")]
         public int maxStatsPerItem = 4;
-        [Tooltip("Nombre maximum d'effets par objet.")]
+        [Tooltip("Nombre maximum d'effets actifs par objet (les passifs d'une arme dépendent de sa rareté).")]
         public int maxEffectsPerItem = 2;
         public FloatRange effectValue = new(0f, 100f);
         public FloatRange effectDuration = new(0f, 30f);
@@ -187,12 +201,48 @@ namespace TheDungeon.Editor.Common
             }
         }
 
-        public RarityRule GetRarity(Rarity rarity)
+        /// <summary>Noms des raretés de départ, pour un fichier de limites créé avant que les raretés aient un nom.</summary>
+        static readonly string[] LegacyNames = { "Commun", "Peu commun", "Rare", "Épique", "Légendaire" };
+        static readonly int[] LegacyPassiveSlots = { 0, 1, 2, 2, 3 };
+
+        void OnEnable()
+        {
+            for (var i = 0; i < rarities.Count; i++)
+            {
+                var rule = rarities[i];
+                if (!string.IsNullOrEmpty(rule.name) || rule.id < 0 || rule.id >= LegacyNames.Length)
+                    continue;
+                rule.name = LegacyNames[rule.id];
+                rule.passiveSlots = LegacyPassiveSlots[rule.id];
+                rarities[i] = rule;
+                EditorUtility.SetDirty(this);
+            }
+        }
+
+        public bool HasRarity(int id) => rarities.Exists(rule => rule.id == id);
+
+        /// <summary>Règle de la rareté ; une rareté supprimée n'autorise rien (prix, bonus et passifs à zéro).</summary>
+        public RarityRule GetRarity(int id)
         {
             foreach (var rule in rarities)
-                if (rule.rarity == rarity)
+                if (rule.id == id)
                     return rule;
-            return new RarityRule { rarity = rarity, color = Color.white, maxStatValue = int.MaxValue, price = new IntRange(0, int.MaxValue), defaultLootWeight = 1 };
+            return new RarityRule { id = id, name = $"Rareté supprimée (n°{id})", color = new Color(0.55f, 0.55f, 0.6f), maxStatValue = 0, price = new IntRange(0, 0), defaultLootWeight = 1 };
         }
+
+        /// <summary>Rang de la rareté (0 = la plus commune), ou -1 si elle a été supprimée.</summary>
+        public int RarityRank(int id) => rarities.FindIndex(rule => rule.id == id);
+
+        /// <summary>Identifiant libre pour une nouvelle rareté (jamais celui d'une rareté supprimée encore utilisée).</summary>
+        public static int NextRarityId(IEnumerable<int> used)
+        {
+            var max = -1;
+            foreach (var id in used)
+                max = Mathf.Max(max, id);
+            return max + 1;
+        }
+
+        /// <summary>Rareté la plus commune, pour un nouvel objet.</summary>
+        public RarityRule FirstRarity => rarities.Count > 0 ? rarities[0] : GetRarity(0);
     }
 }

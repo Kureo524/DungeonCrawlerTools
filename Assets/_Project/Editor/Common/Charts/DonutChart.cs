@@ -45,7 +45,7 @@ namespace TheDungeon.Editor.Common.Charts
         {
             this.size = size;
             AddToClassList("forge-chart");
-            var titleLabel = new Label(title);
+            var titleLabel = new Label(ForgeText.WindowRich(title)) { enableRichText = true };
             titleLabel.AddToClassList("forge-chart__title");
             Add(titleLabel);
 

@@ -155,6 +155,10 @@ namespace TheDungeon.Editor.RoomEditor
                 result[spawn.position] = (spawn.enemy != null ? spawn.enemy.Sprite : null,
                     spawn.enemy != null ? $"{(spawn.enemy.IsBoss ? "Boss" : "Ennemi")} : {spawn.enemy.DisplayName}" : "Ennemi manquant",
                     spawn.enemy != null && spawn.enemy.IsBoss);
+            foreach (var spawn in draft.Npcs)
+                result[spawn.position] = (spawn.npc != null ? spawn.npc.Portrait : null,
+                    spawn.npc != null ? $"Personnage : {spawn.npc.DisplayName}" + (spawn.afterClear ? " (après le combat)" : string.Empty) : "Personnage manquant",
+                    false);
             if (draft.HasPlayerSpawn)
                 result[draft.PlayerSpawn] = (RoomArt.Player, "Apparition du joueur", false);
             return result;
@@ -257,6 +261,7 @@ namespace TheDungeon.Editor.RoomEditor
                 BrushKind.Chest => RoomEditing.PlaceChest(room, cell, brush.LootTable, limits.maxChestsPerRoom),
                 BrushKind.Prop => RoomEditing.PlaceProp(room, cell, brush.PropSprite),
                 BrushKind.PlayerSpawn => RoomEditing.SetPlayerSpawn(room, cell),
+                BrushKind.Npc => RoomEditing.PlaceNpc(room, cell, brush.Npc),
                 _ => null
             };
             apply(error);

@@ -15,7 +15,7 @@ namespace TheDungeon.Editor.Dialogues
         {
             var builder = new StringBuilder();
             builder.AppendLine($"# {npc.DisplayName}" + (string.IsNullOrWhiteSpace(npc.Role) ? string.Empty : $" — {npc.Role}"));
-            builder.AppendLine($"Étage {npc.Floor} · {npc.LineCount} répliques · début : #{npc.StartNode}");
+            builder.AppendLine($"{FloorSet.Describe(npc.Floors)} · {npc.LineCount} répliques · début : #{npc.StartNode}");
             builder.AppendLine();
 
             foreach (var entry in npc.Entries)

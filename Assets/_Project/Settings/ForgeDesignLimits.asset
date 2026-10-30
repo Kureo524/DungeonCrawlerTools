@@ -17,6 +17,8 @@ MonoBehaviour:
   targetBosses: 3
   targetLootTables: 20
   targetRooms: 30
+  targetNpcs: 25
+  targetDialogueLines: 150
   floorCount: 3
   roomsPerFloor: 10
   floorGridSize: {x: 6, y: 6}
@@ -40,45 +42,66 @@ MonoBehaviour:
     max: 100
   biomeRarityBoost:
     min: 0
-    max: 5
+    max: 25
   rarities:
-  - rarity: 0
+  - id: 0
+    name: Commun
     color: {r: 0.75, g: 0.75, b: 0.75, a: 1}
     maxStatValue: 5
     price:
       min: 1
       max: 50
-    defaultLootWeight: 100
-  - rarity: 1
+    defaultLootWeight: 200
+    passiveSlots: 0
+  - id: 1
+    name: Peu commun
     color: {r: 0.35, g: 0.8, b: 0.35, a: 1}
     maxStatValue: 10
     price:
       min: 20
       max: 150
-    defaultLootWeight: 50
-  - rarity: 2
+    defaultLootWeight: 100
+    passiveSlots: 1
+  - id: 2
+    name: Rare
     color: {r: 0.3, g: 0.55, b: 1, a: 1}
     maxStatValue: 18
     price:
       min: 100
       max: 400
-    defaultLootWeight: 20
-  - rarity: 3
+    defaultLootWeight: 40
+    passiveSlots: 2
+  - id: 3
+    name: "\xC9pique"
     color: {r: 0.7, g: 0.35, b: 0.95, a: 1}
     maxStatValue: 28
     price:
       min: 300
       max: 1000
-    defaultLootWeight: 6
-  - rarity: 4
+    defaultLootWeight: 12
+    passiveSlots: 2
+  - id: 4
+    name: "L\xE9gendaire"
     color: {r: 1, g: 0.6, b: 0.1, a: 1}
     maxStatValue: 40
     price:
       min: 800
       max: 3000
+    defaultLootWeight: 3
+    passiveSlots: 3
+  - id: 5
+    name: Secret
+    color: {r: 0, g: 0, b: 0, a: 1}
+    maxStatValue: 60
+    price:
+      min: 2200
+      max: 4000
     defaultLootWeight: 1
+    passiveSlots: 4
+  maxRarities: 10
+  maxPassiveSlots: 5
   maxStatsPerItem: 4
-  maxEffectsPerItem: 2
+  maxEffectsPerItem: 3
   effectValue:
     min: 0
     max: 100
@@ -102,7 +125,7 @@ MonoBehaviour:
     max: 500
   enemyFloorScaling:
     min: 0
-    max: 1
+    max: 3
   maxLootEntries: 12
   lootWeight:
     min: 1
@@ -110,13 +133,27 @@ MonoBehaviour:
   lootRolls:
     min: 1
     max: 5
+  maxDialogueNodes: 40
+  maxChoicesPerNode: 4
+  maxLineLength: 200
+  maxDialogueRules: 4
   maxLevel: 20
+  maxLevelCap: 99
+  maxProgressionStats: 10
+  maxAttributes: 6
+  maxSkills: 10
   playerHealth:
     min: 10
     max: 2000
   playerDamage:
     min: 1
     max: 300
+  playerDefense:
+    min: 0
+    max: 200
+  playerSpeed:
+    min: 2
+    max: 12
   xpRequired:
     min: 1
     max: 100000

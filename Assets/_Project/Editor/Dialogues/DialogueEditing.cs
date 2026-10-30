@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using TheDungeon.Data;
 using UnityEditor;
+using UnityEngine;
 
 namespace TheDungeon.Editor.Dialogues
 {
@@ -46,6 +47,8 @@ namespace TheDungeon.Editor.Dialogues
             node.FindPropertyRelative("next").intValue = End;
             node.FindPropertyRelative("choices").arraySize = 0;
             node.FindPropertyRelative("consequences").arraySize = 0;
+            node.FindPropertyRelative("graphPosition").vector2Value = Vector2.zero;
+            node.FindPropertyRelative("placed").boolValue = false;
 
             var start = npc.FindProperty("startNode");
             if (start.intValue < 0 || IndexOf(npc, start.intValue) < 0)
@@ -105,6 +108,7 @@ namespace TheDungeon.Editor.Dialogues
             choice.FindPropertyRelative("target").intValue = target;
             choice.FindPropertyRelative("conditions").arraySize = 0;
             choice.FindPropertyRelative("consequences").arraySize = 0;
+            ResetChoiceLook(choice);
             // Une réplique avec des choix n'a plus de suite directe : ce sont les choix qui mènent à la suite.
             node.FindPropertyRelative("next").intValue = End;
             return choices.arraySize - 1;
@@ -139,6 +143,54 @@ namespace TheDungeon.Editor.Dialogues
         }
 
         public static void SetStart(SerializedObject npc, int id) => npc.FindProperty("startNode").intValue = id;
+
+        /// <summary>Une réponse ajoutée recopie la précédente : elle repart sans couleurs propres, liée par la droite.</summary>
+        public static void ResetChoiceLook(SerializedProperty choice)
+        {
+            choice.FindPropertyRelative("customLook").boolValue = false;
+            choice.FindPropertyRelative("linkFromLeft").boolValue = false;
+        }
+
+        /// <summary>
+        /// Lien de l'arbre : la suite directe (choiceIndex &lt; 0) ou la réponse n° choiceIndex mène à <paramref name="target"/>.
+        /// <paramref name="fromLeft"/> : côté de la réponse d'où part le lien (un seul côté à la fois), inchangé si null.
+        /// </summary>
+        public static void SetLink(SerializedObject npc, int fromId, int choiceIndex, int target, bool? fromLeft = null)
+        {
+            var node = Node(npc, fromId);
+            if (node == null)
+                return;
+            if (choiceIndex < 0)
+            {
+                node.FindPropertyRelative("next").intValue = target;
+                return;
+            }
+            var choices = node.FindPropertyRelative("choices");
+            if (choiceIndex >= choices.arraySize)
+                return;
+            var choice = choices.GetArrayElementAtIndex(choiceIndex);
+            choice.FindPropertyRelative("target").intValue = target;
+            if (fromLeft.HasValue)
+                choice.FindPropertyRelative("linkFromLeft").boolValue = fromLeft.Value;
+        }
+
+        /// <summary>Range une réplique à la main dans l'arbre.</summary>
+        public static void SetPosition(SerializedObject npc, int id, Vector2 position)
+        {
+            var node = Node(npc, id);
+            if (node == null)
+                return;
+            node.FindPropertyRelative("graphPosition").vector2Value = position;
+            node.FindPropertyRelative("placed").boolValue = true;
+        }
+
+        /// <summary>Oublie les positions choisies à la main : l'arbre est de nouveau rangé automatiquement.</summary>
+        public static void ClearPositions(SerializedObject npc)
+        {
+            var nodes = Nodes(npc);
+            for (var i = 0; i < nodes.arraySize; i++)
+                nodes.GetArrayElementAtIndex(i).FindPropertyRelative("placed").boolValue = false;
+        }
 
         /// <summary>Choix « Réplique suivante » : la fin, chaque réplique existante, et l'identifiant correspondant.</summary>
         public static (List<string> labels, List<int> ids) TargetChoices(NpcData npc, int excludeId)

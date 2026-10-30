@@ -328,5 +328,26 @@ namespace TheDungeon.Editor.Tests
             Assert.AreEqual("6 %", crit.Format(state.Value(crit)));
             TestData.Destroy(progression);
         }
+
+        [Test]
+        public void AttributePoints_AddedOnTopOfExistingOnes()
+        {
+            var progression = Default();
+            try
+            {
+                var so = new SerializedObject(progression);
+                ProgressionEditing.SetAttributePoints(so, 1, 2, 2);
+                ProgressionEditing.AddAttributePoints(so, 2, 2, 4);
+                int PointsAt(int level) => progression.Rewards.Where(r => r.type == RewardType.AttributePoints && r.level == level).Sum(r => r.amount);
+                Assert.AreEqual(3, PointsAt(2), "Le niveau 2 donnait déjà 1 point : il en donne 3.");
+                Assert.AreEqual(1, PointsAt(4), "Le niveau 4 n'est pas concerné par l'ajout (tous les 4 niveaux à partir du 2).");
+                Assert.AreEqual(3, PointsAt(6));
+                Assert.AreEqual(1, progression.Rewards.Count(r => r.type == RewardType.AttributePoints && r.level == 2), "Pas de doublon : le niveau garde une seule récompense.");
+            }
+            finally
+            {
+                TestData.Destroy(progression);
+            }
+        }
     }
 }

@@ -24,8 +24,9 @@ namespace TheDungeon.Editor.Validation
             {
                 if (npc.Portrait == null)
                     yield return Warning("Le personnage n'a pas de portrait.", npc);
-                if (npc.Floor < 1 || npc.Floor > limits.floorCount)
-                    yield return Error($"Étage {npc.Floor} invalide (1 à {limits.floorCount}).", npc);
+                var outside = FloorSet.Floors(npc.Floors).Where(f => f > limits.floorCount).ToList();
+                if (outside.Count > 0)
+                    yield return Error($"Étage {outside[0]} invalide : le donjon compte {limits.floorCount} étages.", npc);
                 if (npc.Nodes.Count == 0)
                 {
                     yield return Error("La conversation est vide.", npc);
@@ -45,7 +46,7 @@ namespace TheDungeon.Editor.Validation
                         yield return Error($"Le début alternatif n°{e + 1} ne mène à aucune réplique.", npc);
                     if (entry.conditions.Count == 0)
                         yield return Warning($"Le début alternatif n°{e + 1} n'a pas de condition : il remplace toujours le début normal.", npc);
-                    foreach (var issue in Conditions(entry.conditions, $"Début alternatif n°{e + 1}", npc, setFlags, limits))
+                    foreach (var issue in Conditions(entry.conditions, $"Début alternatif n°{e + 1}", npc, setFlags, limits, context.Progressions))
                         yield return issue;
                 }
 
@@ -75,7 +76,7 @@ namespace TheDungeon.Editor.Validation
                             yield return Error($"{choiceWhere} : le texte est vide.", npc);
                         if (choice.target >= 0 && npc.FindNode(choice.target) == null)
                             yield return Error($"{choiceWhere} : mène à une réplique supprimée (#{choice.target}).", npc);
-                        foreach (var issue in Conditions(choice.conditions, choiceWhere, npc, setFlags, limits))
+                        foreach (var issue in Conditions(choice.conditions, choiceWhere, npc, setFlags, limits, context.Progressions))
                             yield return issue;
                         foreach (var issue in Consequences(choice.consequences, choiceWhere, npc, limits))
                             yield return issue;
@@ -91,7 +92,7 @@ namespace TheDungeon.Editor.Validation
         }
 
         static IEnumerable<ValidationIssue> Conditions(IEnumerable<DialogueCondition> conditions, string where, NpcData npc,
-            HashSet<string> setFlags, Common.ForgeDesignLimits limits)
+            HashSet<string> setFlags, Common.ForgeDesignLimits limits, IReadOnlyList<PlayerProgression> progressions)
         {
             foreach (var condition in conditions)
             {
@@ -117,6 +118,20 @@ namespace TheDungeon.Editor.Validation
                     case ConditionType.FloorAtLeast:
                         if (condition.value < 1 || condition.value > limits.floorCount)
                             yield return Error($"{where} : étage {condition.value} hors limites (1 à {limits.floorCount}).", npc);
+                        break;
+                    case ConditionType.MechanicAtLeast:
+                        var mechanic = string.IsNullOrEmpty(condition.flag) ? null
+                            : progressions.Where(p => p != null).Select(p => p.FindMechanic(condition.flag)).FirstOrDefault(m => m != null);
+                        if (mechanic == null)
+                            yield return Error($"{where} : la condition vise une mécanique qui n'existe pas (ou plus) dans la progression.", npc);
+                        else if (condition.value < 1 || condition.value > mechanic.MaxRank)
+                            yield return Error($"{where} : niveau {condition.value} hors limites pour « {mechanic.displayName} » (1 à {mechanic.MaxRank}).", npc);
+                        break;
+                    case ConditionType.FloorIn:
+                        if (!FloorSet.Floors(condition.value).Any(f => f <= limits.floorCount))
+                            yield return Error($"{where} : la condition « Étages précis » ne coche aucun étage.", npc);
+                        else if (!FloorSet.Floors(condition.value).Any(npc.AppearsOn))
+                            yield return Warning($"{where} : le personnage n'apparaît sur aucun des étages de la condition ({FloorSet.Describe(condition.value)}), elle ne sera jamais remplie.", npc);
                         break;
                     case ConditionType.GoldAtLeast:
                         if (condition.value < 0)

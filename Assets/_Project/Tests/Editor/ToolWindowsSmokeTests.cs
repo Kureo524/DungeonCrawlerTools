@@ -57,6 +57,15 @@ namespace TheDungeon.Editor.Tests
                 {
                     var root = new TheDungeon.Editor.Dialogues.DialoguesTab(w).Build();
                     ClickAll(root, "Arbre");
+                    Assert.Greater(root.Query(className: "forge-dialogue-node").ToList().Count, 0, "L'arbre doit montrer les répliques.");
+                    Assert.IsNotNull(root.Q(className: "forge-dialogue-node__port"), "Les réponses doivent avoir un rond de sortie.");
+                    Assert.IsNotNull(root.Q(className: "forge-dialogue-sample"), "Aperçu de l'apparence manquant.");
+                    // Les sections se replient au clic sur leur en-tête.
+                    var section = root.Query(className: "forge-section").Where(e => e.Q(className: "forge-section__header") != null).First();
+                    var collapsed = section.ClassListContains("forge-section--collapsed");
+                    ForgeUI.ToggleCollapsed(section);
+                    Assert.AreNotEqual(collapsed, section.ClassListContains("forge-section--collapsed"), "La section doit se replier ou se déplier.");
+                    ForgeUI.ToggleCollapsed(section);
                     ClickAll(root, "Aperçu en jeu");
                     ClickAll(root, "Conversation");
                     var composer = root.Q<TextField>(className: "forge-composer__input");

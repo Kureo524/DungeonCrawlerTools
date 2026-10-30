@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bdc53dd8677b144779443d34d658af29, type: 3}
+  m_Name: FLR_1
+  m_EditorClassIdentifier: TheDungeon.Runtime::TheDungeon.Data.FloorData
+  floorNumber: 1
+  rooms:
+  - room: {fileID: 11400000, guid: e4e463b70abf9eba9a9b9dbbcd4a48bf, type: 2}
+    cell: {x: 3, y: 3}
+  - room: {fileID: 11400000, guid: 83182d7fb7b59cac4959bbe66b83eb06, type: 2}
+    cell: {x: 3, y: 4}
+  - room: {fileID: 11400000, guid: d4177dc2067cb693dafceec65ff73329, type: 2}
+    cell: {x: 4, y: 4}
+  - room: {fileID: 11400000, guid: 0fce6787b423c230888278a2437f784e, type: 2}
+    cell: {x: 3, y: 5}
+  - room: {fileID: 11400000, guid: d638cef78c5caf2e0844014dac9279c9, type: 2}
+    cell: {x: 2, y: 4}
+  - room: {fileID: 11400000, guid: 7855619b502bf76aa8be0c73fdb973c1, type: 2}
+    cell: {x: 4, y: 5}
+  - room: {fileID: 11400000, guid: 0163afcd5213becf19133c1609d8f170, type: 2}
+    cell: {x: 1, y: 4}
+  - room: {fileID: 11400000, guid: 7025ac932a7dc8a6fabf0e70dfbaf37f, type: 2}
+    cell: {x: 1, y: 3}
+  - room: {fileID: 11400000, guid: 2a0211d7df9f42c37a3f2e07497288a8, type: 2}
+    cell: {x: 1, y: 2}
+  - room: {fileID: 11400000, guid: a053528e4637bb62a96ec651ffa8b982, type: 2}
+    cell: {x: 1, y: 5}
+  entrance: {fileID: 11400000, guid: e4e463b70abf9eba9a9b9dbbcd4a48bf, type: 2}
+  campfireHealPercent: 100

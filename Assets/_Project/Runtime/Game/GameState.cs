@@ -71,10 +71,29 @@ namespace TheDungeon.Game
 
         int Bonus(StatType stat) => Equipped.SelectMany(item => item.Stats).Where(s => s.stat == stat).Sum(s => s.value);
 
+        /// <summary>Total des passifs de l'arme équipée pour ce type d'effet.</summary>
+        public float Passive(EffectType type) => Weapon != null ? Weapon.PassiveTotal(type) : 0f;
+
+        /// <summary>Rang d'une rareté (0 = la plus commune), fourni par la base de jeu ; par défaut, l'identifiant.</summary>
+        public Func<int, int> RarityRank { get; set; }
+
         public int MaxHp => Mathf.Max(1, Mathf.RoundToInt(Base(StatRole.MaxHealth, 50 + Level * 10)) + Bonus(StatType.Health));
-        public int Attack => Mathf.Max(1, Mathf.RoundToInt(Base(StatRole.Damage, 5 + Level)) + Bonus(StatType.Damage));
+
+        public int Attack
+        {
+            get
+            {
+                var boost = Passive(EffectType.AttackBoost);
+                if (Hp > 0 && Hp < MaxHp * EffectInfo.LastStandThreshold)
+                    boost += Passive(EffectType.LastStand);
+                var raw = Base(StatRole.Damage, 5 + Level) + Bonus(StatType.Damage);
+                return Mathf.Max(1, Mathf.RoundToInt(raw * (1f + boost / 100f)));
+            }
+        }
+
         public int Defense => Mathf.Max(0, Mathf.RoundToInt(Base(StatRole.Defense, 0f)) + Bonus(StatType.Defense));
-        public float MoveSpeed => Mathf.Max(2f, Base(StatRole.Speed, BaseMoveSpeed) + 0.15f * Bonus(StatType.Speed));
+
+        public float MoveSpeed => Mathf.Max(2f, (Base(StatRole.Speed, BaseMoveSpeed) + 0.15f * Bonus(StatType.Speed)) * (1f + Passive(EffectType.MoveSpeed) / 100f));
         public int XpToNext => Level >= MaxLevel ? 0 : Mathf.Max(1, Mathf.RoundToInt(Base(StatRole.XpToNext, 100 * Level)));
 
         /// <summary>Stats montrées au joueur (celles de la progression, ou PV / dégâts / défense / XP à défaut).</summary>
@@ -243,6 +262,8 @@ namespace TheDungeon.Game
         /// <summary>Dégâts subis après défense (au moins 1). Renvoie les dégâts réellement infligés.</summary>
         public int TakeDamage(int raw)
         {
+            var reduction = Mathf.Clamp(Passive(EffectType.DamageReduction), 0f, EffectInfo.MaxDamageReduction);
+            raw = Mathf.Max(1, Mathf.RoundToInt(raw * (1f - reduction / 100f)));
             var dealt = Combat.Mitigate(raw, Defense);
             Hp = Mathf.Max(0, Hp - dealt);
             return dealt;
@@ -291,9 +312,8 @@ namespace TheDungeon.Game
             foreach (var stat in Stats.Where(s => s.resource && s.regenPerSecond > 0f))
                 resources[stat.id] = Mathf.Min(Value(stat), Current(stat) + stat.regenPerSecond * deltaTime);
 
-            // Régénération permanente des compétences.
-
-            var passive = SkillValue(SkillEffect.Regeneration);
+            // Régénération permanente des compétences et des passifs de l'arme.
+            var passive = SkillValue(SkillEffect.Regeneration) + Passive(EffectType.Regeneration);
             if (passive > 0f && Hp < MaxHp)
             {
                 passiveRegenCarry += passive * deltaTime;
@@ -321,7 +341,7 @@ namespace TheDungeon.Game
             if (item == null)
                 return;
             var slot = Slot(item.Type);
-            if (slot.HasValue && IsBetter(item, Current(slot.Value)))
+            if (slot.HasValue && IsBetter(item, Current(slot.Value), RarityRank))
             {
                 var previous = Current(slot.Value);
                 Equip(item);
@@ -371,7 +391,7 @@ namespace TheDungeon.Game
             if (item == null || item.Type != ItemType.Consumable || !Inventory.Contains(item))
                 return false;
             Inventory.Remove(item);
-            foreach (var effect in item.Effects)
+            foreach (var effect in item.ActiveEffects)
             {
                 if (effect.type == EffectType.Heal)
                     Heal(Mathf.RoundToInt(effect.value));
@@ -382,7 +402,7 @@ namespace TheDungeon.Game
                 }
             }
             // Un consommable sans effet de soin rend au moins un peu de vie (nourriture, potion…).
-            if (!item.Effects.Any(e => e.type is EffectType.Heal or EffectType.Regeneration))
+            if (!item.ActiveEffects.Any(e => e.type is EffectType.Heal or EffectType.Regeneration))
                 Heal(Mathf.Max(5, MaxHp / 5));
             Message?.Invoke($"'{item.DisplayName}' utilisé.", new Color(0.5f, 1f, 0.6f));
             return true;
@@ -406,18 +426,24 @@ namespace TheDungeon.Game
         };
 
         /// <summary>Meilleur = rareté supérieure, ou même rareté et plus de bonus au total.</summary>
-        public static bool IsBetter(ItemData candidate, ItemData current)
+        /// <param name="rarityRank">Rang de chaque rareté ; par défaut, l'identifiant (les raretés de départ sont rangées ainsi).</param>
+        public static bool IsBetter(ItemData candidate, ItemData current, Func<int, int> rarityRank = null)
         {
             if (current == null)
                 return true;
-            if (candidate.Rarity != current.Rarity)
-                return candidate.Rarity > current.Rarity;
+            rarityRank ??= id => id;
+            var candidateRank = rarityRank(candidate.RarityId);
+            var currentRank = rarityRank(current.RarityId);
+            if (candidateRank != currentRank)
+                return candidateRank > currentRank;
             return candidate.Stats.Sum(s => s.value) > current.Stats.Sum(s => s.value);
         }
 
         // --- IDialogueState ---
         public int PlayerLevel => Level;
         public bool HasFlag(string flag) => flags.Contains(flag);
+
+        public int MechanicLevel(string mechanicId) => mechanicRanks.TryGetValue(mechanicId ?? string.Empty, out var rank) ? rank : 0;
 
         public void SetFlag(string flag, bool value)
         {

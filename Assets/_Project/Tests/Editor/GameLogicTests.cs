@@ -33,10 +33,10 @@ namespace TheDungeon.Editor.Tests
             ProgressionEditing.SetValues(so, 3, Enumerable.Repeat(50f, 20).ToList());
         });
 
-        static ItemData Item(ItemType type, Rarity rarity, StatType stat, int value) => TestData.Create<ItemData>("ITM_Test", so =>
+        static ItemData Item(ItemType type, int rarity, StatType stat, int value) => TestData.Create<ItemData>("ITM_Test", so =>
         {
             so.FindProperty("type").enumValueIndex = (int)type;
-            so.FindProperty("rarity").enumValueIndex = (int)rarity;
+            so.FindProperty("rarity").intValue = rarity;
             var stats = so.FindProperty("stats");
             stats.arraySize = 1;
             stats.GetArrayElementAtIndex(0).FindPropertyRelative("stat").enumValueIndex = (int)stat;
@@ -77,8 +77,8 @@ namespace TheDungeon.Editor.Tests
         {
             var progression = Progression();
             var state = new GameState(progression);
-            var common = Item(ItemType.Weapon, Rarity.Common, StatType.Damage, 2);
-            var rare = Item(ItemType.Weapon, Rarity.Rare, StatType.Damage, 5);
+            var common = Item(ItemType.Weapon, 0, StatType.Damage, 2);
+            var rare = Item(ItemType.Weapon, 2, StatType.Damage, 5);
 
             state.AddItem(common);
             state.AddItem(rare);
@@ -87,6 +87,37 @@ namespace TheDungeon.Editor.Tests
             Assert.Contains(common, state.Inventory);
             Assert.AreEqual(10 + 5, state.Attack);
             TestData.Destroy(progression, common, rare);
+        }
+
+        [Test]
+        public void WeaponPassive_AttackBoost_RaisesAttack()
+        {
+            var progression = Progression();
+            var state = new GameState(progression);
+            var weapon = Item(ItemType.Weapon, 4, StatType.Damage, 10);
+            var so = new UnityEditor.SerializedObject(weapon);
+            var effects = so.FindProperty("effects");
+            effects.arraySize = 1;
+            effects.GetArrayElementAtIndex(0).FindPropertyRelative("type").enumValueIndex = (int)EffectType.AttackBoost;
+            effects.GetArrayElementAtIndex(0).FindPropertyRelative("trigger").enumValueIndex = (int)EffectTrigger.Passive;
+            effects.GetArrayElementAtIndex(0).FindPropertyRelative("value").floatValue = 50f;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            state.AddItem(weapon);
+
+            Assert.AreEqual(Mathf.RoundToInt((10 + 10) * 1.5f), state.Attack);
+            TestData.Destroy(progression, weapon);
+        }
+
+        [Test]
+        public void RarityRank_DecidesTheBetterItem_NotTheId()
+        {
+            var high = Item(ItemType.Weapon, 0, StatType.Damage, 1);
+            var low = Item(ItemType.Weapon, 7, StatType.Damage, 9);
+
+            // La rareté n°0 est rangée au-dessus de la n°7.
+            Assert.IsTrue(GameState.IsBetter(high, low, id => id == 0 ? 5 : 1));
+            TestData.Destroy(high, low);
         }
 
         [Test]

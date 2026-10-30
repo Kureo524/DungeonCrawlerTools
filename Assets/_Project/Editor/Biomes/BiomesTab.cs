@@ -59,7 +59,7 @@ namespace TheDungeon.Editor.Biomes
             visuals.Add(ForgeLists.Array(serializedObject, "floorSprites", "Variantes de sol", "Les variantes sont mélangées automatiquement dans les salles.",
                 Limits.maxBiomeFloorVariants,
                 (element, _) => new SpriteField(null, element, "Biomes", "Variante de sol.")));
-            visuals.Add(ForgeUI.Label("Aperçu", "forge-section-title"));
+            visuals.Add(ForgeUI.Label(ForgeText.WindowRich("Aperçu"), "forge-section-title"));
             tilePreview = new VisualElement();
             tilePreview.AddToClassList("forge-tile-preview");
             visuals.Add(tilePreview);
@@ -118,12 +118,12 @@ namespace TheDungeon.Editor.Biomes
                 }));
 
             container.Add(ForgeLists.Array(serializedObject, "rarityBoosts", "Bonus de butin par rareté",
-                "Multiplie le poids des objets d'une rareté pour tous les tirages de butin du biome.", Enum.GetValues(typeof(Rarity)).Length,
+                "Multiplie le poids des objets d'une rareté pour tous les tirages de butin du biome.", Limits.rarities.Count,
                 (element, _) =>
                 {
-                    var rarity = new EnumField(Rarity.Common) { tooltip = "Rareté concernée." };
-                    rarity.BindProperty(element.FindPropertyRelative("rarity"));
-                    rarity.style.width = 110;
+                    var rarity = new RarityField(null, element.FindPropertyRelative("rarity"), "Rareté concernée.");
+                    rarity.style.width = 150;
+                    rarity.style.flexGrow = 0;
                     var multiplier = ForgeUI.Slider("×", null, Limits.biomeRarityBoost, "2 = deux fois plus fréquent, 0.5 = deux fois moins, 0 = jamais.");
                     multiplier.BindProperty(element.FindPropertyRelative("multiplier"));
                     multiplier.style.flexGrow = 1;
@@ -150,11 +150,11 @@ namespace TheDungeon.Editor.Biomes
             var boosts = serializedObject.FindProperty("rarityBoosts");
             var used = new HashSet<int>();
             for (var i = 0; i < boosts.arraySize - 1; i++)
-                used.Add(boosts.GetArrayElementAtIndex(i).FindPropertyRelative("rarity").enumValueIndex);
-            var free = Enumerable.Range(0, Enum.GetValues(typeof(Rarity)).Length).Where(index => !used.Contains(index)).DefaultIfEmpty(-1).First();
+                used.Add(boosts.GetArrayElementAtIndex(i).FindPropertyRelative("rarity").intValue);
+            var free = ForgeDesignLimits.Instance.rarities.Select(rule => rule.id).Where(id => !used.Contains(id)).DefaultIfEmpty(-1).First();
             if (free < 0)
                 return false;
-            element.FindPropertyRelative("rarity").enumValueIndex = free;
+            element.FindPropertyRelative("rarity").intValue = free;
             element.FindPropertyRelative("multiplier").floatValue = 1.5f;
             return true;
         }

@@ -25,7 +25,7 @@ namespace TheDungeon.Editor.Common.Charts
         /// <summary>Barres qui grandissent par transition USS (largeur ou hauteur) : rejouées en repartant de zéro.</summary>
         static readonly (string className, bool vertical)[] GrowingBars =
         {
-            ("forge-bar-row__fill", false), ("forge-meter__fill", false), ("forge-bar__fill", true)
+            ("forge-bar-row__fill", false), ("forge-mini-meter__fill", false), ("forge-bar__fill", true)
         };
 
         public ChartAnimation(VisualElement owner, Action onFrame)
@@ -56,7 +56,8 @@ namespace TheDungeon.Editor.Common.Charts
                 var targets = new List<StyleLength>();
                 foreach (var bar in bars)
                 {
-                    targets.Add(vertical ? bar.style.height : bar.style.width);
+                    // Une barre encore en train de rejoindre sa valeur (BarList) donne sa largeur visée, pas sa largeur actuelle.
+                    targets.Add(!vertical && bar.userData is float percent ? Length.Percent(percent) : vertical ? bar.style.height : bar.style.width);
                     bar.style.transitionDuration = new List<TimeValue> { new(0f) };
                     if (vertical)
                         bar.style.height = 0f;

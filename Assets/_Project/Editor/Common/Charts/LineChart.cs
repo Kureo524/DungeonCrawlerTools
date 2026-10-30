@@ -46,7 +46,7 @@ namespace TheDungeon.Editor.Common.Charts
         public LineChart(string chartTitle, float height = 150f)
         {
             AddToClassList("forge-chart");
-            title = new Label(chartTitle);
+            title = new Label(string.IsNullOrEmpty(chartTitle) ? chartTitle : ForgeText.WindowRich(chartTitle)) { enableRichText = true };
             title.AddToClassList("forge-chart__title");
             Add(title);
             legendHost = new VisualElement();

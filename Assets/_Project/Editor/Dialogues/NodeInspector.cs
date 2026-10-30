@@ -27,6 +27,7 @@ namespace TheDungeon.Editor.Dialogues
             this.select = select;
             this.knownFlags = knownFlags;
             AddToClassList("forge-dialogue-inspector");
+            ForgeLabels.Track(this);
         }
 
         public void Show(int nodeId)
@@ -45,7 +46,7 @@ namespace TheDungeon.Editor.Dialogues
 
             var header = new VisualElement();
             header.AddToClassList("forge-row");
-            var title = ForgeUI.Label($"Réplique #{nodeId}", "forge-section-title");
+            var title = ForgeUI.Label(ForgeText.WindowRich($"Réplique #{nodeId}"), "forge-section-title");
             title.style.flexGrow = 1;
             header.Add(title);
             if (draft.StartNode == nodeId)
@@ -83,15 +84,12 @@ namespace TheDungeon.Editor.Dialogues
             Add(text);
             Add(counter);
 
+            // La suite directe n'a de sens que sans réponse du joueur : sinon, chaque réponse mène à sa propre suite.
             var choices = node.FindPropertyRelative("choices");
-            var next = TargetField("Suite", node.FindPropertyRelative("next"), nodeId,
-                "Réplique qui suit quand il n'y a pas de réponse à choisir.");
-            next.SetEnabled(choices.arraySize == 0);
-            if (choices.arraySize > 0)
-                next.tooltip = "Cette réplique propose des réponses : c'est chaque réponse qui mène à la suite.";
-            Add(next);
+            if (choices.arraySize == 0)
+                Add(TargetField("Suite", node.FindPropertyRelative("next"), nodeId, "Réplique qui suit quand il n'y a pas de réponse à choisir."));
 
-            Add(ForgeLists.Array(npc, $"{path}.choices", "Réponses du joueur",
+            var replies = ForgeLists.Array(npc, $"{path}.choices", "Réponses du joueur",
                 "Réponses proposées après cette réplique. Sans réponse, la conversation passe à la « Suite ».", limits.maxChoicesPerNode,
                 (choice, choiceIndex) => ChoiceRow(choice, $"{path}.choices.Array.data[{choiceIndex}]", nodeId),
                 choice =>
@@ -100,9 +98,20 @@ namespace TheDungeon.Editor.Dialogues
                     choice.FindPropertyRelative("target").intValue = DialogueEditing.End;
                     choice.FindPropertyRelative("conditions").arraySize = 0;
                     choice.FindPropertyRelative("consequences").arraySize = 0;
+                    DialogueEditing.ResetChoiceLook(choice);
                     node.FindPropertyRelative("next").intValue = DialogueEditing.End;
                     return true;
-                }));
+                });
+            replies.AddToClassList("forge-dialogue-inspector__replies");
+            // Ajouter la première réponse (ou retirer la dernière) fait apparaître ou disparaître la « Suite ».
+            var count = choices.arraySize;
+            replies.TrackPropertyValue(node.FindPropertyRelative("choices.Array.size"), property =>
+            {
+                if ((property.intValue == 0) != (count == 0))
+                    schedule.Execute(() => Show(nodeId));
+                count = property.intValue;
+            });
+            Add(replies);
 
             Add(DialogueRulesEditor.Consequences(npc, $"{path}.consequences", "Effets de la réplique",
                 "Appliqués dès que la réplique s'affiche (ex : le PNJ donne une récompense).", knownFlags));
@@ -140,7 +149,55 @@ namespace TheDungeon.Editor.Dialogues
             details.Add(DialogueRulesEditor.Consequences(npc, $"{choicePath}.consequences", "Effets",
                 "Appliqués quand le joueur choisit cette réponse.", knownFlags));
             row.Add(details);
+            row.Add(ChoiceLook(choice));
             return row;
+        }
+
+        /// <summary>Couleurs propres à une réponse, à la place de celles du personnage (Apparence de la boîte de dialogue).</summary>
+        VisualElement ChoiceLook(SerializedProperty choice)
+        {
+            var custom = choice.FindPropertyRelative("customLook");
+            var foldout = new Foldout { text = custom.boolValue ? "Apparence (couleurs propres)" : "Apparence", value = false };
+            foldout.AddToClassList("forge-dialogue-choice__rules");
+            var toggle = new Toggle("Couleurs propres")
+                { tooltip = "Cochée : cette réponse a ses propres couleurs. Décochée : elle prend celles du personnage." };
+            toggle.BindProperty(custom);
+            foldout.Add(toggle);
+            var colors = new VisualElement();
+            foreach (var (label, path, tooltip) in new[]
+                     {
+                         ("Fond", "background", "Fond de cette réponse."),
+                         ("Contour", "border", "Contour de cette réponse."),
+                         ("Texte", "textColor", "Texte de cette réponse.")
+                     })
+            {
+                var field = new ColorField(label) { showAlpha = false, tooltip = tooltip };
+                field.BindProperty(choice.FindPropertyRelative(path));
+                colors.Add(field);
+            }
+            colors.SetEnabled(custom.boolValue);
+            foldout.Add(colors);
+            var choicePath = choice.propertyPath;
+            toggle.RegisterValueChangedCallback(evt =>
+            {
+                colors.SetEnabled(evt.newValue);
+                foldout.text = evt.newValue ? "Apparence (couleurs propres)" : "Apparence";
+                if (!evt.newValue || evt.previousValue == evt.newValue)
+                    return;
+                // Point de départ, si la réponse n'a jamais eu de couleurs : celles du personnage.
+                var defaults = new DialogueChoice();
+                npc.Update();
+                if (npc.FindProperty($"{choicePath}.background").colorValue != defaults.background ||
+                    npc.FindProperty($"{choicePath}.border").colorValue != defaults.border ||
+                    npc.FindProperty($"{choicePath}.textColor").colorValue != defaults.textColor)
+                    return;
+                var look = draft.Style;
+                npc.FindProperty($"{choicePath}.background").colorValue = look.choiceBackground;
+                npc.FindProperty($"{choicePath}.border").colorValue = look.choiceBorder;
+                npc.FindProperty($"{choicePath}.textColor").colorValue = look.choiceText;
+                npc.ApplyModifiedProperties();
+            });
+            return foldout;
         }
 
         static string RuleSummary(SerializedProperty choice)

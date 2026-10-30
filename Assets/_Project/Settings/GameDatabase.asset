@@ -17,6 +17,7 @@ MonoBehaviour:
   progression: {fileID: 11400000, guid: b6bacdab289e4aa478163dd74103d07f, type: 2}
   npcs:
   - {fileID: 11400000, guid: d1fd88eddd302b6d3938c2d249454b7b, type: 2}
+  - {fileID: 11400000, guid: a4109deab1c13f2fa9999b360c0ddf6c, type: 2}
   rooms:
   - {fileID: 11400000, guid: a053528e4637bb62a96ec651ffa8b982, type: 2}
   - {fileID: 11400000, guid: d638cef78c5caf2e0844014dac9279c9, type: 2}

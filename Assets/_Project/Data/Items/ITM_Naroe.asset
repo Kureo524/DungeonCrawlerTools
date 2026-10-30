@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d6628d587abcb5cf78fd5752967e2e36, type: 3}
+  m_Name: ITM_Naroe
+  m_EditorClassIdentifier: TheDungeon.Runtime::TheDungeon.Data.ItemData
+  displayName: Naroe
+  icon: {fileID: 21300000, guid: 51ddd8faa9e8c8f099eed085f8901f3d, type: 3}
+  rarity: 0
+  type: 0
+  stats: []
+  effects: []
+  price: 5
+  description: Common currencies aren't used in the dungeon, instead they use Naroes

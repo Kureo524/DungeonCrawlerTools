@@ -259,7 +259,7 @@ namespace TheDungeon.Editor.Progression
                 tile.AddToClassList(modifier);
             var header = new VisualElement();
             header.AddToClassList("forge-tile__header");
-            header.Add(ForgeUI.Label(title, "forge-tile__title"));
+            header.Add(ForgeUI.Label(ForgeText.WindowRich(title), "forge-tile__title"));
             if (details.HasValue)
             {
                 var target = details.Value;
@@ -493,7 +493,7 @@ namespace TheDungeon.Editor.Progression
             var list = new VisualElement();
             list.AddToClassList("forge-section");
             list.AddToClassList("forge-stat-list");
-            list.Add(ForgeUI.Label("Stats", "forge-section-title"));
+            list.Add(ForgeUI.Label(ForgeText.WindowRich("Stats"), "forge-section-title"));
             list.Add(ForgeUI.Label("Choisissez une stat : sa courbe et ses réglages s'affichent à côté.", "forge-section-description"));
             for (var i = 0; i < draft.Stats.Count; i++)
             {
@@ -1310,9 +1310,9 @@ namespace TheDungeon.Editor.Progression
             var level = ForgeUI.Section($"Niveau {rewardLevel}", viewHost);
             AddLevelRewards(level, draft, rewardLevel);
 
-            var quick = new Foldout { text = "Donner des points d'attributs à intervalle régulier", value = false };
-            quick.AddToClassList("forge-section");
-            quick.AddToClassList("forge-fold");
+            // Bloc repliable comme les autres : même flèche, même en-tête.
+            var quick = ForgeUI.Section("Points d'attributs à intervalle régulier", viewHost,
+                "Donne des points d'attributs tous les N niveaux. « Remplacer » efface les points déjà prévus, « Ajouter » les cumule avec eux.");
             var row = Row();
             var amount = new IntegerField("Points") { value = 1, tooltip = "Points d'attributs donnés à chaque fois." };
             var every = new IntegerField("Tous les … niveaux") { value = 1, tooltip = "Écart entre deux niveaux qui donnent des points." };
@@ -1320,13 +1320,17 @@ namespace TheDungeon.Editor.Progression
             row.Add(amount);
             row.Add(every);
             row.Add(from);
-            row.Add(SmallButton("Répartir", "Remplace toutes les récompenses « Points d'attributs » par ce rythme (Ctrl+Z pour annuler).", () =>
+            row.Add(SmallButton("Ajouter", "Ajoute ces points à ceux déjà donnés (un niveau qui en donne déjà en reçoit davantage). Ctrl+Z pour annuler.", () =>
+            {
+                ProgressionEditing.AddAttributePoints(serializedObject, Mathf.Max(0, amount.value), Mathf.Max(1, from.value), Mathf.Max(1, every.value));
+                Rebuild();
+            }, true, "forge-button--primary"));
+            row.Add(SmallButton("Remplacer", "Remplace toutes les récompenses « Points d'attributs » par ce rythme (Ctrl+Z pour annuler).", () =>
             {
                 ProgressionEditing.SetAttributePoints(serializedObject, Mathf.Max(0, amount.value), Mathf.Max(1, from.value), Mathf.Max(1, every.value));
                 Rebuild();
-            }, true, "forge-button--primary"));
+            }, true));
             quick.Add(row);
-            viewHost.Add(quick);
         }
 
         /// <summary>Récompenses d'un niveau, modifiables, et boutons pour en ajouter.</summary>
@@ -1375,6 +1379,10 @@ namespace TheDungeon.Editor.Progression
             level.AddToClassList("forge-reward-row__level");
             level.RegisterValueChangedCallback(e =>
             {
+                // Le rattachement aux données envoie lui aussi la valeur actuelle : seul un vrai changement de niveau reconstruit la vue
+                // (sinon la catégorie se reconstruirait sans fin et plus aucun clic n'aboutirait).
+                if (e.newValue == reward.level)
+                    return;
                 var clamped = Mathf.Clamp(e.newValue, 1, Draft.MaxLevel);
                 if (clamped != e.newValue)
                 {
@@ -1648,9 +1656,9 @@ namespace TheDungeon.Editor.Progression
                 line.Add(deltaLabel);
                 item.Add(line);
                 var meter = new VisualElement();
-                meter.AddToClassList("forge-meter");
+                meter.AddToClassList("forge-mini-meter");
                 var fill = new VisualElement();
-                fill.AddToClassList("forge-meter__fill");
+                fill.AddToClassList("forge-mini-meter__fill");
                 fill.style.width = Length.Percent(100f * Mathf.Clamp01(Mathf.InverseLerp(stat.min, stat.max, value)));
                 fill.style.backgroundColor = stat.color;
                 meter.Add(fill);

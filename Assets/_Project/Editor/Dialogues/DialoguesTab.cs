@@ -34,6 +34,7 @@ namespace TheDungeon.Editor.Dialogues
         VisualElement stats;
         ChatView chat;
         NodeInspector inspector;
+        NodeInspector treeInspector;
         DialogueGraphView graph;
         DialoguePreview preview;
         readonly Dictionary<View, (Button button, VisualElement panel)> views = new();
@@ -55,23 +56,26 @@ namespace TheDungeon.Editor.Dialogues
         {
             if (!string.IsNullOrWhiteSpace(asset.Role))
                 yield return ForgeUI.Badge(asset.Role, asset.Color, "Rôle du personnage.");
-            yield return ForgeUI.Badge($"Étage {asset.Floor}", new Color(0.6f, 0.75f, 0.95f), "Étage où on le rencontre.");
+            yield return ForgeUI.Badge(FloorSet.Describe(asset.Floors), new Color(0.6f, 0.75f, 0.95f), "Étages où on le rencontre.");
             yield return ForgeUI.Badge($"{asset.LineCount} répliques", new Color(0.7f, 0.7f, 0.7f), "Répliques + réponses du joueur (compte du GDD).");
         }
 
         protected override VisualElement BuildFilters()
         {
             floorFilter = new DropdownField(new List<string> { AllFloors }.Concat(Enumerable.Range(1, Limits.floorCount).Select(f => $"Étage {f}")).ToList(), 0)
-                { tooltip = "N'affiche que les personnages de cet étage." };
+                { tooltip = "N'affiche que les personnages qu'on peut rencontrer à cet étage." };
+            floorFilter.AddToClassList("forge-list-filter");
             floorFilter.RegisterValueChangedCallback(_ => ApplyFilter());
             return floorFilter;
         }
 
-        protected override bool PassesFilters(NpcData asset) => floorFilter.value == AllFloors || floorFilter.value == $"Étage {asset.Floor}";
+        protected override bool PassesFilters(NpcData asset) =>
+            floorFilter.value == AllFloors || Enumerable.Range(1, Limits.floorCount).Any(f => floorFilter.value == $"Étage {f}" && asset.AppearsOn(f));
 
         protected override void InitializeNew(SerializedObject serialized)
         {
             serialized.FindProperty("floor").intValue = 1;
+            serialized.FindProperty("floors").intValue = FloorSet.Of(1);
             DialogueEditing.AddNode(serialized, DialogueSpeaker.Npc, "Bonjour, voyageur.");
         }
 
@@ -90,49 +94,47 @@ namespace TheDungeon.Editor.Dialogues
             speakerButtons.Clear();
 
             var identity = ForgeUI.Section("Personnage", container);
-            var identityRow = new VisualElement();
-            identityRow.AddToClassList("forge-chart-row");
-            var left = new VisualElement();
-            left.AddToClassList("forge-chart-row__grow");
-            left.Add(ForgeUI.Text("Nom", "displayName", "Nom affiché dans la boîte de dialogue. Le fichier sera nommé NPC_<Nom>."));
-            left.Add(ForgeUI.Text("Rôle", "role", "Rôle ou titre : forgeron, marchand, prisonnier…"));
-            left.Add(ForgeUI.Slider("Étage", "floor", new IntRange(1, Limits.floorCount), "Étage où l'on rencontre ce personnage."));
-            left.Add(new ColorField("Couleur") { showAlpha = false, bindingPath = "color", tooltip = "Couleur des bulles et de la plaque de nom." });
-            identityRow.Add(left);
-            var right = new VisualElement();
-            right.AddToClassList("forge-chart-row__grow");
-            right.Add(new SpriteField("Portrait", serializedObject.FindProperty("portrait"), "Npcs", "Portrait affiché à côté des répliques."));
-            identityRow.Add(right);
-            identity.Add(identityRow);
+            identity.Add(ForgeUI.Text("Nom", "displayName", "Nom affiché dans la boîte de dialogue. Le fichier sera nommé NPC_<Nom>."));
+            identity.Add(ForgeUI.Text("Rôle", "role", "Rôle ou titre : forgeron, marchand, prisonnier…"));
+            identity.Add(new SpriteField("Portrait", serializedObject.FindProperty("portrait"), "Npcs", "Portrait affiché à côté des répliques."));
+            identity.Add(new FloorMaskField("Étages", serializedObject.FindProperty("floors"), Limits.floorCount,
+                "Étages où l'on peut rencontrer ce personnage, un ou plusieurs. Il peut aussi être posé dans une salle précise (outil Salles).",
+                fallback: asset.Floors));
 
+            BuildAppearance(container, serializedObject);
+
+            // Toute la discussion (compteurs, actions, conversation / arbre / aperçu) tient dans un bloc repliable.
+            var discussion = ForgeUI.Section("Discussion", container);
+            discussion.AddToClassList("forge-dialogue-discussion");
             stats = new VisualElement();
             stats.AddToClassList("forge-card-grid");
-            container.Add(stats);
-            var export = ForgeUI.Button("Copier le script", "Copie la conversation au format texte (Markdown) pour la relire ou la faire relire hors d'Unity.", () =>
+            discussion.Add(stats);
+            var actions = new VisualElement();
+            actions.AddToClassList("forge-toolbar");
+            actions.AddToClassList("forge-dialogue-actions");
+            actions.Add(ForgeUI.Button("Copier le script", "Copie la conversation au format texte (Markdown) pour la relire ou la faire relire hors d'Unity.", () =>
             {
                 EditorGUIUtility.systemCopyBuffer = DialogueScript.Build(draft);
                 ForgeLists.Notify("Script copié dans le presse-papiers.");
-            });
-            export.style.alignSelf = Align.FlexStart;
-            container.Add(export);
+            }));
+            actions.Add(ForgeUI.Button("Exporter la discussion", "Enregistre toute la discussion (personnage, apparence, répliques, conditions, effets) dans un fichier JSON.", ExportDiscussion));
+            actions.Add(ForgeUI.Button("Importer une discussion", "Ouvre une discussion exportée : elle est préparée comme un nouveau personnage, à valider.", ImportDiscussion));
+            discussion.Add(actions);
 
             var switcher = new VisualElement();
             switcher.AddToClassList("forge-view-switch");
-            container.Add(switcher);
+            discussion.Add(switcher);
             var host = new VisualElement();
-            container.Add(host);
+            discussion.Add(host);
 
             AddView(switcher, host, View.Conversation, "Conversation", "Écrire et modifier la conversation, comme une messagerie.", BuildConversation());
-            AddView(switcher, host, View.Tree, "Arbre", "Vue d'ensemble de tous les embranchements.", graph = new DialogueGraphView(id =>
-            {
-                ShowView(View.Conversation);
-                Select(id);
-            }));
+            AddView(switcher, host, View.Tree, "Arbre", "Tous les embranchements : zoomez, rangez les répliques et reliez-les à la souris.", BuildTree());
             AddView(switcher, host, View.Preview, "Aperçu en jeu", "Jouer la conversation comme en jeu, avec un joueur simulé.", preview = new DialoguePreview());
             ShowView(view);
             inspector.Show(selectedId);
+            treeInspector.Show(selectedId);
 
-            container.Add(ForgeLists.Array(serializedObject, "entries", "Débuts alternatifs",
+            var entries = ForgeLists.Array(serializedObject, "entries", "Débuts alternatifs",
                 "Testés dans l'ordre avant le début normal : par exemple, un autre accueil si la quête est déjà acceptée.", 4,
                 (entry, index) =>
                 {
@@ -147,7 +149,9 @@ namespace TheDungeon.Editor.Dialogues
                     entry.FindPropertyRelative("node").intValue = draft.StartNode;
                     entry.FindPropertyRelative("conditions").arraySize = 0;
                     return true;
-                }));
+                });
+            entries.AddToClassList("forge-dialogue-entries");
+            container.Add(entries);
         }
 
         VisualElement BuildConversation()
@@ -168,6 +172,93 @@ namespace TheDungeon.Editor.Dialogues
             side.Add(inspector);
             layout.Add(side);
             return layout;
+        }
+
+        VisualElement BuildTree()
+        {
+            var layout = new VisualElement();
+            layout.AddToClassList("forge-dialogue-layout");
+            graph = new DialogueGraphView(npc, draft, Edit, Select);
+            graph.AddToClassList("forge-dialogue-layout__graph");
+            layout.Add(graph);
+            var side = new ScrollView();
+            side.AddToClassList("forge-dialogue-layout__side");
+            treeInspector = new NodeInspector(npc, draft, Edit, Select, KnownFlags);
+            side.Add(treeInspector);
+            layout.Add(side);
+            return layout;
+        }
+
+        /// <summary>Couleurs de la boîte de dialogue, avec un aperçu qui suit chaque réglage.</summary>
+        void BuildAppearance(VisualElement container, SerializedObject serializedObject)
+        {
+            var section = ForgeUI.Section("Apparence de la boîte de dialogue", container);
+            section.Add(ForgeUI.Label("Couleurs utilisées en jeu et dans l'aperçu pour ce personnage.", "forge-hint"));
+            var row = new VisualElement();
+            row.AddToClassList("forge-dialogue-look");
+            section.Add(row);
+
+            var fields = new VisualElement();
+            fields.AddToClassList("forge-dialogue-look__fields");
+            row.Add(fields);
+            void Group(string title, params (string label, string path, string tooltip)[] entries)
+            {
+                fields.Add(ForgeUI.Label(title, "forge-palette__title"));
+                foreach (var (label, path, tooltip) in entries)
+                    fields.Add(new ColorField(label) { showAlpha = false, bindingPath = path, tooltip = tooltip });
+            }
+            Group("Personnage",
+                ("Plaque de nom", "color", "Plaque de nom du personnage, contour de son portrait dans la conversation."),
+                ("Texte du nom", "style.nameText", "Texte de la plaque de nom."),
+                ("Plaque du joueur", "style.playerPlate", "Plaque de nom quand c'est le joueur qui parle."));
+            Group("Boîte de dialogue",
+                ("Fond", "style.boxBackground", "Fond de la boîte de dialogue."),
+                ("Contour", "style.boxBorder", "Contour de la boîte et du portrait."),
+                ("Texte", "style.text", "Texte des répliques."));
+            Group("Réponses du joueur",
+                ("Fond", "style.choiceBackground", "Fond des réponses proposées au joueur."),
+                ("Contour", "style.choiceBorder", "Contour des réponses proposées au joueur."),
+                ("Texte", "style.choiceText", "Texte des réponses proposées au joueur."));
+            var reset = ForgeUI.Button("Couleurs par défaut", "Remet les couleurs de la boîte de dialogue d'origine (la plaque de nom est conservée).", () =>
+            {
+                serializedObject.Update();
+                var defaults = new DialogueStyle();
+                foreach (var field in typeof(DialogueStyle).GetFields())
+                    serializedObject.FindProperty($"style.{field.Name}").colorValue = (Color)field.GetValue(defaults);
+                serializedObject.ApplyModifiedProperties();
+            });
+            reset.style.alignSelf = Align.FlexStart;
+            reset.style.marginTop = 10;
+            fields.Add(reset);
+
+            var sample = new DialogueBoxSample(draft);
+            row.Add(sample);
+            sample.TrackSerializedObjectValue(serializedObject, _ => sample.Refresh());
+        }
+
+        void ExportDiscussion()
+        {
+            var path = EditorUtility.SaveFilePanel("Exporter la discussion", string.Empty, $"{draft.name}.{DialogueTransfer.Extension}", DialogueTransfer.Extension);
+            if (string.IsNullOrEmpty(path))
+                return;
+            DialogueTransfer.Export(draft, path);
+            ForgeLists.Notify($"Discussion exportée : {System.IO.Path.GetFileName(path)}.");
+        }
+
+        void ImportDiscussion()
+        {
+            var path = EditorUtility.OpenFilePanel("Importer une discussion", string.Empty, DialogueTransfer.Extension);
+            if (string.IsNullOrEmpty(path))
+                return;
+            var imported = DialogueTransfer.Import(path);
+            if (imported == null)
+            {
+                ForgeDialogs.Inform("Import impossible", "Ce fichier n'est pas une discussion exportée par Forge Studio.");
+                return;
+            }
+            OpenDraft(() => DraftSession<NpcData>.CreateFrom(imported));
+            UnityEngine.Object.DestroyImmediate(imported);
+            ForgeLists.Notify("Discussion importée : vérifiez-la puis validez pour créer le personnage.");
         }
 
         /// <summary>Barre de saisie : on écrit la conversation comme dans une messagerie, Entrée pour envoyer.</summary>
@@ -310,6 +401,8 @@ namespace TheDungeon.Editor.Dialogues
             if (id == View.Preview)
                 preview.SetNpc(draft, Background());
             RefreshViews();
+            if (id == View.Tree)
+                graph.schedule.Execute(graph.FrameAll);
         }
 
         /// <summary>Sol d'un biome de l'étage du personnage, en fond de l'aperçu.</summary>
@@ -323,6 +416,7 @@ namespace TheDungeon.Editor.Dialogues
         {
             selectedId = id;
             inspector.Show(id);
+            treeInspector.Show(id);
             RefreshViews();
         }
 
@@ -341,9 +435,21 @@ namespace TheDungeon.Editor.Dialogues
             if (view == View.Conversation)
                 chat.Show(draft, selectedId);
             else if (view == View.Tree)
-                graph.Show(draft, selectedId);
+                graph.Show(selectedId);
             RefreshStats();
         }
+
+        /// <summary>Après Ctrl+Z : la conversation, l'arbre et le détail de la réplique reprennent l'état annulé (la vue de l'arbre est gardée).</summary>
+        protected override void AfterUndoRedo() => KeepingScroll(() =>
+        {
+            npc.Update();
+            if (draft.FindNode(selectedId) == null)
+                selectedId = draft.StartNode;
+            inspector.Show(selectedId);
+            treeInspector.Show(selectedId);
+            RefreshViews();
+            RefreshDetails();
+        });
 
         protected override void OnRefresh(NpcData asset)
         {

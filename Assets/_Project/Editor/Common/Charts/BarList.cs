@@ -68,6 +68,8 @@ namespace TheDungeon.Editor.Common.Charts
                 container.Add(row);
                 var percent = Mathf.Clamp(bar.Value / max * 100f, 1f, 100f);
                 current[bar.Label] = percent;
+                // Largeur visée, retenue pour que ChartAnimation.ReplayAll ne reprenne pas une largeur de départ.
+                fill.userData = percent;
                 fills.Add((fill, percent));
             }
 

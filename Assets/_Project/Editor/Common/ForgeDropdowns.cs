@@ -48,7 +48,10 @@ namespace TheDungeon.Editor.Common
 
         static readonly MethodInfo CreateMenuMethod = typeof(ForgeDropdowns).GetMethod(nameof(CreateMenu), BindingFlags.Static | BindingFlags.NonPublic);
 
-        static GenericDropdownMenu CreateMenu()
+        static GenericDropdownMenu CreateMenu() => Menu();
+
+        /// <summary>Menu contextuel dans le style Forge (à ouvrir avec DropDown).</summary>
+        public static GenericDropdownMenu Menu()
         {
             var menu = new GenericDropdownMenu();
             // Le menu est ajouté à la racine du panneau, hors de la fenêtre : il reçoit lui-même les jetons et la feuille de style.

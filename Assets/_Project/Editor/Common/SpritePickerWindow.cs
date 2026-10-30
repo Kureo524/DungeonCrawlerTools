@@ -38,7 +38,7 @@ namespace TheDungeon.Editor.Common
                 .OrderBy(sprite => sprite.name)
                 .ToList();
 
-            search = new ToolbarSearchField { tooltip = "Filtre les sprites par nom." };
+            search = ForgeUI.SearchField(new ToolbarSearchField { tooltip = "Filtre les sprites par nom." });
             search.style.width = StyleKeyword.Auto;
             search.RegisterValueChangedCallback(_ => Fill());
             rootVisualElement.Add(search);

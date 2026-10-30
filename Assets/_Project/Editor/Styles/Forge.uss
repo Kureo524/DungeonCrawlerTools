@@ -203,6 +203,11 @@
 .forge-multiline .unity-base-text-field__input {
     min-height: 56px;
     height: auto;
+    -unity-text-align: middle-left;
+}
+
+.forge-multiline .unity-base-text-field__input > .unity-text-element {
+    -unity-text-align: middle-left;
 }
 
 .forge-multiline .unity-text-element,
@@ -2924,14 +2929,14 @@
 .forge-theme .forge-delta--up { color: var(--forge-success); }
 .forge-theme .forge-delta--down { color: var(--forge-danger); }
 
-.forge-meter {
+.forge-mini-meter {
     height: 4px;
     margin-top: 4px;
     border-radius: 2px;
     background-color: rgba(232, 238, 250, 0.08);
 }
 
-.forge-meter__fill {
+.forge-mini-meter__fill {
     height: 100%;
     border-radius: 2px;
 }
@@ -3125,7 +3130,9 @@
     justify-content: center;
 }
 
+/* Piste, remplissage et poignée centrés sur la hauteur du champ, donc alignés avec le libellé. */
 .forge-theme .unity-base-slider--horizontal .unity-base-slider__tracker {
+    top: 50%;
     height: 4px;
     margin-top: -2px;
     border-width: 0;
@@ -3136,7 +3143,7 @@
 .forge-theme .unity-base-slider--horizontal .unity-base-slider__dragger {
     width: 16px;
     height: 16px;
-    margin-top: -6px;
+    margin-top: -3px;
     border-width: 1px;
     border-radius: 8px;
     border-color: rgba(255, 255, 255, 0.55);
@@ -3148,6 +3155,7 @@
 }
 
 .forge-theme .unity-base-slider__fill {
+    top: 50%;
     height: 4px;
     margin-top: -2px;
     border-radius: 2px;
@@ -3411,7 +3419,7 @@
     transition-timing-function: ease-out-cubic;
 }
 
-.forge-meter__fill {
+.forge-mini-meter__fill {
     transition-property: width;
     transition-duration: 0.45s;
     transition-timing-function: ease-out-cubic;
@@ -3457,4 +3465,924 @@
     border-radius: 18px;
     border-top-color: var(--forge-rim);
     border-left-color: var(--forge-rim);
+}
+
+/* ---------- Mise en page générale ---------- */
+
+/* Filtres de liste : à distance du champ de recherche et de la liste. */
+.forge-theme .forge-list-filters {
+    margin: 2px 0 12px 0;
+}
+
+.forge-theme .forge-list-filters > * {
+    margin-bottom: 6px;
+}
+
+.forge-theme .forge-details {
+    padding-bottom: 18px;
+}
+
+/* Bouton « retirer » : la croix est dessinée au centre. */
+.forge-theme .forge-button--close {
+    width: 26px;
+    min-width: 26px;
+    height: 26px;
+    min-height: 26px;
+    padding: 0;
+    justify-content: center;
+    align-items: center;
+    color: var(--forge-text-2);
+}
+
+.forge-theme .forge-button--close:hover {
+    color: var(--forge-danger);
+}
+
+.forge-button__cross {
+    width: 12px;
+    height: 12px;
+}
+
+/* Bouton à symbole dessiné (flèches) : carré, symbole centré. */
+.forge-theme .forge-button--glyph {
+    width: 26px;
+    min-width: 26px;
+    height: 26px;
+    min-height: 26px;
+    padding: 0;
+    justify-content: center;
+    align-items: center;
+    color: var(--forge-text-2);
+}
+
+.forge-theme .forge-button--glyph:hover {
+    color: var(--forge-text);
+}
+
+.forge-button__glyph {
+    width: 14px;
+    height: 14px;
+}
+
+/* Choix de plusieurs étages : pastilles à cocher. */
+.forge-floor-mask {
+    flex-direction: row;
+    align-items: center;
+    min-height: 26px;
+}
+
+.forge-floor-mask__chips {
+    flex-direction: row;
+    flex-wrap: wrap;
+    flex-grow: 1;
+}
+
+.forge-theme .forge-floor-mask__chip {
+    min-height: 24px;
+    margin: 2px 6px 2px 0;
+    padding: 0 12px;
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: var(--forge-border);
+    background-color: rgba(255, 255, 255, 0.03);
+    color: var(--forge-text-3);
+}
+
+.forge-theme .forge-floor-mask__chip:hover {
+    color: var(--forge-text);
+    border-color: var(--forge-border-strong);
+}
+
+.forge-theme .forge-floor-mask__chip--on,
+.forge-theme .forge-floor-mask__chip--on:hover {
+    border-color: var(--forge-accent);
+    background-color: var(--forge-accent-soft);
+    color: var(--forge-text);
+}
+
+/* ---------- Dialogues : actions, apparence ---------- */
+
+.forge-theme .forge-dialogue-actions {
+    margin: 4px 0 14px 0;
+}
+
+.forge-dialogue-look {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    margin-top: 6px;
+}
+
+.forge-dialogue-look__fields {
+    flex-grow: 1;
+    flex-basis: 320px;
+    margin-right: 18px;
+}
+
+.forge-theme .forge-dialogue-look__fields .forge-palette__title {
+    margin-top: 10px;
+    margin-bottom: 2px;
+}
+
+.forge-dialogue-sample {
+    flex-grow: 1;
+    flex-basis: 360px;
+    margin-top: 12px;
+    padding: 16px;
+    border-radius: 14px;
+    background-color: rgb(28, 25, 33);
+}
+
+.forge-dialogue-sample__box {
+    flex-direction: row;
+    padding: 12px;
+    border-width: 2px;
+    border-radius: 8px;
+}
+
+.forge-dialogue-sample__portrait {
+    width: 64px;
+    height: 64px;
+    margin-right: 12px;
+    border-width: 2px;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+}
+
+.forge-dialogue-sample__content {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.forge-theme .forge-dialogue-sample__plate {
+    align-self: flex-start;
+    padding: 2px 12px;
+    margin-bottom: 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    -unity-font-definition: url("Fonts/GothicA1-Bold.ttf");
+}
+
+.forge-theme .forge-dialogue-sample__text {
+    white-space: normal;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.forge-theme .forge-dialogue-sample__choice {
+    margin-top: 4px;
+    padding: 4px 10px;
+    border-width: 1px;
+    border-radius: 6px;
+    font-size: 11px;
+}
+
+/* ---------- Dialogues : conversation et arbre côte à côte avec le détail de la réplique ---------- */
+
+.forge-dialogue-layout__graph {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 360px;
+    margin-right: 16px;
+}
+
+.forge-theme .forge-dialogue-layout__side {
+    max-height: 720px;
+}
+
+.forge-dialogue-graph__toolbar {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.forge-theme .forge-dialogue-graph__toolbar .forge-chart__legend {
+    margin: 0;
+}
+
+.forge-theme .forge-dialogue-graph__toolbar .forge-button {
+    margin-left: 6px;
+}
+
+.forge-theme .forge-dialogue-graph__zoom {
+    min-width: 44px;
+    margin-right: 4px;
+    font-size: 11px;
+    color: var(--forge-text-3);
+    -unity-text-align: middle-right;
+    -unity-font-definition: url("Fonts/IBMPlexMono-Regular.ttf");
+}
+
+.forge-theme .forge-dialogue-graph__viewport {
+    height: 640px;
+    overflow: hidden;
+    border-width: 1px;
+    border-radius: 16px;
+    border-color: var(--forge-border);
+    border-top-color: var(--forge-rim);
+    border-left-color: var(--forge-rim);
+    background-color: var(--forge-canvas);
+}
+
+.forge-dialogue-graph__content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform-origin: 0 0;
+}
+
+.forge-dialogue-graph__edges {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1px;
+    height: 1px;
+}
+
+.forge-theme .forge-dialogue-graph__hint {
+    position: absolute;
+    left: 14px;
+    bottom: 10px;
+    font-size: 10px;
+    color: var(--forge-text-3);
+}
+
+/* Export PNG : fond opaque, sans coins arrondis ni aide. */
+.forge-theme .forge-dialogue-graph--export .forge-dialogue-graph__viewport {
+    border-width: 0;
+    border-radius: 0;
+    background-color: rgb(13, 13, 19);
+}
+
+.forge-dialogue-graph--export .forge-dialogue-graph__hint {
+    display: none;
+}
+
+/* Une réplique de l'arbre */
+.forge-theme .forge-dialogue-node {
+    position: absolute;
+    padding: 10px 12px 12px 12px;
+    border-width: 1px;
+    border-top-width: 3px;
+    border-radius: 12px;
+    border-left-color: var(--forge-border-strong);
+    border-right-color: var(--forge-border-strong);
+    border-bottom-color: var(--forge-border-strong);
+    background-color: rgba(22, 22, 31, 0.94);
+}
+
+.forge-theme .forge-dialogue-node:hover {
+    border-left-color: var(--forge-accent);
+    border-right-color: var(--forge-accent);
+    border-bottom-color: var(--forge-accent);
+}
+
+.forge-theme .forge-dialogue-node--selected,
+.forge-theme .forge-dialogue-node--selected:hover {
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: var(--forge-accent);
+    border-right-color: var(--forge-accent);
+    border-bottom-color: var(--forge-accent);
+    background-color: rgba(30, 32, 48, 0.97);
+}
+
+.forge-theme .forge-dialogue-node--orphan {
+    border-left-color: var(--forge-warning);
+    border-right-color: var(--forge-warning);
+    border-bottom-color: var(--forge-warning);
+}
+
+.forge-theme .forge-dialogue-node--drop {
+    border-left-color: var(--forge-success);
+    border-right-color: var(--forge-success);
+    border-bottom-color: var(--forge-success);
+    background-color: rgba(30, 48, 36, 0.97);
+}
+
+.forge-theme .forge-dialogue-node--narrator {
+    background-color: rgba(18, 18, 24, 0.9);
+}
+
+.forge-dialogue-node__input {
+    position: absolute;
+    top: -9px;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    margin-left: -6px;
+    border-radius: 6px;
+    border-width: 2px;
+    border-color: var(--forge-border-strong);
+    background-color: rgb(22, 22, 31);
+}
+
+.forge-dialogue-node__header {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.forge-theme .forge-dialogue-node__speaker {
+    font-size: 11px;
+    color: var(--forge-text);
+    margin-right: 6px;
+    -unity-font-definition: url("Fonts/GothicA1-Bold.ttf");
+}
+
+.forge-theme .forge-dialogue-node__id {
+    font-size: 10px;
+    color: var(--forge-text-3);
+    margin-right: 6px;
+    -unity-font-definition: url("Fonts/IBMPlexMono-Regular.ttf");
+}
+
+.forge-theme .forge-dialogue-node__text {
+    white-space: normal;
+    font-size: 11px;
+    color: var(--forge-text-2);
+}
+
+.forge-theme .forge-dialogue-node--narrator .forge-dialogue-node__text {
+    -unity-font-style: italic;
+}
+
+.forge-theme .forge-dialogue-node__effects {
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--forge-warning);
+}
+
+.forge-dialogue-node__choices {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top-width: 1px;
+    border-top-color: var(--forge-border);
+}
+
+.forge-dialogue-node__choice {
+    flex-direction: row;
+    align-items: center;
+    min-height: 24px;
+    margin-right: -12px;
+}
+
+.forge-theme .forge-dialogue-node__choice-text {
+    flex-grow: 1;
+    flex-shrink: 1;
+    font-size: 11px;
+    color: var(--forge-text);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.forge-theme .forge-dialogue-node__lock {
+    margin-right: 5px;
+    font-size: 8px;
+    color: var(--forge-lavender);
+}
+
+.forge-dialogue-node__port {
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    border-width: 2px;
+    flex-shrink: 0;
+}
+
+.forge-dialogue-node__port:hover {
+    width: 16px;
+    height: 16px;
+    border-radius: 8px;
+}
+
+.forge-dialogue-node__port--side {
+    margin-left: 6px;
+    margin-right: -7px;
+}
+
+.forge-dialogue-node__port--bottom {
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    margin-left: -7px;
+}
+
+/* Carte de survol d'une réplique */
+.forge-theme .forge-dialogue-card {
+    position: absolute;
+    width: 300px;
+    padding: 12px 14px;
+    border-width: 1px;
+    border-radius: 14px;
+    border-color: var(--forge-border);
+    border-top-color: var(--forge-rim);
+    border-left-color: var(--forge-rim);
+    background-color: rgba(16, 16, 24, 0.97);
+}
+
+.forge-dialogue-card__header {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.forge-dialogue-card__dot {
+    width: 8px;
+    height: 8px;
+    margin-right: 7px;
+    border-radius: 4px;
+}
+
+.forge-theme .forge-dialogue-card__speaker {
+    font-size: 12px;
+    margin-right: 6px;
+    -unity-font-definition: url("Fonts/GothicA1-Bold.ttf");
+}
+
+.forge-theme .forge-dialogue-card__id {
+    font-size: 10px;
+    margin-right: 6px;
+    color: var(--forge-text-3);
+    -unity-font-definition: url("Fonts/IBMPlexMono-Regular.ttf");
+}
+
+.forge-theme .forge-dialogue-card__text {
+    white-space: normal;
+    font-size: 12px;
+    color: var(--forge-text);
+}
+
+.forge-theme .forge-dialogue-card__title {
+    margin-top: 10px;
+    margin-bottom: 3px;
+    font-size: 10px;
+    color: var(--forge-text-3);
+    -unity-font-definition: url("Fonts/BarlowCondensed-SemiBold.ttf");
+    letter-spacing: 1px;
+}
+
+.forge-dialogue-card__choice {
+    margin-top: 4px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.forge-theme .forge-dialogue-card__choice-text {
+    white-space: normal;
+    font-size: 11px;
+}
+
+.forge-theme .forge-dialogue-card__next {
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--forge-text-2);
+}
+
+.forge-theme .forge-dialogue-card__hint {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top-width: 1px;
+    border-top-color: var(--forge-border);
+    font-size: 10px;
+    color: var(--forge-text-3);
+}
+
+/* ---------- Dialogues : aperçu en jeu ---------- */
+
+.forge-theme .forge-preview-game__hud {
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.forge-preview-game__stat {
+    flex-direction: row;
+    align-items: center;
+    margin: 0 6px 6px 0;
+    padding: 3px 10px;
+    border-radius: 8px;
+    background-color: rgba(0, 0, 0, 0.62);
+}
+
+.forge-theme .forge-preview-game__stat-label {
+    margin-right: 6px;
+    font-size: 10px;
+    color: rgb(170, 168, 180);
+}
+
+.forge-theme .forge-preview-game__stat-value {
+    font-size: 11px;
+    color: rgb(240, 238, 232);
+    -unity-font-definition: url("Fonts/IBMPlexMono-Regular.ttf");
+}
+
+.forge-theme .forge-preview-game__stat--gold .forge-preview-game__stat-value {
+    color: rgb(242, 204, 77);
+}
+
+.forge-theme .forge-preview-game__box {
+    border-width: 2px;
+}
+
+.forge-theme .forge-preview-game__right .forge-palette__title {
+    margin-top: 14px;
+    margin-bottom: 4px;
+}
+
+.forge-theme .forge-preview-game__journal-title {
+    margin-top: 18px;
+}
+
+.forge-theme .forge-preview-game__choice {
+    border-width: 1px;
+}
+
+/* ---------- Arbre : réponses reliables des deux côtés ---------- */
+
+.forge-dialogue-node__choice {
+    margin-left: -12px;
+}
+
+.forge-dialogue-node__port--left {
+    margin-left: -7px;
+    margin-right: 6px;
+}
+
+.forge-dialogue-node__port--idle {
+    opacity: 0.35;
+}
+
+/* ---------- Conditions et effets : le champ passe sous le type quand la place manque ---------- */
+
+.forge-theme .forge-rule-row {
+    flex-wrap: wrap;
+}
+
+.forge-theme .forge-rule-row__type {
+    width: auto;
+    min-width: 130px;
+    flex-basis: 150px;
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-bottom: 3px;
+}
+
+.forge-theme .forge-rule-row__value {
+    min-width: 170px;
+    flex-basis: 190px;
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-bottom: 3px;
+}
+
+.forge-theme .forge-rule-row__value .forge-row > TextField {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.forge-theme .forge-rule-row__value .forge-picker {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.forge-theme .forge-rule-row__value .forge-picker DropdownField {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+/* ---------- Champ sprite : boutons juste après le nom ---------- */
+
+.forge-theme .forge-sprite-field__name {
+    flex-grow: 0;
+    flex-shrink: 1;
+    max-width: 220px;
+    margin-right: 12px;
+}
+
+.forge-theme .forge-sprite-field .forge-button {
+    margin-right: 6px;
+}
+
+/* ---------- Boutons de la liste (Nouveau, Dupliquer, Supprimer) ---------- */
+
+.forge-theme .forge-list-pane > .forge-toolbar > .forge-button {
+    margin: 0 8px 8px 0;
+}
+
+/* ---------- Sections repliables ---------- */
+
+.forge-section__header {
+    flex-direction: row;
+    align-items: center;
+}
+
+.forge-section__header > .forge-section-title {
+    flex-grow: 1;
+}
+
+.forge-section__chevron {
+    width: 14px;
+    height: 14px;
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+.forge-section--collapsed > * {
+    display: none;
+}
+
+.forge-section--collapsed > .forge-section__header {
+    display: flex;
+}
+
+.forge-theme .forge-section--collapsed > .forge-section__header .forge-section-title {
+    margin-bottom: 0;
+}
+
+.forge-theme .forge-section--collapsed {
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+
+.forge-section__header--toggle:hover .forge-section-title {
+    color: var(--forge-accent-text);
+}
+
+.forge-theme .forge-section__header {
+    margin-bottom: 6px;
+}
+
+.forge-theme .forge-section__header > .forge-section-title {
+    margin-bottom: 0;
+}
+
+.forge-theme .forge-section--collapsed > .forge-section__header {
+    margin-bottom: 0;
+}
+
+.forge-theme .forge-section__chevron {
+    color: var(--forge-text-3);
+}
+
+.forge-theme .forge-section__header--toggle:hover .forge-section__chevron {
+    color: var(--forge-text);
+}
+
+/* ---------- Liste des éléments : un espace entre chaque ligne ---------- */
+
+.forge-theme .forge-list-pane .unity-collection-view__item,
+.forge-theme .forge-list-pane .unity-collection-view__item:hover,
+.forge-theme .forge-list-pane .unity-collection-view__item--selected,
+.forge-theme .forge-list-pane .unity-collection-view__item--selected:hover {
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.forge-list-item__slot {
+    justify-content: center;
+    height: 100%;
+}
+
+.forge-theme .forge-list-pane .forge-list-item {
+    height: 26px;
+    border-radius: 10px;
+}
+
+.forge-theme .forge-list-pane .unity-collection-view__item:hover .forge-list-item {
+    background-color: var(--forge-hover);
+}
+
+.forge-theme .forge-list-pane .unity-collection-view__item--selected .forge-list-item,
+.forge-theme .forge-list-pane .unity-collection-view__item--selected:hover .forge-list-item {
+    background-color: var(--forge-accent-soft);
+}
+
+/* Loupe dessinée de la barre de recherche */
+.forge-theme .unity-toolbar-search-field .forge-search-icon {
+    width: 16px;
+    height: 16px;
+    opacity: 1;
+    color: var(--forge-text-3);
+    background-image: none;
+}
+
+.forge-theme .forge-dialogue-inspector__replies {
+    margin-top: 14px;
+}
+
+.forge-theme .forge-dialogue-discussion > .forge-dialogue-actions {
+    margin-top: 10px;
+}
+
+
+.forge-theme .unity-toolbar-search-field .unity-search-field-base__search-button.forge-search-icon {
+    width: 10px;
+    height: 10px;
+    margin: 0 6px 0 0;
+    align-self: center;
+}
+
+.forge-theme .unity-toolbar-search-field.unity-search-field-base {
+    padding-left: 8px;
+}
+
+/* ---------- Blocs : même espacement partout, en-tête de même hauteur replié ou non ---------- */
+
+.forge-theme .forge-details .forge-section,
+.forge-theme .forge-details .forge-details-header {
+    margin: 0 0 12px 0;
+}
+
+.forge-theme .forge-section .forge-section {
+    margin: 10px 0 0 0;
+}
+
+.forge-section__header {
+    min-height: 28px;
+}
+
+/* Le bouton « + Ajouter » d'un bloc n'apparaît que quand le bloc est déplié. */
+.forge-section--collapsed > .forge-section__header > .forge-button {
+    display: none;
+}
+
+/* Texte des réponses du joueur : centré verticalement dans son champ. */
+.forge-theme .forge-dialogue-choice TextField .unity-text-element {
+    -unity-text-align: middle-left;
+}
+
+.forge-theme .forge-dialogue-choice TextField .unity-base-text-field__input {
+    min-height: 28px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    justify-content: center;
+}
+
+/* Marque de la barre latérale : nom puis sous-titre, avec un peu d'air. */
+.forge-theme .forge-sidebar__tagline {
+    margin-top: 5px;
+    white-space: normal;
+}
+
+/* Barre de validation plus large : l'état et les boutons ont de la place. */
+.forge-theme .forge-footer {
+    width: 70%;
+    min-width: 560px;
+    max-width: 1000px;
+    min-height: 46px;
+    padding: 8px 8px 8px 18px;
+}
+
+.forge-theme .forge-footer__status {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin: 0 16px 0 8px;
+}
+
+.forge-theme .forge-footer .forge-button {
+    margin-left: 8px;
+    padding-left: 16px;
+    padding-right: 16px;
+}
+
+/* ---------- Raretés (Objets > Raretés) et effets actifs / passifs ---------- */
+.forge-rarity-card > .forge-row {
+    margin-bottom: 4px;
+}
+
+.forge-rarity-card .forge-row > .forge-badge,
+.forge-rarity-card .forge-row > .forge-button {
+    flex-shrink: 0;
+    margin-left: 6px;
+}
+
+
+.forge-theme .forge-rarity-orphans {
+    white-space: normal;
+    margin: 4px 0 8px 0;
+    padding: 6px 10px;
+    border-radius: 10px;
+    color: var(--forge-danger);
+    background-color: var(--forge-danger-soft);
+}
+
+.forge-theme .forge-rarity-field--missing .unity-base-popup-field__text {
+    color: var(--forge-danger);
+}
+
+.forge-effect-trigger {
+    width: 96px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    margin-right: 6px;
+}
+
+.forge-theme .forge-effect-trigger--passive .unity-base-popup-field__text {
+    color: var(--forge-lavender);
+}
+
+/* ---------- Modifications non validées (barre latérale) : bouton « Tout valider » ---------- */
+.forge-theme .forge-sidebar__unsaved {
+    margin-top: -6px;
+    border-color: var(--forge-lavender-soft);
+}
+
+.forge-theme .forge-sidebar__unsaved:hover {
+    border-color: var(--forge-lavender);
+    background-color: var(--forge-hover);
+}
+
+.forge-theme .forge-sidebar__unsaved--blocked,
+.forge-theme .forge-sidebar__unsaved--blocked:hover {
+    border-color: var(--forge-danger-soft);
+}
+
+/* ---------- Raretés : poignée de glisser-déposer (coin haut gauche de la carte) ---------- */
+.forge-drag-handle {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    margin-right: 10px;
+    cursor: move-arrow;
+}
+
+.forge-theme .forge-drag-handle {
+    color: var(--forge-text-2);
+}
+
+/* Les autres cartes glissent pour ouvrir la place visée. */
+.forge-rarity-card {
+    transition-property: translate;
+    transition-duration: 0.15s;
+    transition-timing-function: ease-out;
+}
+
+/* Place de la carte déplacée : estompée et bordée, en attendant le lâcher. */
+.forge-theme .forge-rarity-card--placeholder {
+    opacity: 0.35;
+    border-color: var(--forge-lavender);
+}
+
+.forge-theme .forge-rarity-ghost {
+    padding: 12px 16px;
+    border-color: var(--forge-lavender);
+    background-color: var(--forge-bg-sidebar);
+    opacity: 0.95;
+}
+
+.forge-rarity-ghost__swatch {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    border-radius: 6px;
+}
+
+.forge-theme .forge-rarity-ghost__name {
+    -unity-font-style: bold;
+}
+
+.forge-theme .forge-rarity-card--new {
+    border-color: var(--forge-lavender);
+}
+
+/* Liste des modifications non validées (appui long sur l'indicateur). */
+.forge-theme .forge-unsaved-menu {
+    padding: 8px;
+    border-width: 1px;
+    border-radius: 14px;
+    border-color: var(--forge-border-strong);
+    border-top-color: var(--forge-rim);
+    border-left-color: var(--forge-rim);
+    background-color: var(--forge-bg-sidebar);
+}
+
+.forge-theme .forge-unsaved-menu__title {
+    margin: 2px 6px 6px 6px;
+    color: var(--forge-text-2);
+    font-size: 11px;
+}
+
+.forge-theme .forge-unsaved-menu__row {
+    padding: 7px 10px;
+    border-radius: 9px;
+}
+
+.forge-theme .forge-unsaved-menu__row--hover {
+    background-color: var(--forge-accent-soft);
+}
+
+.forge-theme .forge-unsaved-menu__commit {
+    margin-top: 6px;
+    border-top-width: 1px;
+    border-top-color: var(--forge-border);
 }

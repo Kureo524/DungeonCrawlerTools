@@ -17,6 +17,7 @@ namespace TheDungeon.Editor.RoomEditor
         const string Enemies = "enemies";
         const string Chests = "chests";
         const string Props = "props";
+        const string Npcs = "npcs";
 
         public static int Width(SerializedObject room) => room.FindProperty("width").intValue;
         public static int Height(SerializedObject room) => room.FindProperty("height").intValue;
@@ -57,6 +58,22 @@ namespace TheDungeon.Editor.RoomEditor
         public static string PlaceProp(SerializedObject room, Vector2Int cell, Sprite sprite) =>
             Place(room, cell, Props, element => element.FindPropertyRelative("sprite").objectReferenceValue = sprite);
 
+        /// <summary>Pose un personnage. Dans une salle de combat, il n'apparaît par défaut qu'une fois la salle nettoyée.</summary>
+        public static string PlaceNpc(SerializedObject room, Vector2Int cell, NpcData npc)
+        {
+            var list = room.FindProperty(Npcs);
+            for (var i = list.arraySize - 1; i >= 0; i--)
+                if (list.GetArrayElementAtIndex(i).FindPropertyRelative("npc").objectReferenceValue == npc &&
+                    list.GetArrayElementAtIndex(i).FindPropertyRelative("position").vector2IntValue != cell)
+                    list.DeleteArrayElementAtIndex(i);
+            var type = (RoomType)room.FindProperty("roomType").enumValueIndex;
+            return Place(room, cell, Npcs, element =>
+            {
+                element.FindPropertyRelative("npc").objectReferenceValue = npc;
+                element.FindPropertyRelative("afterClear").boolValue = type is RoomType.Combat or RoomType.Boss;
+            });
+        }
+
         public static string SetPlayerSpawn(SerializedObject room, Vector2Int cell)
         {
             if (GetTile(room, cell) != TileType.Floor)
@@ -82,7 +99,7 @@ namespace TheDungeon.Editor.RoomEditor
         /// <summary>Retire ennemi, coffre, décor ou point d'apparition présents sur la case. Renvoie true si quelque chose a été retiré.</summary>
         public static bool RemoveObjectsAt(SerializedObject room, Vector2Int cell)
         {
-            var removed = RemoveAt(room, Enemies, cell) | RemoveAt(room, Chests, cell) | RemoveAt(room, Props, cell);
+            var removed = RemoveAt(room, Enemies, cell) | RemoveAt(room, Chests, cell) | RemoveAt(room, Props, cell) | RemoveAt(room, Npcs, cell);
             var spawn = room.FindProperty("playerSpawn");
             if (spawn.vector2IntValue == cell)
             {
@@ -172,7 +189,7 @@ namespace TheDungeon.Editor.RoomEditor
                 }
             }
 
-            foreach (var list in new[] { Enemies, Chests, Props })
+            foreach (var list in new[] { Enemies, Chests, Props, Npcs })
             {
                 var property = room.FindProperty(list);
                 for (var i = property.arraySize - 1; i >= 0; i--)
@@ -208,7 +225,7 @@ namespace TheDungeon.Editor.RoomEditor
         /// <summary>Sol partout, murs sur le contour, entrées ouvertes, aucun élément posé.</summary>
         public static void Reset(SerializedObject room)
         {
-            foreach (var list in new[] { Enemies, Chests, Props })
+            foreach (var list in new[] { Enemies, Chests, Props, Npcs })
                 room.FindProperty(list).arraySize = 0;
             room.FindProperty("playerSpawn").vector2IntValue = RoomData.NoSpawn;
             var width = Width(room);

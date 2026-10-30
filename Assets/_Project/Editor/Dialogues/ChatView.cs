@@ -119,7 +119,12 @@ namespace TheDungeon.Editor.Dialogues
             bubble.AddToClassList("forge-chat__bubble");
             bubble.EnableInClassList("forge-chat__bubble--selected", selected);
             if (node.speaker == DialogueSpeaker.Npc)
-                bubble.style.backgroundColor = new Color(npc.Color.r, npc.Color.g, npc.Color.b, 0.12f);
+            {
+                // Bulle aux couleurs de la boîte de dialogue du personnage (Apparence).
+                bubble.style.backgroundColor = npc.Style.boxBackground;
+                if (!selected)
+                    SetBorder(bubble, npc.Style.boxBorder);
+            }
 
             var meta = new VisualElement();
             meta.AddToClassList("forge-chat__meta");
@@ -133,6 +138,8 @@ namespace TheDungeon.Editor.Dialogues
 
             var text = new Label(string.IsNullOrWhiteSpace(node.text) ? "(réplique vide)" : node.text);
             text.AddToClassList("forge-chat__text");
+            if (node.speaker == DialogueSpeaker.Npc && !string.IsNullOrWhiteSpace(node.text))
+                text.style.color = npc.Style.text;
             text.EnableInClassList("forge-chat__text--empty", string.IsNullOrWhiteSpace(node.text));
             bubble.Add(text);
 
@@ -155,7 +162,7 @@ namespace TheDungeon.Editor.Dialogues
                 var replies = new VisualElement();
                 replies.AddToClassList("forge-chat__replies");
                 foreach (var choice in node.choices)
-                    replies.Add(Reply(choice, alreadyShown));
+                    replies.Add(Reply(npc, choice, alreadyShown));
                 block.Add(replies);
             }
             else if (node.next < 0)
@@ -173,16 +180,20 @@ namespace TheDungeon.Editor.Dialogues
             return block;
         }
 
-        VisualElement Reply(DialogueChoice choice, HashSet<int> alreadyShown)
+        VisualElement Reply(NpcData npc, DialogueChoice choice, HashSet<int> alreadyShown)
         {
             var pill = new VisualElement
             {
-                tooltip = $"Réponse du joueur : « {choice.text} »\n" +
+                tooltip = $"Réponse du joueur : {ForgeText.Quote(choice.text)}\n" +
                           (choice.target < 0 ? "Termine la conversation." : $"Mène à la réplique #{choice.target}. Cliquez pour y aller.")
             };
             pill.AddToClassList("forge-chat__reply");
+            var (background, border, color) = npc.Style.ChoiceLook(choice);
+            pill.style.backgroundColor = background;
+            SetBorder(pill, new Color(border.r, border.g, border.b, 1f));
             var text = new Label(string.IsNullOrWhiteSpace(choice.text) ? "(réponse vide)" : choice.text);
             text.AddToClassList("forge-chat__reply-text");
+            text.style.color = color;
             pill.Add(text);
 
             var footer = new VisualElement();
@@ -210,10 +221,13 @@ namespace TheDungeon.Editor.Dialogues
 
         static VisualElement System(string text)
         {
-            var label = new Label(text);
+            var label = new Label(ForgeText.System(text));
             label.AddToClassList("forge-chat__system");
             return label;
         }
+
+        static void SetBorder(VisualElement element, Color color) =>
+            element.style.borderTopColor = element.style.borderBottomColor = element.style.borderLeftColor = element.style.borderRightColor = color;
 
         static Label Chip(string text, string className)
         {

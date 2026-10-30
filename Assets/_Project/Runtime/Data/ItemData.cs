@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace TheDungeon.Data
@@ -22,6 +23,8 @@ namespace TheDungeon.Data
         public float value;
         [Tooltip("Durée en secondes. 0 = instantané.")]
         public float duration;
+        [Tooltip("Actif : à l'impact ou à l'utilisation. Passif : permanent tant que l'arme est équipée.")]
+        public EffectTrigger trigger;
     }
 
     [CreateAssetMenu(menuName = "The Dungeon/Item", fileName = "ITM_NewItem")]
@@ -31,8 +34,8 @@ namespace TheDungeon.Data
         string displayName;
         [SerializeField, Tooltip("Icône affichée dans l'inventaire.")]
         Sprite icon;
-        [SerializeField, Tooltip("Rareté : influence la couleur et la probabilité de butin.")]
-        Rarity rarity;
+        [SerializeField, Tooltip("Identifiant de la rareté (liste éditée dans l'outil Objets) : couleur, prix, bonus et passifs autorisés.")]
+        int rarity;
         [SerializeField, Tooltip("Catégorie de l'objet.")]
         ItemType type;
         [SerializeField, Tooltip("Bonus de statistiques quand l'objet est équipé.")]
@@ -46,10 +49,15 @@ namespace TheDungeon.Data
 
         public string DisplayName => displayName;
         public Sprite Icon => icon;
-        public Rarity Rarity => rarity;
+        public int RarityId => rarity;
         public ItemType Type => type;
         public IReadOnlyList<StatModifier> Stats => stats;
         public IReadOnlyList<ItemEffect> Effects => effects;
+        public IEnumerable<ItemEffect> ActiveEffects => effects.Where(e => e.trigger == EffectTrigger.Active);
+        public IEnumerable<ItemEffect> PassiveEffects => effects.Where(e => e.trigger == EffectTrigger.Passive);
+
+        /// <summary>Somme des passifs d'un type (0 s'il n'y en a pas).</summary>
+        public float PassiveTotal(EffectType type) => PassiveEffects.Where(e => e.type == type).Sum(e => e.value);
         public int Price => price;
         public string Description => description;
     }

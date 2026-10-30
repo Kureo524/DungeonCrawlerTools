@@ -8,7 +8,7 @@ Dessinez les salles du donjon sur une grille, comme dans un jeu de type Soul Kni
 - La salle est créée seulement au clic sur **Valider et créer**, si elle ne contient aucune erreur.
 
 ## Peindre
-- Choisissez un pinceau dans la **palette** : Sol, Mur, Trou, un ennemi, un coffre, un décor, l'apparition du joueur ou la Gomme.
+- Choisissez un pinceau dans la **palette** : Sol, Mur, Trou, un ennemi, un coffre, un décor, un personnage, l'apparition du joueur ou la Gomme.
 - **Clic gauche** (maintenu) pour peindre, **clic droit** pour gommer.
 - Survolez une case pour voir son contenu dans l'infobulle et la barre d'état.
 - Un mur ou un trou efface ce qui était posé sur la case. On ne peut rien poser sur un mur.
@@ -28,6 +28,15 @@ Dessinez les salles du donjon sur une grille, comme dans un jeu de type Soul Kni
 - Tout élément posé doit être accessible depuis les entrées.
 - **Départ** : apparition du joueur obligatoire. **Combat** : au moins un ennemi. **Trésor** : au moins un coffre. **Boss** : exactement un boss, et les boss sont interdits ailleurs.
 - Nombre maximum d'ennemis et de coffres fixé par les limites de l'équipe.
+
+## Coffres
+- Dans une salle de **combat** ou de **boss**, les coffres restent **scellés** (grisés, impossibles à ouvrir) tant que tous les ennemis ne sont pas vaincus. Ailleurs, ils s'ouvrent dès l'arrivée.
+
+## Personnages
+- Le groupe **Personnages** de la palette propose tous les PNJ de l'outil Dialogues, quel que soit le biome. Un personnage n'est posé qu'une fois par salle.
+- Dans une salle de **combat** ou de **boss**, le personnage n'apparaît par défaut **qu'une fois tous les ennemis vaincus**. La liste **Personnages** sous la grille permet de changer ce réglage (**Après le combat**).
+- Le type **Npc** fait une **salle de PNJ** : elle accueille les personnages de l'étage qui ne sont posés dans aucune salle.
+- Un personnage posé dans une salle apparaît même si l'étage de la salle ne fait pas partie de ses étages ; la validation de l'étage le signale.
 
 ## Feu de camp
 - Par défaut, le feu de camp de la salle soigne selon la règle de son étage (outil Étages).

@@ -12,7 +12,7 @@ namespace TheDungeon.Editor.Common
     /// Onglet « liste à gauche, fiche à droite » commun aux outils de contenu.
     /// Les modifications portent sur une copie de travail : rien n'est créé ni modifié avant « Valider ».
     /// </summary>
-    public abstract class AssetListTab<T> : IAssetNavigable where T : ScriptableObject
+    public abstract class AssetListTab<T> : IAssetNavigable, IUnsavedSource where T : ScriptableObject
     {
         protected ForgeDesignLimits Limits => ForgeDesignLimits.Instance;
         protected IToolHost Window { get; }
@@ -100,7 +100,7 @@ namespace TheDungeon.Editor.Common
                 "Le test utilise la version enregistrée : les modifications en cours n'en feront pas partie.", "Tester quand même", "Annuler");
         }
 
-        public VisualElement Build()
+        public virtual VisualElement Build()
         {
             root = new TwoPaneSplitView(0, ListWidth, TwoPaneSplitViewOrientation.Horizontal) { viewDataKey = $"forge-split-{typeof(T).Name}" };
             root.Add(BuildListPane());
@@ -118,9 +118,11 @@ namespace TheDungeon.Editor.Common
 
             // Abonnements liés à la vie de la fenêtre, pas au détachement de l'interface (qui survient aussi à l'ancrage).
             EditorApplication.projectChanged += OnProjectChanged;
+            Undo.undoRedoPerformed += OnUndoRedoPerformed;
             Window.Closing += () =>
             {
                 EditorApplication.projectChanged -= OnProjectChanged;
+                Undo.undoRedoPerformed -= OnUndoRedoPerformed;
                 CloseSession();
             };
 
@@ -140,19 +142,23 @@ namespace TheDungeon.Editor.Common
             toolbar.Add(ForgeUI.Button("Supprimer", FeminineNoun ? $"Supprime la {Noun} sélectionnée (avec confirmation)." : $"Supprime le {Noun} sélectionné (avec confirmation).", DeleteSelected, "forge-button--danger"));
             pane.Add(toolbar);
 
-            search = new ToolbarSearchField { tooltip = "Filtre la liste par nom." };
+            search = ForgeUI.SearchField(new ToolbarSearchField { tooltip = "Filtre la liste par nom." });
             search.style.width = StyleKeyword.Auto;
             search.RegisterValueChangedCallback(_ => ApplyFilter());
             pane.Add(search);
 
             var filters = BuildFilters();
             if (filters != null)
+            {
+                // Les filtres sont séparés de la liste qu'ils filtrent.
+                filters.AddToClassList("forge-list-filters");
                 pane.Add(filters);
+            }
 
             list = new ListView
             {
                 itemsSource = filtered,
-                fixedItemHeight = 26,
+                fixedItemHeight = 32,
                 selectionType = SelectionType.Single,
                 makeItem = MakeListItem,
                 bindItem = BindListItem
@@ -170,8 +176,13 @@ namespace TheDungeon.Editor.Common
 
         static VisualElement MakeListItem()
         {
+            // La ligne occupe toute la hauteur réservée ; son contenu (et son surlignage) est un peu plus fin,
+            // ce qui laisse un espace entre deux éléments de la liste.
+            var item = new VisualElement();
+            item.AddToClassList("forge-list-item__slot");
             var row = new VisualElement();
             row.AddToClassList("forge-list-item");
+            item.Add(row);
             var strip = new VisualElement { name = "strip" };
             strip.AddToClassList("forge-list-item__strip");
             var icon = new Image { name = "icon", scaleMode = ScaleMode.ScaleToFit };
@@ -184,7 +195,7 @@ namespace TheDungeon.Editor.Common
             row.Add(icon);
             row.Add(label);
             row.Add(warning);
-            return row;
+            return item;
         }
 
         void BindListItem(VisualElement row, int index)
@@ -206,7 +217,7 @@ namespace TheDungeon.Editor.Common
         }
 
         /// <summary>Affiche un asset précis (depuis le tableau de bord ou un autre outil).</summary>
-        public void Reveal(Object asset)
+        public virtual void Reveal(Object asset)
         {
             if (asset is not T typed || typed == session?.Original)
                 return;
@@ -302,6 +313,43 @@ namespace TheDungeon.Editor.Common
             };
         }
 
+        /// <summary>Ctrl+Z / Ctrl+Y : la copie de travail a changé sans passer par la fiche, on la remet à jour.</summary>
+        void OnUndoRedoPerformed()
+        {
+            if (session == null || root?.panel == null)
+                return;
+            AfterUndoRedo();
+        }
+
+        /// <summary>Après une annulation : par défaut, la fiche est reconstruite à la même position de défilement.</summary>
+        protected virtual void AfterUndoRedo() => KeepingScroll(ShowDraft);
+
+        /// <summary>Exécute une mise à jour de la fiche sans qu'elle remonte en haut.</summary>
+        protected void KeepingScroll(System.Action update)
+        {
+            var offset = details.scrollOffset;
+            update();
+            details.scrollOffset = offset;
+            details.schedule.Execute(() => details.scrollOffset = offset).StartingIn(20);
+            details.schedule.Execute(() => details.scrollOffset = offset).StartingIn(120);
+        }
+
+        public string UnsavedLabel => session == null
+            ? Noun
+            : $"{char.ToUpperInvariant(Noun[0])}{Noun[1..]} {ForgeText.Name(GetLabel(session.Draft))}{(session.IsNew ? " (nouveau)" : string.Empty)}";
+
+        /// <summary>La fiche en cours est déjà affichée quand la section s'ouvre ; un onglet à plusieurs vues revient sur la bonne.</summary>
+        public virtual void ShowUnsaved()
+        {
+        }
+
+        /// <summary>Reconstruit la fiche (ses champs dépendent d'une valeur qui vient de changer), sans perdre le défilement.</summary>
+        protected void RebuildDetails()
+        {
+            if (session != null)
+                KeepingScroll(ShowDraft);
+        }
+
         /// <summary>Recalcule l'en-tête, les problèmes et les éléments calculés de la fiche.</summary>
         protected void RefreshDetails() => RefreshDraft();
 
@@ -387,7 +435,7 @@ namespace TheDungeon.Editor.Common
                 detailsBadges.Add(badge);
             issuesPanel.Show(issues);
             footer.Show(issues, session.IsNew, session.IsDirty);
-            Window.SetUnsaved(this, session.IsDirty, Commit);
+            Window.SetUnsaved(this, session.IsDirty, Commit, issues.Any(issue => issue.Severity == Severity.Error));
             OnRefresh(draft);
         }
 

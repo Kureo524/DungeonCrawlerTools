@@ -39,7 +39,7 @@ namespace TheDungeon.Editor.Tests
         {
             var session = DraftSession<ItemData>.CreateNew(TestName);
             var serialized = new SerializedObject(session.Draft);
-            serialized.FindProperty("price").intValue = ForgeDesignLimits.Instance.GetRarity(Rarity.Common).price.min;
+            serialized.FindProperty("price").intValue = ForgeDesignLimits.Instance.FirstRarity.price.min;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             var errors = session.TryCommit();

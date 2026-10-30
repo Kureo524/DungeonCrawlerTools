@@ -48,16 +48,16 @@ namespace TheDungeon.Data
         }
 
         /// <summary>Poids effectif d'une ligne, éventuellement multiplié selon la rareté (bonus de biome).</summary>
-        public static float EffectiveWeight(LootEntry entry, Func<Rarity, float> rarityMultiplier = null)
+        public static float EffectiveWeight(LootEntry entry, Func<int, float> rarityMultiplier = null)
         {
             var weight = Mathf.Max(0, entry.weight);
             if (rarityMultiplier != null && entry.item != null)
-                return weight * Mathf.Max(0f, rarityMultiplier(entry.item.Rarity));
+                return weight * Mathf.Max(0f, rarityMultiplier(entry.item.RarityId));
             return weight;
         }
 
         /// <summary>Probabilité qu'un tirage donne cet objet précis.</summary>
-        public float GetProbability(LootEntry entry, Func<Rarity, float> rarityMultiplier = null)
+        public float GetProbability(LootEntry entry, Func<int, float> rarityMultiplier = null)
         {
             var total = 0f;
             foreach (var other in entries)
@@ -65,7 +65,7 @@ namespace TheDungeon.Data
             return total <= 0f ? 0f : dropChance * EffectiveWeight(entry, rarityMultiplier) / total;
         }
 
-        public ItemData Roll(System.Random random, Func<Rarity, float> rarityMultiplier = null)
+        public ItemData Roll(System.Random random, Func<int, float> rarityMultiplier = null)
         {
             if (random.NextDouble() > dropChance)
                 return null;

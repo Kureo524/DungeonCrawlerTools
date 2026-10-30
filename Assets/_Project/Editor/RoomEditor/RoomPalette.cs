@@ -50,6 +50,8 @@ namespace TheDungeon.Editor.RoomEditor
             Group("Coffres", biome.ChestLootTables.Where(t => t != null && ValidationCache.IsValid(t))
                 .Select(t => RoomBrush.ForChest(t, RoomArt.Chest)).ToArray());
             Group("Décors", biome.Props.Where(p => p.sprite != null).Select(RoomBrush.ForProp).ToArray());
+            // Les personnages ne dépendent pas du biome : tous ceux de l'outil Dialogues sont proposés.
+            Group("Personnages", AssetFactory.LoadAll<NpcData>().OrderBy(n => n.DisplayName).Select(RoomBrush.ForNpc).ToArray());
             Group("Autres", RoomBrush.Spawn(RoomArt.Player), RoomBrush.Eraser());
 
             var restored = buttons.Select(b => b.brush).FirstOrDefault(b => b.SameAs(previous));
@@ -99,6 +101,8 @@ namespace TheDungeon.Editor.RoomEditor
             BrushKind.Enemy => $"Ennemi « {brush.Label} » : clic pour le placer sur une case de sol." + (brush.Enemy.IsBoss ? "\nBoss : réservé aux salles de type Boss." : string.Empty),
             BrushKind.Chest => $"Coffre utilisant la table « {brush.LootTable.name} ».",
             BrushKind.Prop => $"Décor « {brush.Label} ».",
+            BrushKind.Npc => $"Personnage « {brush.Label} » ({FloorSet.Describe(brush.Npc.Floors)}).\n" +
+                             "Dans une salle de combat, il n'apparaît qu'une fois les ennemis vaincus (réglable dans la liste « Personnages »).",
             BrushKind.PlayerSpawn => "Point d'apparition du joueur (salle de départ uniquement). Un seul par salle.",
             BrushKind.Eraser => "Gomme : retire l'élément posé sur la case. Raccourci : clic droit.",
             _ => brush.Label

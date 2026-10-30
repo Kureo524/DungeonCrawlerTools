@@ -37,8 +37,8 @@ namespace TheDungeon.Editor.Common
             nameLabel.AddToClassList("forge-sprite-field__name");
             Add(nameLabel);
 
-            Add(ForgeUI.Button("Choisir…", "Ouvre la galerie des sprites disponibles.", () => OpenGallery(artFolder)));
-            Add(ForgeUI.Button("✕", "Retirer le sprite.", () => Set(null), "forge-button--icon"));
+            Add(ForgeUI.Button("Choisir", "Ouvre la galerie des sprites disponibles.", () => OpenGallery(artFolder)));
+            Add(ForgeUI.CloseButton("Retirer le sprite.", () => Set(null)));
 
             Refresh();
             this.TrackPropertyValue(property, _ => Refresh());

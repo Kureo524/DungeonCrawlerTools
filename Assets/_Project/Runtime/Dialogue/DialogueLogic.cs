@@ -12,6 +12,8 @@ namespace TheDungeon.Dialogue
         int Floor { get; }
         bool HasFlag(string flag);
         bool HasItem(ItemData item);
+        /// <summary>Niveau d'une mécanique du personnage (progression), 0 si elle n'est pas débloquée.</summary>
+        int MechanicLevel(string mechanicId);
         void SetFlag(string flag, bool value);
         void AddGold(int amount);
         void AddItem(ItemData item);
@@ -33,6 +35,8 @@ namespace TheDungeon.Dialogue
             ConditionType.FlagNotSet => string.IsNullOrEmpty(condition.flag) || !state.HasFlag(condition.flag),
             ConditionType.GoldAtLeast => state.Gold >= condition.value,
             ConditionType.FloorAtLeast => state.Floor >= condition.value,
+            ConditionType.FloorIn => FloorSet.Contains(condition.value, state.Floor),
+            ConditionType.MechanicAtLeast => !string.IsNullOrEmpty(condition.flag) && state.MechanicLevel(condition.flag) >= condition.value,
             _ => true
         };
 

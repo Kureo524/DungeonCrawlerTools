@@ -56,6 +56,61 @@ namespace TheDungeon.Editor.Tests
             TestData.Destroy(item);
         }
 
+        static ItemData Weapon(int rarity, params (EffectType type, EffectTrigger trigger)[] effects) => TestData.Create<ItemData>("ITM_Test", so =>
+        {
+            so.FindProperty("displayName").stringValue = "Test";
+            so.FindProperty("type").enumValueIndex = (int)ItemType.Weapon;
+            so.FindProperty("rarity").intValue = rarity;
+            so.FindProperty("price").intValue = 10;
+            var list = so.FindProperty("effects");
+            list.arraySize = effects.Length;
+            for (var i = 0; i < effects.Length; i++)
+            {
+                list.GetArrayElementAtIndex(i).FindPropertyRelative("type").enumValueIndex = (int)effects[i].type;
+                list.GetArrayElementAtIndex(i).FindPropertyRelative("trigger").enumValueIndex = (int)effects[i].trigger;
+                list.GetArrayElementAtIndex(i).FindPropertyRelative("value").floatValue = 10f;
+            }
+        });
+
+        [Test]
+        public void Items_WithDeletedRarity_AreErrors_ThatCountTheItemsToFix()
+        {
+            limits.rarities.RemoveAll(rule => rule.id == 0);
+            var first = Weapon(0);
+            var second = Weapon(0);
+
+            var issues = new ItemRule().Run(Context(items: new[] { first, second })).Where(i => i.Message.Contains("supprimée")).ToList();
+
+            Assert.AreEqual(2, issues.Count);
+            Assert.IsTrue(issues.All(i => i.Severity == Severity.Error && i.Message.Contains("2 objet(s) à modifier")));
+            TestData.Destroy(first, second);
+        }
+
+        [Test]
+        public void Weapon_WithMorePassivesThanItsRarityAllows_IsAnError()
+        {
+            // Rareté de départ n°0 (Commun) : aucun passif.
+            var weapon = Weapon(0, (EffectType.AttackBoost, EffectTrigger.Passive));
+
+            var issues = new ItemRule().Run(Context(items: new[] { weapon })).ToList();
+
+            Assert.IsTrue(issues.Any(i => i.Severity == Severity.Error && i.Message.Contains("Trop de passifs")));
+            TestData.Destroy(weapon);
+        }
+
+        [Test]
+        public void Weapon_WithPassivesWithinItsRarity_HasNoEffectError()
+        {
+            // Rareté de départ n°4 (Légendaire) : trois passifs.
+            var weapon = Weapon(4, (EffectType.Poison, EffectTrigger.Active), (EffectType.AttackBoost, EffectTrigger.Passive),
+                (EffectType.KillHeal, EffectTrigger.Passive));
+
+            var issues = new ItemRule().Run(Context(items: new[] { weapon })).ToList();
+
+            Assert.IsFalse(issues.Any(i => i.Message.Contains("passif") || i.Message.Contains("effet") || i.Message.Contains("Effet")), string.Join("\n", issues.Select(i => i.Message)));
+            TestData.Destroy(weapon);
+        }
+
         [Test]
         public void Progression_WithDecreasingHealth_IsAnError()
         {

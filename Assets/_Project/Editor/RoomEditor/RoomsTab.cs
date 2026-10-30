@@ -22,7 +22,8 @@ namespace TheDungeon.Editor.RoomEditor
             { RoomType.Combat, new Color(0.85f, 0.55f, 0.45f) },
             { RoomType.Treasure, new Color(0.95f, 0.8f, 0.3f) },
             { RoomType.Shop, new Color(0.55f, 0.7f, 0.95f) },
-            { RoomType.Boss, new Color(0.85f, 0.25f, 0.25f) }
+            { RoomType.Boss, new Color(0.85f, 0.25f, 0.25f) },
+            { RoomType.Npc, new Color(0.7f, 0.6f, 0.95f) }
         };
 
         DropdownField biomeFilter;
@@ -132,7 +133,8 @@ namespace TheDungeon.Editor.RoomEditor
                     ForgeLists.Notify(removed == 0 ? "Tout appartient déjà au biome." : $"{removed} élément(s) retiré(s).");
                 }));
             identity.Add(ForgeUI.Enum<RoomType>("Type", "roomType",
-                "Départ : apparition du joueur. Combat : au moins un ennemi. Trésor : au moins un coffre. Boss : exactement un boss."));
+                "Départ : apparition du joueur. Combat : au moins un ennemi. Trésor : au moins un coffre. Boss : exactement un boss. " +
+                "Npc : salle de personnages, qui accueille les PNJ de l'étage placés nulle part ailleurs."));
             identity.Add(ForgeUI.Slider("Difficulté", "difficulty", Limits.roomDifficulty, "Difficulté ressentie, de 1 (facile) à 5 (très dur)."));
 
             // Soin au feu de camp : la règle de l'étage, sauf si la salle a la sienne.
@@ -156,13 +158,39 @@ namespace TheDungeon.Editor.RoomEditor
             shape.Add(widthSlider);
             shape.Add(heightSlider);
 
-            shape.Add(ForgeUI.Label("Entrées", "forge-section-title"));
+            var doorsTitle = ForgeUI.Label(ForgeText.WindowRich("Entrées"), "forge-section-title");
+            doorsTitle.style.marginTop = 12;
+            shape.Add(doorsTitle);
             var doorGrid = new VisualElement();
             doorGrid.AddToClassList("forge-door-picker");
             doorGrid.Add(DoorToggle(Doors.North, "Nord"));
             doorGrid.Add(ForgeLists.Row(DoorToggle(Doors.West, "Ouest"), DoorToggle(Doors.East, "Est")));
             doorGrid.Add(DoorToggle(Doors.South, "Sud"));
             shape.Add(doorGrid);
+
+            container.Add(ForgeLists.Array(serializedObject, "npcs", "Personnages",
+                "Personnages posés dans la salle avec le pinceau « Personnages » de la palette.", 8,
+                (element, _) =>
+                {
+                    var row = new VisualElement();
+                    row.AddToClassList("forge-row");
+                    var npcData = element.FindPropertyRelative("npc").objectReferenceValue as NpcData;
+                    var position = element.FindPropertyRelative("position").vector2IntValue;
+                    var name = ForgeUI.Label($"{(npcData != null ? npcData.DisplayName : ForgeText.Redacted)}  ({position.x}, {position.y})");
+                    name.style.flexGrow = 1;
+                    row.Add(name);
+                    var afterClear = new Toggle("Après le combat")
+                        { tooltip = "Le personnage n'apparaît qu'une fois tous les ennemis de la salle vaincus (salles de combat et de boss)." };
+                    afterClear.BindProperty(element.FindPropertyRelative("afterClear"));
+                    afterClear.RegisterValueChangedCallback(_ => canvas?.Redraw());
+                    row.Add(afterClear);
+                    return row;
+                },
+                _ =>
+                {
+                    ForgeLists.Notify("Choisissez un personnage dans la palette (groupe « Personnages »), puis cliquez sur une case.");
+                    return false;
+                }));
 
             container.Add(ForgeLists.Array(serializedObject, "tags", "Tags", "Mots-clés libres pour retrouver et filtrer les salles.", 6,
                 (element, _) =>
@@ -280,6 +308,9 @@ namespace TheDungeon.Editor.RoomEditor
             SyncControls();
             canvas.Redraw();
         }
+
+        // La grille et les réglages sont déjà remis à jour par OnUndoRedo.
+        protected override void AfterUndoRedo() => RefreshDetails();
 
         protected override void OnRefresh(RoomData asset)
         {

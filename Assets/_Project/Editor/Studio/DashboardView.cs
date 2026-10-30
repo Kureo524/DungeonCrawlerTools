@@ -41,7 +41,7 @@ namespace TheDungeon.Editor.Studio
             var scroll = new ScrollView(ScrollViewMode.Vertical) { horizontalScrollerVisibility = ScrollerVisibility.Hidden };
             scroll.AddToClassList("forge-dashboard");
 
-            scroll.Add(ForgeUI.Label("Avancement de la production", "forge-dashboard__heading"));
+            scroll.Add(ForgeUI.Label(ForgeText.WindowRich("Avancement de la production"), "forge-dashboard__heading"));
             var progress = new VisualElement();
             progress.AddToClassList("forge-card-grid");
             AddRing(progress, "items", "Objets", ForgeStudioWindow.Items);
@@ -55,12 +55,12 @@ namespace TheDungeon.Editor.Studio
             AddRing(progress, "levels", "Niveaux du joueur", ForgeStudioWindow.Progression);
             scroll.Add(progress);
 
-            scroll.Add(ForgeUI.Label("Règles de cohérence du GDD", "forge-dashboard__heading"));
+            scroll.Add(ForgeUI.Label(ForgeText.WindowRich("Règles de cohérence du GDD"), "forge-dashboard__heading"));
             gddRules = new VisualElement();
             gddRules.AddToClassList("forge-card-grid");
             scroll.Add(gddRules);
 
-            scroll.Add(ForgeUI.Label("Santé des données", "forge-dashboard__heading"));
+            scroll.Add(ForgeUI.Label(ForgeText.WindowRich("Santé des données"), "forge-dashboard__heading"));
             var health = new VisualElement();
             health.AddToClassList("forge-card-grid");
             errorsValue = StatTile(health, "Erreurs", "console.erroricon", "Bloquent l'enregistrement et le build.", "forge-stat--critical");
@@ -83,7 +83,7 @@ namespace TheDungeon.Editor.Studio
             listCard.Add(issuesMore);
             scroll.Add(issuesRow);
 
-            scroll.Add(ForgeUI.Label("Répartition du contenu", "forge-dashboard__heading"));
+            scroll.Add(ForgeUI.Label(ForgeText.WindowRich("Répartition du contenu"), "forge-dashboard__heading"));
             var charts = new VisualElement();
             charts.AddToClassList("forge-card-grid");
             itemsByRarity = new DonutChart("Objets par rareté");
@@ -135,7 +135,7 @@ namespace TheDungeon.Editor.Studio
             if (extraClass != null)
                 card.AddToClassList(extraClass);
             if (title != null)
-                card.Add(ForgeUI.Label(title, "forge-chart__title"));
+                card.Add(ForgeUI.Label(ForgeText.WindowRich(title), "forge-chart__title"));
             parent.Add(card);
             return card;
         }
@@ -225,8 +225,11 @@ namespace TheDungeon.Editor.Studio
             var hidden = issues.Count(i => i.Context != null) - MaxListedIssues;
             issuesMore.text = hidden > 0 ? $"… et {hidden} autre(s)." : string.Empty;
 
-            itemsByRarity.SetData(Enum.GetValues(typeof(Rarity)).Cast<Rarity>()
-                .Select(r => new DonutChart.Segment(r.ToString(), context.Items.Count(i => i.Rarity == r), limits.GetRarity(r).color)), "objets");
+            var deleted = context.Items.Count(i => !limits.HasRarity(i.RarityId));
+            itemsByRarity.SetData(limits.rarities
+                .Select(r => new DonutChart.Segment(r.DisplayName, context.Items.Count(i => i.RarityId == r.id), r.color))
+                .Append(new DonutChart.Segment("Rareté supprimée", deleted, ChartColors.Critical))
+                .Where(segment => segment.Label != "Rareté supprimée" || deleted > 0), "objets");
 
             roomsByType.SetData(Enum.GetValues(typeof(RoomType)).Cast<RoomType>()
                 .Select((t, index) => new DonutChart.Segment(t.ToString(), context.Rooms.Count(r => r.RoomType == t), ChartColors.Series(index))), "salles");

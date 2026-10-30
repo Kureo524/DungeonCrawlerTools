@@ -49,6 +49,14 @@ namespace TheDungeon.Editor.Studio
         Label headerSubtitle;
         Button helpButton;
         Label sidebarStatus;
+        Label unsavedStatus;
+        readonly HashSet<object> blockedOwners = new();
+        // Section où chaque modification a été faite, dans l'ordre d'apparition.
+        readonly List<(object owner, string section)> unsavedOrder = new();
+        int lastShownUnsaved = -1;
+        VisualElement unsavedMenu;
+        IVisualElementScheduledItem longPress;
+        const long LongPressMs = 400;
         DashboardView dashboard;
         IVisualElementScheduledItem pendingRefresh;
 
@@ -197,7 +205,7 @@ namespace TheDungeon.Editor.Studio
             brand.Add(mark);
             var names = new VisualElement();
             names.Add(ForgeUI.Label("Forge Studio", "forge-sidebar__logo"));
-            names.Add(ForgeUI.Label("The Dungeon · outils de production", "forge-sidebar__tagline"));
+            names.Add(ForgeUI.Label("The Dungeon\nOutils de production", "forge-sidebar__tagline"));
             brand.Add(names);
             sidebar.Add(brand);
 
@@ -220,6 +228,15 @@ namespace TheDungeon.Editor.Studio
             sidebarStatus.AddToClassList("forge-mono");
             sidebarStatus.RegisterCallback<ClickEvent>(_ => ShowSection(Home));
             sidebar.Add(sidebarStatus);
+
+            // Sous l'état de validation : les modifications en attente, et un clic pour toutes les valider.
+            unsavedStatus = new Label { enableRichText = true };
+            unsavedStatus.AddToClassList("forge-sidebar__status");
+            unsavedStatus.AddToClassList("forge-sidebar__unsaved");
+            unsavedStatus.AddToClassList("forge-mono");
+            RegisterUnsavedPointer(unsavedStatus);
+            sidebar.Add(unsavedStatus);
+            RefreshUnsavedStatus();
             return sidebar;
         }
 
@@ -380,21 +397,174 @@ namespace TheDungeon.Editor.Studio
 
         #region Modifications non validées
 
-        public void SetUnsaved(object owner, bool unsaved, Func<bool> commit = null)
+        public void SetUnsaved(object owner, bool unsaved, Func<bool> commit = null, bool blocked = false)
         {
             if (unsaved)
+            {
+                if (!pendingCommits.ContainsKey(owner))
+                    unsavedOrder.Add((owner, currentSection));
                 pendingCommits[owner] = commit;
+            }
             else
+            {
                 pendingCommits.Remove(owner);
+                unsavedOrder.RemoveAll(entry => entry.owner == owner);
+            }
+            if (unsaved && blocked)
+                blockedOwners.Add(owner);
+            else
+                blockedOwners.Remove(owner);
             hasUnsavedChanges = pendingCommits.Count > 0;
             saveChangesMessage = "Des modifications n'ont pas été validées. Voulez-vous les valider avant de fermer ?";
+            RefreshUnsavedStatus();
         }
 
         /// <summary>Abandonne toutes les modifications non validées (fermeture sans confirmation).</summary>
         public void DiscardAllUnsaved()
         {
             pendingCommits.Clear();
+            blockedOwners.Clear();
+            unsavedOrder.Clear();
             hasUnsavedChanges = false;
+            RefreshUnsavedStatus();
+        }
+
+        void RefreshUnsavedStatus()
+        {
+            if (unsavedStatus == null)
+                return;
+            var count = pendingCommits.Count;
+            unsavedStatus.style.display = count > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            var blocked = blockedOwners.Count > 0;
+            unsavedStatus.EnableInClassList("forge-sidebar__unsaved--blocked", blocked);
+            var what = $"{count} élément{(count > 1 ? "s" : "")} non validé{(count > 1 ? "s" : "")}";
+            // L'action sur sa propre ligne : la barre latérale est trop étroite pour tout tenir sur une seule.
+            unsavedStatus.text = $"[<color={(blocked ? "#e0606a" : "#a597c0")}>●</color> {what}]\n<color=#e8eefa><b>Voir ›</b></color>  (maintenir : liste)";
+            unsavedStatus.tooltip = "Clic : affiche la modification (la suivante à chaque clic).\n" +
+                                    "Maintenir : liste des modifications et « Tout valider » ; relâchez sur une ligne pour la choisir." +
+                                    (blocked ? "\nCertaines modifications contiennent des erreurs : « Tout valider » est bloqué." : string.Empty);
+        }
+
+        /// <summary>Clic : aller à une modification. Appui long : liste ; relâcher sur une ligne la choisit.</summary>
+        void RegisterUnsavedPointer(VisualElement indicator)
+        {
+            indicator.RegisterCallback<PointerDownEvent>(evt =>
+            {
+                if (evt.button != 0)
+                    return;
+                indicator.CapturePointer(evt.pointerId);
+                longPress?.Pause();
+                longPress = indicator.schedule.Execute(OpenUnsavedMenu).StartingIn(LongPressMs);
+            });
+            indicator.RegisterCallback<PointerMoveEvent>(evt =>
+            {
+                if (unsavedMenu != null)
+                    HighlightMenuRow(evt.position);
+            });
+            indicator.RegisterCallback<PointerUpEvent>(evt =>
+            {
+                if (!indicator.HasPointerCapture(evt.pointerId))
+                    return;
+                indicator.ReleasePointer(evt.pointerId);
+                longPress?.Pause();
+                if (unsavedMenu == null)
+                {
+                    ShowNextUnsaved();
+                    return;
+                }
+                var row = MenuRowAt(evt.position);
+                CloseUnsavedMenu();
+                (row?.userData as Action)?.Invoke();
+            });
+            indicator.RegisterCallback<PointerCaptureOutEvent>(_ =>
+            {
+                longPress?.Pause();
+                CloseUnsavedMenu();
+            });
+        }
+
+        void ShowNextUnsaved()
+        {
+            if (unsavedOrder.Count == 0)
+                return;
+            lastShownUnsaved = (lastShownUnsaved + 1) % unsavedOrder.Count;
+            ShowUnsaved(unsavedOrder[lastShownUnsaved]);
+        }
+
+        void ShowUnsaved((object owner, string section) entry)
+        {
+            ShowSection(entry.section);
+            (entry.owner as IUnsavedSource)?.ShowUnsaved();
+        }
+
+        /// <summary>Panneau au-dessus de l'indicateur : une ligne par modification, puis « Tout valider ».</summary>
+        void OpenUnsavedMenu()
+        {
+            CloseUnsavedMenu();
+            if (unsavedOrder.Count == 0)
+                return;
+            var root = rootVisualElement;
+            unsavedMenu = new VisualElement { pickingMode = PickingMode.Ignore };
+            unsavedMenu.AddToClassList("forge-unsaved-menu");
+            unsavedMenu.Add(ForgeUI.Label(ForgeText.Window("Modifications non validées"), "forge-unsaved-menu__title"));
+            foreach (var entry in unsavedOrder)
+            {
+                var label = (entry.owner as IUnsavedSource)?.UnsavedLabel ?? entry.section;
+                var section = sections.FirstOrDefault(s => s.Id == entry.section)?.Title ?? entry.section;
+                var dot = blockedOwners.Contains(entry.owner) ? "#e0606a" : "#a597c0";
+                var captured = entry;
+                unsavedMenu.Add(MenuRow($"<color={dot}>●</color> {label}  <color=#8a8a9c>{section}</color>", () => ShowUnsaved(captured)));
+            }
+            var blocked = blockedOwners.Count > 0;
+            var commitAll = MenuRow(blocked ? "<color=#e0606a>Tout valider : erreurs à corriger</color>" : "<b>Tout valider ›</b>", CommitAllUnsaved);
+            commitAll.AddToClassList("forge-unsaved-menu__commit");
+            unsavedMenu.Add(commitAll);
+
+            var anchor = root.WorldToLocal(unsavedStatus.worldBound);
+            unsavedMenu.style.position = Position.Absolute;
+            unsavedMenu.style.left = anchor.x;
+            unsavedMenu.style.bottom = root.layout.height - anchor.yMin + 6;
+            unsavedMenu.style.minWidth = Mathf.Max(anchor.width, 280);
+            // Opaque : le panneau passe au-dessus du bouton « Jouer » et de l'état de validation.
+            unsavedMenu.style.backgroundColor = new Color(0.10f, 0.11f, 0.16f, 1f);
+            root.Add(unsavedMenu);
+        }
+
+        static VisualElement MenuRow(string text, Action action)
+        {
+            var row = new VisualElement { userData = action, pickingMode = PickingMode.Ignore };
+            row.AddToClassList("forge-unsaved-menu__row");
+            var label = ForgeUI.Label(text);
+            label.pickingMode = PickingMode.Ignore;
+            row.Add(label);
+            return row;
+        }
+
+        VisualElement MenuRowAt(Vector2 position) =>
+            unsavedMenu?.Query(className: "forge-unsaved-menu__row").Where(row => row.worldBound.Contains(position)).First();
+
+        void HighlightMenuRow(Vector2 position)
+        {
+            var hovered = MenuRowAt(position);
+            unsavedMenu.Query(className: "forge-unsaved-menu__row").ForEach(row => row.EnableInClassList("forge-unsaved-menu__row--hover", row == hovered));
+        }
+
+        void CloseUnsavedMenu()
+        {
+            unsavedMenu?.RemoveFromHierarchy();
+            unsavedMenu = null;
+        }
+
+        /// <summary>Valide toutes les modifications en attente, seulement si aucune ne contient d'erreur.</summary>
+        void CommitAllUnsaved()
+        {
+            if (blockedOwners.Count > 0)
+            {
+                ForgeLists.Notify($"Rien n'a été enregistré : {blockedOwners.Count} élément(s) contiennent des erreurs à corriger.");
+                return;
+            }
+            var failed = pendingCommits.Values.ToList().Count(commit => commit != null && !commit());
+            ForgeLists.Notify(failed == 0 ? "Toutes les modifications sont validées." : $"{failed} élément(s) n'ont pas pu être validés : erreurs à corriger.");
         }
 
         public override void SaveChanges()

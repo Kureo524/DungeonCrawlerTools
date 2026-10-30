@@ -99,6 +99,41 @@ namespace TheDungeon.Editor.Tests
         }
 
         [Test]
+        public void Npc_InCombatRoom_WaitsForTheFight_AndCanBeErased()
+        {
+            var npc = TestData.Create<NpcData>("NPC_Guide", so => so.FindProperty("displayName").stringValue = "Guide");
+            try
+            {
+                Edit(() => RoomEditing.PlaceEnemy(serializedRoom, new Vector2Int(4, 3), goblin, limits.maxEnemiesPerRoom));
+                Edit(() => RoomEditing.PlaceNpc(serializedRoom, new Vector2Int(5, 3), npc));
+                Assert.AreEqual(1, room.Npcs.Count);
+                Assert.IsTrue(room.Npcs[0].afterClear, "Dans une salle de combat, le PNJ apparaît après la victoire par défaut.");
+                Assert.IsFalse(Validate().Any(i => i.Severity == Severity.Error), string.Join("\n", Validate().Select(i => i.Message)));
+
+                // Reposé ailleurs : le même personnage ne se retrouve pas en double.
+                Edit(() => RoomEditing.PlaceNpc(serializedRoom, new Vector2Int(6, 3), npc));
+                Assert.AreEqual(1, room.Npcs.Count);
+                Assert.AreEqual(new Vector2Int(6, 3), room.Npcs[0].position);
+
+                Assert.IsTrue(RoomEditing.RemoveObjectsAt(serializedRoom, new Vector2Int(6, 3)));
+                serializedRoom.ApplyModifiedPropertiesWithoutUndo();
+                Assert.AreEqual(0, room.Npcs.Count);
+            }
+            finally
+            {
+                TestData.Destroy(npc);
+            }
+        }
+
+        [Test]
+        public void NpcRoom_WithoutNpc_IsAWarning()
+        {
+            serializedRoom.FindProperty("roomType").enumValueIndex = (int)RoomType.Npc;
+            serializedRoom.ApplyModifiedPropertiesWithoutUndo();
+            Assert.IsTrue(Validate().Any(i => i.Severity == Severity.Warning && i.Message.Contains("Salle de PNJ")));
+        }
+
+        [Test]
         public void Placing_OnWall_IsRefused()
         {
             Edit(() => RoomEditing.PlaceEnemy(serializedRoom, new Vector2Int(0, 0), goblin, limits.maxEnemiesPerRoom), expectSuccess: false);

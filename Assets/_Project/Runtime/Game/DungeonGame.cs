@@ -144,7 +144,7 @@ namespace TheDungeon.Game
 
         public void BeginRun()
         {
-            State = new GameState(database.progression);
+            State = new GameState(database.progression) { RarityRank = database.GetRarityRank };
             State.Message += Toast;
             Dialogue = new DialogueRunner(State);
             var index = testFloor >= 0 ? database.floors.FindIndex(f => f != null && f.FloorNumber == testFloor) : 0;
@@ -223,7 +223,7 @@ namespace TheDungeon.Game
             foreach (var chest in data.Chests)
             {
                 var position = room.ToWorld(chest.position);
-                Chest.Spawn(this, chest.lootTable, data.Biome, FloorNumber, position);
+                Chest.Spawn(this, chest.lootTable, data.Biome, FloorNumber, position, room);
                 occupied.Add(position);
             }
             if (data.RoomType == RoomType.Shop)
@@ -278,13 +278,31 @@ namespace TheDungeon.Game
             }
         }
 
-        /// <summary>Les PNJ de l'étage (outil Dialogues) sont placés dans les salles calmes : départ, boutique, trésor.</summary>
+        /// <summary>
+        /// PNJ de l'étage. Ceux posés dans une salle (outil Salles) apparaissent à leur case, ou une fois la salle nettoyée.
+        /// Les autres PNJ de l'étage (outil Dialogues) vont dans les salles de PNJ, sinon dans les salles calmes : départ, boutique, trésor.
+        /// </summary>
         void PlaceNpcs(HashSet<Vector3> occupied)
         {
+            var placed = new HashSet<NpcData>();
+            foreach (var room in World.Rooms)
+            {
+                foreach (var spawn in room.Data.Npcs.Where(s => s.npc != null))
+                {
+                    placed.Add(spawn.npc);
+                    if (spawn.afterClear && room.IsCombat)
+                        continue;
+                    var position = room.ToWorld(spawn.position);
+                    NpcActor.Spawn(this, spawn.npc, position);
+                    occupied.Add(position);
+                }
+            }
             if (IsTestRun && testRoom != null)
                 return;
-            var npcs = database.npcs.Where(n => n != null && n.Floor == FloorNumber).ToList();
-            var calm = World.Rooms.Where(r => r.Data.RoomType is RoomType.Start or RoomType.Shop or RoomType.Treasure).ToList();
+            var npcs = database.npcs.Where(n => n != null && n.AppearsOn(FloorNumber) && !placed.Contains(n)).ToList();
+            var calm = World.Rooms.Where(r => r.Data.RoomType == RoomType.Npc).ToList();
+            if (calm.Count == 0)
+                calm = World.Rooms.Where(r => r.Data.RoomType is RoomType.Start or RoomType.Shop or RoomType.Treasure).ToList();
             if (calm.Count == 0)
                 calm = World.Rooms.Take(1).ToList();
             for (var i = 0; i < npcs.Count; i++)
@@ -390,6 +408,15 @@ namespace TheDungeon.Game
             {
                 Toast("Salle nettoyée. Un feu de camp s'allume.", new Color(0.6f, 1f, 0.6f));
             }
+            // Personnages qui attendaient la fin du combat.
+            foreach (var spawn in room.Data.Npcs.Where(s => s.npc != null && s.afterClear))
+            {
+                var position = room.ToWorld(spawn.position);
+                NpcActor.Spawn(this, spawn.npc, position);
+                occupied.Add(position);
+                GameFx.Float(position + Vector3.up * 0.6f, spawn.npc.DisplayName, spawn.npc.Color);
+                Toast($"'{spawn.npc.DisplayName}' apparaît.", new Color(0.8f, 0.85f, 1f));
+            }
             PlaceCampfire(room, occupied);
 
         }
@@ -397,6 +424,12 @@ namespace TheDungeon.Game
         public void OnEnemyKilled(EnemyController enemy, RoomInstance room)
         {
             State.Kills++;
+            var feast = Mathf.RoundToInt(State.Passive(EffectType.KillHeal));
+            if (feast > 0 && State.Hp < State.MaxHp)
+            {
+                State.Heal(feast);
+                GameFx.Float(Player.transform.position, $"+{feast} PV", new Color(0.5f, 1f, 0.6f), 0.8f);
+            }
             var xp = enemy.Data.GetXpReward(FloorNumber);
             State.AddXp(xp);
             GameFx.Float(enemy.transform.position + Vector3.up * 0.6f, $"+{xp} XP", new Color(0.6f, 0.8f, 1f), 0.8f);

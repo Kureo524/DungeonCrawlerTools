@@ -27,8 +27,8 @@ namespace TheDungeon.Data
     [Serializable]
     public struct RarityBoost
     {
-        [Tooltip("Rareté concernée.")]
-        public Rarity rarity;
+        [Tooltip("Identifiant de la rareté concernée.")]
+        public int rarity;
         [Tooltip("Multiplicateur appliqué au poids de butin. 2 = deux fois plus fréquent, 0 = jamais.")]
         public float multiplier;
     }
@@ -99,7 +99,7 @@ namespace TheDungeon.Data
             return false;
         }
 
-        public float GetRarityMultiplier(Rarity rarity)
+        public float GetRarityMultiplier(int rarity)
         {
             foreach (var boost in rarityBoosts)
                 if (boost.rarity == rarity)

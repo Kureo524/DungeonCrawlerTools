@@ -23,6 +23,8 @@ namespace TheDungeon.Editor.Tests
             public int Xp;
             public bool HasFlag(string flag) => Flags.Contains(flag);
             public bool HasItem(ItemData item) => Items.Contains(item);
+            public readonly Dictionary<string, int> Mechanics = new();
+            public int MechanicLevel(string mechanicId) => Mechanics.TryGetValue(mechanicId, out var level) ? level : 0;
             public void SetFlag(string flag, bool value) { if (value) Flags.Add(flag); else Flags.Remove(flag); }
             public void AddGold(int amount) => Gold += amount;
             public void AddItem(ItemData item) => Items.Add(item);
@@ -184,6 +186,166 @@ namespace TheDungeon.Editor.Tests
         public void FlagNames_AreSanitized()
         {
             Assert.AreEqual("quete_acceptee", DialogueRulesEditor.Sanitize("Quête acceptée"));
+        }
+
+        [Test]
+        public void FloorSet_DescribesAndContainsFloors()
+        {
+            var set = FloorSet.Of(new[] { 1, 3 });
+            Assert.IsTrue(FloorSet.Contains(set, 1));
+            Assert.IsFalse(FloorSet.Contains(set, 2));
+            Assert.IsTrue(FloorSet.Contains(set, 3));
+            Assert.AreEqual("Étages 1, 3", FloorSet.Describe(set));
+            Assert.AreEqual("Étage 2", FloorSet.Describe(FloorSet.Of(2)));
+            Assert.AreEqual(1, FloorSet.First(FloorSet.With(set, 3, false)));
+        }
+
+        [Test]
+        public void Npc_AppearsOnSeveralFloors_AndOldSingleFloorStillWorks()
+        {
+            serialized.FindProperty("floor").intValue = 2;
+            serialized.FindProperty("floors").intValue = 0;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            Assert.IsTrue(npc.AppearsOn(2), "Sans liste d'étages, l'ancien réglage d'un seul étage s'applique.");
+            Assert.IsFalse(npc.AppearsOn(1));
+
+            serialized.FindProperty("floors").intValue = FloorSet.Of(new[] { 1, 3 });
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            Assert.IsTrue(npc.AppearsOn(1));
+            Assert.IsFalse(npc.AppearsOn(2));
+            Assert.IsTrue(npc.AppearsOn(3));
+        }
+
+        [Test]
+        public void Condition_FloorIn_OnlyOnCheckedFloors()
+        {
+            var condition = new DialogueCondition { type = ConditionType.FloorIn, value = FloorSet.Of(new[] { 1, 3 }) };
+            Assert.IsTrue(DialogueLogic.IsMet(condition, new State { Floor = 1 }));
+            Assert.IsFalse(DialogueLogic.IsMet(condition, new State { Floor = 2 }));
+            Assert.IsTrue(DialogueLogic.IsMet(condition, new State { Floor = 3 }));
+            Assert.AreEqual("Étages 1, 3", DialogueText.Describe(condition));
+        }
+
+        [Test]
+        public void Condition_Mechanic_NeedsTheMechanicAtThatLevel()
+        {
+            var condition = new DialogueCondition { type = ConditionType.MechanicAtLeast, flag = "dash", value = 2 };
+            var state = new State();
+            Assert.IsFalse(DialogueLogic.IsMet(condition, state), "Mécanique pas débloquée.");
+            state.Mechanics["dash"] = 1;
+            Assert.IsFalse(DialogueLogic.IsMet(condition, state), "Débloquée mais pas encore au niveau 2.");
+            state.Mechanics["dash"] = 2;
+            Assert.IsTrue(DialogueLogic.IsMet(condition, state));
+        }
+
+        [Test]
+        public void Rule_FloorInWithoutFloor_IsAnError()
+        {
+            var a = Add("Bonjour.");
+            DialogueEditing.AddChoice(serialized, a, "Salut.", DialogueEditing.End, 4);
+            var conditions = Node(a).FindPropertyRelative("choices").GetArrayElementAtIndex(0).FindPropertyRelative("conditions");
+            conditions.arraySize = 1;
+            conditions.GetArrayElementAtIndex(0).FindPropertyRelative("type").enumValueIndex = (int)ConditionType.FloorIn;
+            conditions.GetArrayElementAtIndex(0).FindPropertyRelative("value").intValue = 0;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            Assert.IsTrue(Validate().Any(i => i.Severity == Severity.Error && i.Message.Contains("aucun étage")));
+        }
+
+        [Test]
+        public void Tree_LinksAndPositions_AreEditable()
+        {
+            var a = Add("Bonjour.");
+            var b = Add("Que veux-tu ?");
+            DialogueEditing.SetLink(serialized, a, -1, b);
+            DialogueEditing.AddChoice(serialized, b, "Rien.", DialogueEditing.End, 4);
+            DialogueEditing.SetLink(serialized, b, 0, a);
+            DialogueEditing.SetPosition(serialized, b, new Vector2(120f, 300f));
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.AreEqual(b, npc.FindNode(a).next);
+            Assert.AreEqual(a, npc.FindNode(b).choices[0].target);
+            Assert.IsTrue(npc.FindNode(b).placed);
+            Assert.AreEqual(new Vector2(120f, 300f), npc.FindNode(b).graphPosition);
+
+            DialogueEditing.ClearPositions(serialized);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            Assert.IsFalse(npc.FindNode(b).placed, "« Réorganiser » rend le rangement automatique.");
+        }
+
+        [Test]
+        public void Transfer_ExportThenImport_KeepsTheWholeDiscussion()
+        {
+            var a = Add("Bonjour.");
+            DialogueEditing.AddChoice(serialized, a, "Salut.", DialogueEditing.End, 4);
+            serialized.FindProperty("floors").intValue = FloorSet.Of(new[] { 2, 3 });
+            serialized.FindProperty("style.boxBorder").colorValue = Color.red;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            var copy = DialogueTransfer.FromJson(DialogueTransfer.ToJson(npc));
+            try
+            {
+                Assert.IsNotNull(copy);
+                Assert.AreEqual("Smith", copy.DisplayName);
+                Assert.AreEqual("Salut.", copy.FindNode(a).choices[0].text);
+                Assert.IsTrue(copy.AppearsOn(3));
+                Assert.AreEqual(Color.red, copy.Style.boxBorder);
+            }
+            finally
+            {
+                Object.DestroyImmediate(copy);
+            }
+            Assert.IsNull(DialogueTransfer.FromJson("{\"items\": []}"), "Un autre fichier JSON n'est pas une discussion.");
+        }
+
+        [Test]
+        public void Undo_RevertsAnEditOnAWorkingCopy()
+        {
+            // Les fiches modifient une copie de travail non enregistrée (DontSave) : Ctrl+Z doit la ramener en arrière.
+            var copy = Object.Instantiate(npc);
+            copy.hideFlags = HideFlags.DontSave;
+            try
+            {
+                var so = new SerializedObject(copy);
+                var a = DialogueEditing.AddNode(so, DialogueSpeaker.Npc, "Bonjour.");
+                so.ApplyModifiedPropertiesWithoutUndo();
+                Undo.IncrementCurrentGroup();
+                so.Update();
+                DialogueEditing.Node(so, a).FindPropertyRelative("text").stringValue = "Salut.";
+                so.ApplyModifiedProperties();
+                Assert.AreEqual("Salut.", copy.FindNode(a).text);
+                Undo.PerformUndo();
+                Assert.AreEqual("Bonjour.", copy.FindNode(a).text);
+            }
+            finally
+            {
+                Undo.ClearUndo(copy);
+                Object.DestroyImmediate(copy);
+            }
+        }
+
+        [Test]
+        public void ChoiceLook_UsesItsOwnColorsOnlyWhenAsked()
+        {
+            var style = new DialogueStyle();
+            var choice = new DialogueChoice { background = Color.red };
+            Assert.AreEqual(style.choiceBackground, style.ChoiceLook(choice).background);
+            choice.customLook = true;
+            Assert.AreEqual(Color.red, style.ChoiceLook(choice).background);
+        }
+
+        [Test]
+        public void Tree_LinkFromLeftSide_IsRemembered()
+        {
+            var a = Add("Bonjour.");
+            var b = Add("Suite.");
+            DialogueEditing.AddChoice(serialized, a, "Oui.", DialogueEditing.End, 4);
+            DialogueEditing.SetLink(serialized, a, 0, b, true);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            Assert.IsTrue(npc.FindNode(a).choices[0].linkFromLeft);
+            DialogueEditing.SetLink(serialized, a, 0, DialogueEditing.End);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            Assert.AreEqual(DialogueEditing.End, npc.FindNode(a).choices[0].target, "Retirer le lien ne supprime pas de réplique.");
+            Assert.AreEqual(2, npc.Nodes.Count);
         }
 
         SerializedProperty Node(int id) => DialogueEditing.Node(serialized, id);

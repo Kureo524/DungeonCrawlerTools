@@ -42,6 +42,8 @@ namespace TheDungeon.Editor.Common
             });
             header.Add(addButton);
             container.Add(header);
+            ForgeUI.Collapsible(container, header, title);
+            ForgeLabels.Track(container);
 
             var rows = new VisualElement();
             container.Add(rows);
@@ -50,11 +52,11 @@ namespace TheDungeon.Editor.Common
             {
                 serializedObject.Update();
                 var property = serializedObject.FindProperty(path);
-                titleLabel.text = $"{title}  <color=#888888>{property.arraySize}/{maxCount}</color>";
+                titleLabel.text = $"{ForgeText.WindowRich(title)}  <color=#888888>{property.arraySize}/{maxCount}</color>";
                 addButton.SetEnabled(property.arraySize < maxCount);
                 rows.Clear();
                 if (property.arraySize == 0)
-                    rows.Add(ForgeUI.Label("Aucune ligne. Cliquez sur « + Ajouter ».", "forge-hint"));
+                    rows.Add(ForgeUI.Label(ForgeText.System("Aucune ligne. Cliquez sur « + Ajouter »."), "forge-hint"));
 
                 for (var i = 0; i < property.arraySize; i++)
                 {
@@ -64,12 +66,12 @@ namespace TheDungeon.Editor.Common
                     var content = makeRow(property.GetArrayElementAtIndex(i), i);
                     content.style.flexGrow = 1;
                     row.Add(content);
-                    row.Add(ForgeUI.Button("✕", "Supprimer cette ligne.", () =>
+                    row.Add(ForgeUI.CloseButton("Supprimer cette ligne.", () =>
                     {
                         var array = serializedObject.FindProperty(path);
                         array.DeleteArrayElementAtIndex(index);
                         serializedObject.ApplyModifiedProperties();
-                    }, "forge-button--icon"));
+                    }));
                     rows.Add(row);
                 }
             }

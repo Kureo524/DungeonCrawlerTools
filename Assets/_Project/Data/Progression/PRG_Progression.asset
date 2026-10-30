@@ -1,0 +1,288 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1d61b7b7890c6ffb802d5f15bfb6e0e, type: 3}
+  m_Name: PRG_Progression
+  m_EditorClassIdentifier: TheDungeon.Runtime::TheDungeon.Data.PlayerProgression
+  displayName: Progression
+  levelCount: 20
+  stats:
+  - id: 729d7782
+    displayName: PV max
+    role: 1
+    color: {r: 0.86, g: 0.25, b: 0.28, a: 1}
+    visibility: 1
+    format: 1
+    decimals: 0
+    min: 10
+    max: 2000
+    growth: 1
+    resource: 0
+    regenPerSecond: 0
+    values:
+    - 50
+    - 536
+    - 651
+    - 750
+    - 857
+    - 1030
+    - 1046
+    - 1087
+    - 1149
+    - 1328
+    - 1563
+    - 1655
+    - 1679
+    - 1745
+    - 1772
+    - 1827
+    - 1846
+    - 1848
+    - 1874
+    - 1910
+  - id: f29d7c3f
+    displayName: "D\xE9g\xE2ts"
+    role: 2
+    color: {r: 0.95, g: 0.6, b: 0.25, a: 1}
+    visibility: 1
+    format: 0
+    decimals: 0
+    min: 1
+    max: 300
+    growth: 2
+    resource: 0
+    regenPerSecond: 0
+    values:
+    - 1
+    - 12
+    - 21
+    - 28
+    - 34
+    - 56
+    - 76
+    - 90
+    - 105
+    - 123
+    - 149
+    - 156
+    - 184
+    - 202
+    - 223
+    - 241
+    - 250
+    - 266
+    - 284
+    - 300
+  - id: 3422281d
+    displayName: XP requise
+    role: 5
+    color: {r: 0.3, g: 0.6, b: 1, a: 1}
+    visibility: 1
+    format: 1
+    decimals: 0
+    min: 1
+    max: 100000
+    growth: 2
+    resource: 0
+    regenPerSecond: 0
+    values:
+    - 100
+    - 125
+    - 156
+    - 195
+    - 244
+    - 305
+    - 381
+    - 477
+    - 596
+    - 745
+    - 931
+    - 1164
+    - 1455
+    - 1819
+    - 2274
+    - 2842
+    - 3553
+    - 4441
+    - 5551
+    - 6939
+  - id: 11f4ff94
+    displayName: Endurance
+    role: 0
+    color: {r: 0, g: 0.7882353, b: 0.12616639, a: 1}
+    visibility: 1
+    format: 1
+    decimals: 0
+    min: 1
+    max: 550
+    growth: 2
+    resource: 1
+    regenPerSecond: 5
+    values:
+    - 20
+    - 38
+    - 57
+    - 75
+    - 89
+    - 104
+    - 118
+    - 133
+    - 149
+    - 166
+    - 182
+    - 199
+    - 225
+    - 250
+    - 276
+    - 302
+    - 338
+    - 373
+    - 410
+    - 444
+  attributes:
+  - id: 3ab94ccf
+    displayName: Vigueur
+    description: 
+    color: {r: 0.7882353, g: 0, b: 0.05507437, a: 1}
+    maxPoints: 99
+    bonuses:
+    - statId: 729d7782
+      perPoint: 1
+      softCap: 70
+      afterSoftCap: 0.5
+  - id: 0e8070b9
+    displayName: Endurance
+    description: 
+    color: {r: 0, g: 0.7735849, b: 0.12983, a: 1}
+    maxPoints: 99
+    bonuses:
+    - statId: 11f4ff94
+      perPoint: 1
+      softCap: 70
+      afterSoftCap: 0.5
+  skills: []
+  mechanics:
+  - id: 450cfb52
+    displayName: Dash
+    description: 
+    color: {r: 1, g: 1, b: 1, a: 1}
+    action: 2
+    input: 2
+    unlockedAtStart: 0
+    costStatId: 11f4ff94
+    cost: 50
+    cooldown: 0.6
+    power: 3
+    count: 1
+    duration: 0.18
+    upgrades:
+    - power: 1
+      cost: -10
+      cooldown: -0.1
+      count: 0
+      duration: -0.05
+  - id: 32cfafa0
+    displayName: Shock Wave
+    description: 
+    color: {r: 1, g: 0, b: 0.4178648, a: 1}
+    action: 1
+    input: 0
+    unlockedAtStart: 1
+    costStatId: 11f4ff94
+    cost: 10
+    cooldown: 0.75
+    power: 60
+    count: 10
+    duration: 0
+    upgrades:
+    - power: 70
+      cost: 0
+      cooldown: 0
+      count: 0
+      duration: 0
+    - power: 70
+      cost: -2
+      cooldown: 0
+      count: 4
+      duration: 0
+    - power: 75
+      cost: -2
+      cooldown: 0.65
+      count: 2
+      duration: 0
+    - power: 85
+      cost: -2
+      cooldown: 0.5
+      count: 0
+      duration: 0
+  rewards:
+  - level: 5
+    type: 4
+    amount: 1
+    skillId: 
+    mechanicId: 450cfb52
+    note: 
+  - level: 5
+    type: 0
+    amount: 5
+    skillId: 
+    mechanicId: 
+    note: 
+  - level: 5
+    type: 5
+    amount: 1
+    skillId: 
+    mechanicId: 32cfafa0
+    note: 
+  - level: 8
+    type: 5
+    amount: 1
+    skillId: 
+    mechanicId: 450cfb52
+    note: 
+  - level: 10
+    type: 0
+    amount: 5
+    skillId: 
+    mechanicId: 
+    note: 
+  - level: 10
+    type: 5
+    amount: 1
+    skillId: 
+    mechanicId: 32cfafa0
+    note: 
+  - level: 14
+    type: 5
+    amount: 1
+    skillId: 
+    mechanicId: 32cfafa0
+    note: 
+  - level: 15
+    type: 0
+    amount: 5
+    skillId: 
+    mechanicId: 
+    note: 
+  - level: 17
+    type: 5
+    amount: 1
+    skillId: 
+    mechanicId: 32cfafa0
+    note: 
+  - level: 20
+    type: 0
+    amount: 5
+    skillId: 
+    mechanicId: 
+    note: 
+  unlocks: []
+  levels: []

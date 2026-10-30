@@ -270,6 +270,39 @@ namespace TheDungeon.Editor.Progression
             SortRewards(serializedObject);
         }
 
+        /// <summary>
+        /// Ajoute des points d'attributs à intervalle régulier, en plus de ceux déjà donnés : un niveau qui en donne déjà
+        /// en reçoit davantage, les autres reçoivent une nouvelle récompense.
+        /// </summary>
+        public static void AddAttributePoints(SerializedObject serializedObject, int amount, int from, int every)
+        {
+            if (amount <= 0)
+                return;
+            serializedObject.Update();
+            var rewards = serializedObject.FindProperty("rewards");
+            var levels = serializedObject.FindProperty("levelCount").intValue;
+            for (var level = Mathf.Max(1, from); level <= levels; level += Mathf.Max(1, every))
+            {
+                SerializedProperty existing = null;
+                for (var r = 0; r < rewards.arraySize && existing == null; r++)
+                {
+                    var reward = rewards.GetArrayElementAtIndex(r);
+                    if (reward.FindPropertyRelative("type").enumValueIndex == (int)RewardType.AttributePoints &&
+                        reward.FindPropertyRelative("level").intValue == level)
+                        existing = reward;
+                }
+                if (existing != null)
+                {
+                    existing.FindPropertyRelative("amount").intValue += amount;
+                    continue;
+                }
+                rewards.arraySize++;
+                rewards.GetArrayElementAtIndex(rewards.arraySize - 1).boxedValue = new LevelReward { level = level, type = RewardType.AttributePoints, amount = amount };
+            }
+            serializedObject.ApplyModifiedProperties();
+            SortRewards(serializedObject);
+        }
+
         /// <summary>Trie les récompenses par niveau (l'ordre d'un même niveau est conservé).</summary>
         public static void SortRewards(SerializedObject serializedObject)
         {

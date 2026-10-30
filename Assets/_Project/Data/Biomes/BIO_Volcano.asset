@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9053e33872d358b1ab01fc1479d00334, type: 3}
+  m_Name: BIO_Volcano
+  m_EditorClassIdentifier: TheDungeon.Runtime::TheDungeon.Data.BiomeData
+  displayName: Volcano
+  color: {r: 1, g: 0.2028302, b: 0.24607722, a: 1}
+  minFloor: 1
+  maxFloor: 2
+  floorSprites:
+  - {fileID: 21300000, guid: 4259fdf6e5fe84f2ca8dd7ba0917d59a, type: 3}
+  wallSprite: {fileID: 21300000, guid: 930925263dd0f08f483acc13b3321d6a, type: 3}
+  pitSprite: {fileID: 21300000, guid: cbb09e737ece3aaa8ad4258cb66aa47d, type: 3}
+  enemies:
+  - enemy: {fileID: 11400000, guid: e611bc3cb59277c33b77a6862c444960, type: 2}
+    spawnWeight: 19
+  - enemy: {fileID: 11400000, guid: 7f2e7328f1e58dc92b6c7c58a40d0f37, type: 2}
+    spawnWeight: 4
+  props:
+  - name: KnightBust
+    sprite: {fileID: 21300000, guid: 2515091dc64d4959ab4e2e1824febb9b, type: 3}
+    blocksMovement: 1
+  - name: DragonStatue
+    sprite: {fileID: 21300000, guid: 6e322fae06db6f9d09755af49d062092, type: 3}
+    blocksMovement: 1
+  chestLootTables:
+  - {fileID: 11400000, guid: 33618924f35e54f70871c9d82fff1fa8, type: 2}
+  rarityBoosts:
+  - rarity: 4
+    multiplier: 5

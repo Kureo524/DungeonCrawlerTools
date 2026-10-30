@@ -54,8 +54,12 @@ namespace TheDungeon.Editor.Validation
                     yield return Error("Une table de butin de coffre est vide (manquante ou supprimée).", biome);
 
                 foreach (var boost in biome.RarityBoosts)
-                    if (boost.multiplier < 0f)
-                        yield return Error($"Le bonus de rareté {boost.rarity} est négatif.", biome);
+                {
+                    if (!context.Limits.HasRarity(boost.rarity))
+                        yield return Error($"Le bonus de butin vise une rareté supprimée (n°{boost.rarity}) : retirez cette ligne ou choisissez une autre rareté.", biome);
+                    else if (boost.multiplier < 0f)
+                        yield return Error($"Le bonus de rareté {context.Limits.GetRarity(boost.rarity).DisplayName} est négatif.", biome);
+                }
                 if (biome.RarityBoosts.GroupBy(b => b.rarity).Any(group => group.Count() > 1))
                     yield return Error("Une même rareté a plusieurs bonus : gardez une seule ligne par rareté.", biome);
             }
@@ -121,6 +125,13 @@ namespace TheDungeon.Editor.Validation
             {
                 if (prop.sprite == null || !biome.TryGetProp(prop.sprite, out _))
                     yield return Error($"Case {Cell(prop.position)} : ce décor n'appartient pas au biome {biome.DisplayName}.", room);
+            }
+            foreach (var spawn in room.Npcs)
+            {
+                if (spawn.npc == null)
+                    yield return Error($"Case {Cell(spawn.position)} : personnage manquant ou supprimé.", room);
+                else if (spawn.afterClear && room.RoomType is not (RoomType.Combat or RoomType.Boss))
+                    yield return Warning($"« {spawn.npc.DisplayName} » attend la fin du combat, mais la salle n'est pas une salle de combat : il sera là dès l'arrivée.", room);
             }
 
             // Chaque objet doit être sur une case de sol, dans la salle, et seul sur sa case.
@@ -191,6 +202,12 @@ namespace TheDungeon.Editor.Validation
                     if (room.Chests.Count == 0)
                         yield return Error("Une salle au trésor doit contenir au moins un coffre.", room);
                     break;
+                case RoomType.Npc:
+                    if (room.Npcs.Count == 0)
+                        yield return Warning("Salle de PNJ sans personnage posé : elle accueillera les PNJ de l'étage qui ne sont placés nulle part.", room);
+                    if (room.Enemies.Count > 0)
+                        yield return Warning("Une salle de PNJ contient des ennemis : ils ne seront pas activés.", room);
+                    break;
                 case RoomType.Boss:
                     if (bosses != 1)
                         yield return Error($"Une salle de boss doit contenir exactement un boss (actuellement {bosses}).", room);
@@ -210,6 +227,8 @@ namespace TheDungeon.Editor.Validation
                 yield return (chest.position, "Un coffre");
             foreach (var prop in room.Props)
                 yield return (prop.position, "Un décor");
+            foreach (var spawn in room.Npcs)
+                yield return (spawn.position, spawn.npc != null ? $"Le personnage « {spawn.npc.DisplayName} »" : "Un personnage");
             if (room.HasPlayerSpawn)
                 yield return (room.PlayerSpawn, "Le point d'apparition du joueur");
         }

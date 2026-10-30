@@ -8,7 +8,7 @@ namespace TheDungeon.Game
     [Serializable]
     public struct RarityColor
     {
-        public Rarity rarity;
+        public int rarity;
         public Color color;
     }
 
@@ -25,6 +25,7 @@ namespace TheDungeon.Game
         public List<NpcData> npcs = new();
         [Tooltip("Toutes les salles, pour « Tester cette salle ».")]
         public List<RoomData> rooms = new();
+        [Tooltip("Raretés, de la plus commune à la plus rare.")]
         public List<RarityColor> rarityColors = new();
 
         [Header("Sprites communs")]
@@ -36,12 +37,19 @@ namespace TheDungeon.Game
         public Sprite gold;
         public Sprite pedestal;
 
-        public Color GetRarityColor(Rarity rarity)
+        public Color GetRarityColor(int rarity)
         {
             foreach (var entry in rarityColors)
                 if (entry.rarity == rarity)
                     return entry.color;
             return Color.white;
+        }
+
+        /// <summary>Rang de la rareté (0 = la plus commune) ; une rareté inconnue (supprimée) passe sous toutes les autres.</summary>
+        public int GetRarityRank(int rarity)
+        {
+            var index = rarityColors.FindIndex(entry => entry.rarity == rarity);
+            return index >= 0 ? index : -1;
         }
     }
 }

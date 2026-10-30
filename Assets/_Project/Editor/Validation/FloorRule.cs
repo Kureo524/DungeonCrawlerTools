@@ -80,6 +80,9 @@ namespace TheDungeon.Editor.Validation
                 if (slot.room.Biome != null && (floor.FloorNumber < slot.room.Biome.MinFloor || floor.FloorNumber > slot.room.Biome.MaxFloor))
                     yield return Error($"« {slot.room.DisplayName} » est du biome {slot.room.Biome.DisplayName}, réservé aux étages {slot.room.Biome.MinFloor} à {slot.room.Biome.MaxFloor}.", floor);
 
+                foreach (var spawn in slot.room.Npcs.Where(s => s.npc != null && !s.npc.AppearsOn(floor.FloorNumber)))
+                    yield return Warning($"« {spawn.npc.DisplayName} » est posé dans « {slot.room.DisplayName} », mais l'étage {floor.FloorNumber} ne fait pas partie de ses étages ({FloorSet.Describe(spawn.npc.Floors)}). Il apparaîtra quand même.", floor);
+
                 var others = context.Floors.Where(other => other != floor && other.Rooms.Any(s => s.room == slot.room)).ToList();
                 if (others.Count > 0)
                     yield return Error($"« {slot.room.DisplayName} » est aussi placée sur l'étage {others[0].FloorNumber} : chaque salle n'appartient qu'à un étage.", floor);

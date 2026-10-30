@@ -12,7 +12,8 @@ namespace TheDungeon.Editor.RoomEditor
         Chest,
         Prop,
         PlayerSpawn,
-        Eraser
+        Eraser,
+        Npc
     }
 
     /// <summary>Ce que l'on peint sur la grille : un type de case ou un élément tiré du biome.</summary>
@@ -24,9 +25,11 @@ namespace TheDungeon.Editor.RoomEditor
         public EnemyData Enemy { get; }
         public LootTable LootTable { get; }
         public Sprite PropSprite { get; }
+        public NpcData Npc { get; }
 
-        RoomBrush(BrushKind kind, string label, Sprite icon, EnemyData enemy = null, LootTable lootTable = null, Sprite propSprite = null)
+        RoomBrush(BrushKind kind, string label, Sprite icon, EnemyData enemy = null, LootTable lootTable = null, Sprite propSprite = null, NpcData npc = null)
         {
+            Npc = npc;
             Kind = kind;
             Label = label;
             Icon = icon;
@@ -41,8 +44,9 @@ namespace TheDungeon.Editor.RoomEditor
         public static RoomBrush ForProp(BiomeProp prop) => new(BrushKind.Prop, prop.name, prop.sprite, propSprite: prop.sprite);
         public static RoomBrush Spawn(Sprite icon) => new(BrushKind.PlayerSpawn, "Apparition du joueur", icon);
         public static RoomBrush Eraser() => new(BrushKind.Eraser, "Gomme", null);
+        public static RoomBrush ForNpc(NpcData npc) => new(BrushKind.Npc, npc.DisplayName, npc.Portrait, npc: npc);
 
         public bool SameAs(RoomBrush other) =>
-            other != null && Kind == other.Kind && Enemy == other.Enemy && LootTable == other.LootTable && PropSprite == other.PropSprite;
+            other != null && Kind == other.Kind && Enemy == other.Enemy && LootTable == other.LootTable && PropSprite == other.PropSprite && Npc == other.Npc;
     }
 }

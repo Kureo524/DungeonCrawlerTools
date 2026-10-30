@@ -140,7 +140,7 @@ namespace TheDungeon.Editor.Play
             database.npcs = AssetFactory.LoadAll<NpcData>();
             database.rooms = AssetFactory.LoadAll<RoomData>().Where(r => r.HasValidTiles).ToList();
             database.rarityColors = ForgeDesignLimits.Instance.rarities
-                .Select(r => new RarityColor { rarity = r.rarity, color = r.color }).ToList();
+                .Select(r => new RarityColor { rarity = r.id, color = r.color }).ToList();
 
             database.player = Sprite("Common/SPR_Player");
             database.chestClosed = Sprite("Common/SPR_Chest");

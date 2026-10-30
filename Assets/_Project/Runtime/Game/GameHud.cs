@@ -175,7 +175,7 @@ namespace TheDungeon.Game
                 Fill(rect, Panel);
                 if (item != null)
                 {
-                    Outline(rect, game.Database.GetRarityColor(item.Rarity), 2f);
+                    Outline(rect, game.Database.GetRarityColor(item.RarityId), 2f);
                     DrawSprite(new Rect(rect.x + 7, rect.y + 7, 32, 32), item.Icon);
                 }
                 else
@@ -350,7 +350,10 @@ namespace TheDungeon.Game
             var npc = dialogue.Npc;
             var node = dialogue.Current;
             var narration = node.speaker == DialogueSpeaker.Narrator;
+            // Couleurs propres au personnage (outil Dialogues > Apparence de la boîte de dialogue).
+            var look = npc.Style;
             var textStyle = new GUIStyle(text) { fontSize = 17, fontStyle = narration ? FontStyle.Italic : FontStyle.Normal };
+            textStyle.normal.textColor = narration ? new Color(look.text.r, look.text.g, look.text.b, look.text.a * 0.8f) : look.text;
 
             // La boîte s'adapte au contenu : hauteur calculée sur le texte complet (stable pendant l'écriture) et sur chaque choix.
             const float boxWidth = 840f;
@@ -360,20 +363,20 @@ namespace TheDungeon.Game
             var contentHeight = 50f + textHeight + 10f + (choiceHeights.Count > 0 ? choiceHeights.Sum() + 3f * choiceHeights.Count : 30f) + 12f;
             var boxHeight = Mathf.Min(ReferenceHeight - 40f, Mathf.Max(narration ? 120f : 160f, contentHeight));
             var box = new Rect(width / 2 - boxWidth / 2, ReferenceHeight - boxHeight - 20f, boxWidth, boxHeight);
-            Fill(box, new Color(0.05f, 0.04f, 0.07f, 0.94f));
-            Outline(box, new Color(0.78f, 0.7f, 0.55f), 2f);
+            Fill(box, look.boxBackground);
+            Outline(box, look.boxBorder, 2f);
 
             var textLeft = box.x + 20;
             if (!narration)
             {
                 var portrait = new Rect(box.x + 18, box.y + 18, 120, 120);
                 Fill(portrait, new Color(1f, 1f, 1f, 0.05f));
-                Outline(portrait, new Color(0.78f, 0.7f, 0.55f), 2f);
+                Outline(portrait, look.boxBorder, 2f);
                 DrawSprite(new Rect(portrait.x + 10, portrait.y + 10, 100, 100), node.speaker == DialogueSpeaker.Player ? game.Database.player : npc.Portrait);
                 var name = node.speaker == DialogueSpeaker.Player ? "Vous" : npc.DisplayName;
                 var plate = new Rect(box.x + 156, box.y + 16, 220, 26);
-                Fill(plate, node.speaker == DialogueSpeaker.Npc ? npc.Color : new Color(0.3f, 0.6f, 0.4f));
-                GUI.Label(plate, $"<b>{name}</b>", centered);
+                Fill(plate, node.speaker == DialogueSpeaker.Npc ? npc.Color : look.playerPlate);
+                GUI.Label(plate, $"<b><color=#{ColorUtility.ToHtmlStringRGBA(look.nameText)}>{name}</color></b>", centered);
                 textLeft = box.x + 160;
             }
 
@@ -384,17 +387,33 @@ namespace TheDungeon.Game
             if (dialogue.Choices.Count > 0)
             {
                 var y = box.y + 50 + textHeight + 10;
+                var choiceLabel = new GUIStyle(choice);
                 for (var i = 0; i < dialogue.Choices.Count; i++)
                 {
-                    if (GUI.Button(new Rect(textLeft, y, textWidth, choiceHeights[i]), $"{i + 1}.  {dialogue.Choices[i].text}", choice))
+                    // Réponse du joueur : ses couleurs (ou celles du personnage), plus marquées au survol.
+                    var (background, border, color) = look.ChoiceLook(dialogue.Choices[i]);
+                    foreach (var state in new[] { choiceLabel.normal, choiceLabel.hover, choiceLabel.active, choiceLabel.focused })
+                    {
+                        state.background = null;
+                        state.textColor = color;
+                    }
+                    var rect = new Rect(textLeft, y, textWidth, choiceHeights[i]);
+                    var hover = rect.Contains(Event.current.mousePosition);
+                    Fill(rect, hover ? Color.Lerp(background, border, 0.3f) : background);
+                    Outline(rect, hover ? new Color(border.r, border.g, border.b, 1f) : border, 1f);
+                    if (GUI.Button(rect, $"{i + 1}.  {dialogue.Choices[i].text}", choiceLabel))
+                    {
+                        // Choisir passe à la réplique suivante et remplace la liste des réponses : on arrête de la parcourir.
                         dialogue.Choose(i);
+                        break;
+                    }
                     y += choiceHeights[i] + 3;
                 }
             }
             else
             {
                 var hint = new GUIStyle(small) { alignment = TextAnchor.MiddleRight };
-                hint.normal.textColor = new Color(0.78f, 0.7f, 0.55f);
+                hint.normal.textColor = look.boxBorder;
                 if (GUI.Button(new Rect(box.xMax - 260, box.yMax - 34, 240, 24), "▼ Clic ou Entrée pour continuer", hint))
                     dialogue.Advance();
             }
@@ -518,10 +537,11 @@ namespace TheDungeon.Game
         void ItemRow(Rect rect, ItemData item, string action, System.Action onAction)
         {
             Fill(rect, new Color(1f, 1f, 1f, 0.04f));
-            var color = game.Database.GetRarityColor(item.Rarity);
+            var color = game.Database.GetRarityColor(item.RarityId);
             Fill(new Rect(rect.x, rect.y, 4, rect.height), color);
             DrawSprite(new Rect(rect.x + 10, rect.y + 4, 32, 32), item.Icon);
-            var stats = string.Join("  ", item.Stats.Select(s => $"{s.stat} {s.value:+0;-0}"));
+            var stats = string.Join("  ", item.Stats.Select(s => $"{s.stat} {s.value:+0;-0}")
+                .Concat(item.PassiveEffects.Select(e => $"<color=#a597c0>{EffectInfo.Summary(e)}</color>")));
             GUI.Label(new Rect(rect.x + 50, rect.y + 2, 400, 20), $"<color=#{ColorUtility.ToHtmlStringRGB(color)}><b>{item.DisplayName}</b></color>  <color=#999999>{item.Type}</color>", text);
             GUI.Label(new Rect(rect.x + 50, rect.y + 20, 400, 18), stats, small);
             if (action != null && GUI.Button(new Rect(rect.xMax - 100, rect.y + 7, 90, 26), action))

@@ -125,8 +125,81 @@ namespace TheDungeon.Editor.Studio
                     case "click":
                         steps.Enqueue((() => Click(Window().rootVisualElement, value), StepDelay));
                         break;
+                    case "rulesdemo":
+                        steps.Enqueue((() => RulesDemo(Window().rootVisualElement, value != "off"), StepDelay));
+                        break;
+                    case "scrollto":
+                        steps.Enqueue((() => ScrollTo(Window().rootVisualElement, value), StepDelay));
+                        break;
+                    case "graphcard":
+                        steps.Enqueue((() =>
+                        {
+                            var graph = Window().rootVisualElement.Q<TheDungeon.Editor.Dialogues.DialogueGraphView>() ?? throw new ArgumentException("aucun arbre affiché");
+                            graph.PreviewCard(int.Parse(value));
+                            results.Add($"carte de la réplique #{value}");
+                        }, StepDelay));
+                        break;
+                    case "graphmove":
+                        steps.Enqueue((() =>
+                        {
+                            var graph = Window().rootVisualElement.Q<TheDungeon.Editor.Dialogues.DialogueGraphView>() ?? throw new ArgumentException("aucun arbre affiché");
+                            var parts = value.Split(',');
+                            graph.MoveNode(int.Parse(parts[0]), new Vector2(float.Parse(parts[1]), float.Parse(parts[2])));
+                            results.Add($"réplique #{parts[0]} déplacée");
+                        }, StepDelay));
+                        break;
+                    case "pick":
+                        steps.Enqueue((() =>
+                        {
+                            // Élément qui recevrait un clic à ce point de la fenêtre (comme la souris), et ses parents.
+                            var root = Window().rootVisualElement;
+                            var parts = value.Split(',');
+                            var point = root.LocalToWorld(new Vector2(float.Parse(parts[0]), float.Parse(parts[1])));
+                            var picked = root.panel.Pick(point);
+                            var chain = new List<string>();
+                            for (var e = picked; e != null && chain.Count < 12; e = e.parent)
+                                chain.Add($"{e.GetType().Name}@{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(e)}.{string.Join(".", e.GetClasses())} {e.worldBound}");
+                            results.Add($"pick {value} : " + string.Join("\n   < ", chain));
+                        }, StepDelay));
+                        break;
+                    case "undo":
+                        steps.Enqueue((() =>
+                        {
+                            results.Add($"annulation de « {Undo.GetCurrentGroupName()} »");
+                            Undo.PerformUndo();
+                        }, StepDelay));
+                        break;
+                    case "exportgraph":
+                        steps.Enqueue((() =>
+                        {
+                            var graph = Window().rootVisualElement.Q<TheDungeon.Editor.Dialogues.DialogueGraphView>() ?? throw new ArgumentException("aucun arbre affiché");
+                            graph.ExportPng(Path.GetFullPath(value), ok => results.Add(ok ? $"arbre exporté : {value}" : "export de l'arbre impossible"));
+                        }, StepDelay));
+                        break;
                     case "dump":
                         steps.Enqueue((() => Dump(Window().rootVisualElement, value), StepDelay));
+                        break;
+                    case "choose":
+                        steps.Enqueue((() => Choose(Window().rootVisualElement, value), StepDelay));
+                        break;
+                    case "drag":
+                        steps.Enqueue((() => Drag(Window().rootVisualElement, value), StepDelay));
+                        break;
+                    case "press":
+                        steps.Enqueue((() => Press(Window().rootVisualElement, value), StepDelay));
+                        break;
+                    case "tap":
+                        steps.Enqueue((() =>
+                        {
+                            Press(Window().rootVisualElement, value);
+                            Release(Window().rootVisualElement, string.Empty);
+                        }, StepDelay));
+                        break;
+                    case "release":
+                        steps.Enqueue((() => Release(Window().rootVisualElement, value), StepDelay));
+                        break;
+                    case "tests":
+                        steps.Enqueue((() => RunTests(value), StepDelay));
                         break;
                     case "dropdown":
                         steps.Enqueue((() => OpenDropdown(Window().rootVisualElement, value), StepDelay));
@@ -203,7 +276,9 @@ namespace TheDungeon.Editor.Studio
         /// <summary>Clique sur les boutons dont le texte (ou celui d'un libellé enfant) correspond, comme le ferait un clic de souris.</summary>
         static void Click(VisualElement root, string text)
         {
-            var buttons = root.Query<Button>().Where(b => b.text == text || b.Query<Label>().ToList().Any(l => l.text == text)).ToList();
+            // Boutons visibles d'abord : une vue masquée peut avoir un bouton de même texte (« Annuler les modifications »…).
+            var buttons = root.Query<Button>().Where(b => b.text == text || b.Query<Label>().ToList().Any(l => l.text == text))
+                .ToList().OrderBy(b => IsShown(b) ? 0 : 1).ToList();
             if (buttons.Count == 0)
             {
                 // Éléments cliquables qui ne sont pas des boutons (lignes de liste, cases de la frise…) : on envoie un vrai clic.
@@ -221,6 +296,50 @@ namespace TheDungeon.Editor.Studio
             results.Add($"clic sur le bouton « {text} »");
         }
 
+        /// <summary>
+        /// Démo temporaire : un panneau de conditions de chaque type (sur un personnage en mémoire, jamais enregistré),
+        /// inséré en haut de la fiche à la largeur du panneau de réplique, pour vérifier son rendu. « off » le retire.
+        /// </summary>
+        static void RulesDemo(VisualElement root, bool show)
+        {
+            root.Q("forge-capture-rules-demo")?.RemoveFromHierarchy();
+            if (!show)
+                return;
+            var details = root.Q<ScrollView>(className: "forge-details") ?? throw new ArgumentException("aucune fiche affichée");
+            var npc = ScriptableObject.CreateInstance<TheDungeon.Data.NpcData>();
+            npc.hideFlags = HideFlags.DontSave;
+            var serialized = new SerializedObject(npc);
+            var id = TheDungeon.Editor.Dialogues.DialogueEditing.AddNode(serialized, TheDungeon.Data.DialogueSpeaker.Npc, "Démo");
+            TheDungeon.Editor.Dialogues.DialogueEditing.AddChoice(serialized, id, "Réponse", -1, 4);
+            var conditions = serialized.FindProperty("nodes.Array.data[0].choices.Array.data[0].conditions");
+            var types = (TheDungeon.Data.ConditionType[])Enum.GetValues(typeof(TheDungeon.Data.ConditionType));
+            conditions.arraySize = types.Length;
+            for (var i = 0; i < types.Length; i++)
+            {
+                conditions.GetArrayElementAtIndex(i).FindPropertyRelative("type").enumValueIndex = (int)types[i];
+                conditions.GetArrayElementAtIndex(i).FindPropertyRelative("value").intValue = 1;
+                conditions.GetArrayElementAtIndex(i).FindPropertyRelative("flag").stringValue = "quete_acceptee";
+            }
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            var demo = new VisualElement { name = "forge-capture-rules-demo" };
+            demo.style.width = 380;
+            demo.Add(TheDungeon.Editor.Dialogues.DialogueRulesEditor.Conditions(serialized, "nodes.Array.data[0].choices.Array.data[0].conditions",
+                "Conditions (démo)", string.Empty, () => new[] { "quete_acceptee" }));
+            details.contentContainer.Insert(0, demo);
+            details.scrollOffset = Vector2.zero;
+            results.Add("démo des conditions affichée");
+        }
+
+        /// <summary>Fait défiler la fiche jusqu'au premier élément visible portant cette classe USS.</summary>
+        static void ScrollTo(VisualElement root, string className)
+        {
+            var element = root.Query<VisualElement>(className: className).Where(e => e.resolvedStyle.display != DisplayStyle.None && e.layout.height > 0).First()
+                          ?? throw new ArgumentException($"aucun élément .{className}");
+            var scroll = element.GetFirstAncestorOfType<ScrollView>() ?? throw new ArgumentException($".{className} n'est pas dans une zone qui défile");
+            scroll.ScrollTo(element);
+            results.Add($"défilement jusqu'à .{className}");
+        }
+
         /// <summary>Décrit la structure (types, noms, classes USS, taille) du champ dont le libellé correspond.</summary>
         static void Dump(VisualElement root, string label)
         {
@@ -230,7 +349,7 @@ namespace TheDungeon.Editor.Studio
             void Walk(VisualElement element, int depth)
             {
                 results.Add($"{new string(' ', depth * 2)}{element.GetType().Name} #{element.name} .{string.Join(" .", element.GetClasses())} " +
-                            $"{element.layout.width:0}x{element.layout.height:0} display={element.resolvedStyle.display}");
+                            $"{element.layout.width:0}x{element.layout.height:0} @({element.layout.x:0},{element.layout.y:0}) display={element.resolvedStyle.display}");
                 foreach (var child in element.hierarchy.Children())
                     Walk(child, depth + 1);
             }
@@ -238,6 +357,104 @@ namespace TheDungeon.Editor.Studio
         }
 
         /// <summary>Ouvre la liste déroulante dont le libellé correspond (pour capturer son menu).</summary>
+
+        /// <summary>« drag=forge-drag-handle:0>2 » : glisse la 1re poignée de cette classe jusqu'au milieu bas de la 3e (vrais événements de pointeur).</summary>
+        static void Drag(VisualElement root, string value)
+        {
+            var parts = value.Split(':', '>');
+            var handles = root.Query(className: parts[0]).Where(IsShown).ToList();
+            var handle = handles[int.Parse(parts[1])];
+            var target = handles[int.Parse(parts[2])].worldBound.center + new Vector2(0f, 4f);
+            void Send(EventType type, Vector2 position)
+            {
+                var imgui = new Event { type = type, mousePosition = position, button = 0 };
+                using EventBase evt = type switch
+                {
+                    EventType.MouseDown => PointerDownEvent.GetPooled(imgui),
+                    EventType.MouseDrag => PointerMoveEvent.GetPooled(imgui),
+                    _ => PointerUpEvent.GetPooled(imgui)
+                };
+                handle.SendEvent(evt);
+            }
+            var start = handle.worldBound.center;
+            Send(EventType.MouseDown, start);
+            for (var step = 1; step <= 8; step++)
+                Send(EventType.MouseDrag, Vector2.Lerp(start, target, step / 8f));
+            // « drag=…:0>3>hold » : le pointeur reste enfoncé, pour capturer l'état pendant le glisser.
+            if (parts.Length > 3 && parts[3] == "hold")
+            {
+                results.Add($"glisser en cours de {parts[1]} vers {parts[2]}");
+                return;
+            }
+            Send(EventType.MouseUp, target);
+            results.Add($"glissé de {parts[1]} vers {parts[2]}");
+        }
+
+        static VisualElement pressed;
+
+        static void SendPointer(VisualElement target, EventType type, Vector2 position)
+        {
+            var imgui = new Event { type = type, mousePosition = position, button = 0 };
+            using EventBase evt = type switch
+            {
+                EventType.MouseDown => PointerDownEvent.GetPooled(imgui),
+                EventType.MouseDrag => PointerMoveEvent.GetPooled(imgui),
+                _ => PointerUpEvent.GetPooled(imgui)
+            };
+            target.SendEvent(evt);
+        }
+
+        /// <summary>« press=classe » : enfonce le pointeur au centre du premier élément visible de cette classe (sans relâcher).</summary>
+        static void Press(VisualElement root, string className)
+        {
+            pressed = root.Query(className: className).Where(IsShown).First() ?? throw new ArgumentException($"aucun élément .{className}");
+            SendPointer(pressed, EventType.MouseDown, pressed.worldBound.center);
+            results.Add($"appui sur .{className}");
+        }
+
+        /// <summary>« release=texte » : relâche au-dessus du libellé qui contient ce texte (ou sur place si vide).</summary>
+        static void Release(VisualElement root, string text)
+        {
+            if (pressed == null)
+                throw new ArgumentException("aucun appui en cours");
+            var position = pressed.worldBound.center;
+            if (!string.IsNullOrEmpty(text))
+            {
+                var label = root.Query<Label>().Where(l => IsShown(l) && l.text.Contains(text)).Last() ?? throw new ArgumentException($"aucun libellé « {text} »");
+                position = label.worldBound.center;
+                SendPointer(pressed, EventType.MouseDrag, position);
+            }
+            SendPointer(pressed, EventType.MouseUp, position);
+            pressed = null;
+            results.Add($"relâché sur « {text} »");
+        }
+
+        static bool IsShown(VisualElement element)
+        {
+            for (; element != null; element = element.parent)
+                if (element.resolvedStyle.display == DisplayStyle.None)
+                    return false;
+            return true;
+        }
+
+        /// <summary>« choose=Actif>Passif » : la première liste déroulante qui affiche « Actif » passe à « Passif », comme un choix au clic.</summary>
+        static void Choose(VisualElement root, string value)
+        {
+            var parts = value.Split('>');
+            var field = root.Query<DropdownField>().Where(d => d.value == parts[0] && d.resolvedStyle.display != DisplayStyle.None).First()
+                        ?? throw new ArgumentException($"aucune liste qui affiche « {parts[0]} »");
+            field.value = parts[1];
+            results.Add($"« {parts[0]} » → « {parts[1]} »");
+        }
+
+        /// <summary>« tests=GameLogicTests,ContentRulesTests » : lance ces classes de tests ; bilan dans Temp/ForgeCapture/tests.txt.</summary>
+        static void RunTests(string classes)
+        {
+            var runner = TypeCache.GetTypesDerivedFrom<object>().FirstOrDefault(t => t.FullName == "TheDungeon.Editor.Tests.CaptureTestRun")
+                         ?? throw new ArgumentException("assembly de tests absente");
+            runner.GetMethod("Run")!.Invoke(null, new object[] { classes });
+            results.Add($"tests lancés : {classes}");
+        }
 
         static void OpenDropdown(VisualElement root, string label)
         {

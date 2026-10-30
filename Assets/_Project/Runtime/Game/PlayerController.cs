@@ -35,7 +35,8 @@ namespace TheDungeon.Game
         public bool IsDashing => dashTimer > 0f;
         public bool IsShielded => shieldTimer > 0f;
 
-        float CurrentCriticalChance => Mathf.Clamp01(CriticalChance + game.State.SkillValue(SkillEffect.CriticalChance) / 100f);
+        float CurrentCriticalChance => Mathf.Clamp01(CriticalChance +
+            (game.State.SkillValue(SkillEffect.CriticalChance) + game.State.Passive(EffectType.CriticalChance)) / 100f);
 
         /// <summary>Recharge réelle : les compétences « cadence de tir » et « recharge de l'esquive » la raccourcissent.</summary>
         float Cooldown(CharacterMechanic mechanic)
@@ -180,9 +181,9 @@ namespace TheDungeon.Game
             if (critical)
                 damage *= 2;
             var weapon = game.State.Weapon;
-            var color = weapon != null ? game.Database.GetRarityColor(weapon.Rarity) : new Color(1f, 0.95f, 0.7f);
+            var color = weapon != null ? game.Database.GetRarityColor(weapon.RarityId) : new Color(1f, 0.95f, 0.7f);
             Projectile.Spawn(transform.position + (Vector3)(direction * 0.4f), direction, ProjectileSpeed, damage, Faction.Player, color,
-                1f, weapon != null ? weapon.Effects : null, critical);
+                1f, weapon != null ? weapon.ActiveEffects.ToList() : null, critical);
         }
 
         public void TakeHit(int damage, Vector2 direction, IReadOnlyList<ItemEffect> effects, bool critical)
