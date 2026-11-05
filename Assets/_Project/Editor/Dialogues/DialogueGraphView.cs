@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using TheDungeon.Data;
 using TheDungeon.Editor.Common;
@@ -19,7 +18,7 @@ namespace TheDungeon.Editor.Dialogues
     /// </summary>
     public sealed class DialogueGraphView : VisualElement
     {
-        const float NodeWidth = 236f;
+        internal const float NodeWidth = 236f;
         const float RowGap = 74f;
         const float ColumnGap = 36f;
         const float MinZoom = 0.25f;
@@ -37,7 +36,7 @@ namespace TheDungeon.Editor.Dialogues
         readonly VisualElement edgesLayer;
         readonly VisualElement card;
         readonly Label zoomLabel;
-        readonly Dictionary<int, NodeView> views = new();
+        readonly Dictionary<int, DialogueNodeView> views = new();
         readonly Dictionary<int, float> measuredHeights = new();
 
         Vector2 pan = new(40f, 40f);
@@ -54,12 +53,18 @@ namespace TheDungeon.Editor.Dialogues
         Vector2 gestureStart;
         Vector2 gestureOrigin;
         bool gestureMoved;
-        NodeView gestureNode;
+        DialogueNodeView gestureNode;
         (int node, int choice, bool left) linkFrom;
         Vector2 linkEnd;
         // Liens dessinés (pour Ctrl+clic) et lien survolé avec Ctrl enfoncé.
         readonly List<(int from, int choice, Vector2 a, Vector2 b, Vector2 c, Vector2 d)> drawnLinks = new();
         (int from, int choice) hoveredLink = (-1, -1);
+
+        /// <summary>PNJ dont l'arbre est affiché.</summary>
+        internal NpcData Npc => npc;
+
+        /// <summary>Réplique sélectionnée, ou -1.</summary>
+        internal int SelectedId => selectedId;
 
         public DialogueGraphView(SerializedObject serialized, NpcData npc, Action<Action> edit, Action<int> select)
         {
@@ -137,7 +142,7 @@ namespace TheDungeon.Editor.Dialogues
             var reachable = TheDungeon.Dialogue.DialogueLogic.ReachableNodes(npc);
             foreach (var node in npc.Nodes)
             {
-                var view = new NodeView(this, node, !reachable.Contains(node.id));
+                var view = new DialogueNodeView(this, node, !reachable.Contains(node.id));
                 views[node.id] = view;
                 content.Add(view);
             }
@@ -148,7 +153,7 @@ namespace TheDungeon.Editor.Dialogues
         }
 
         /// <summary>Hauteur réelle d'une réplique dès qu'elle est connue ; on range de nouveau si l'estimation était fausse.</summary>
-        void OnNodeGeometry(NodeView view)
+        void OnNodeGeometry(DialogueNodeView view)
         {
             var height = view.layout.height;
             if (float.IsNaN(height) || height < 1f)
@@ -419,7 +424,7 @@ namespace TheDungeon.Editor.Dialogues
             return Vector2.Distance(point, a + ab * t);
         }
 
-        void BeginGesture(Gesture kind, int pointerId, int button, Vector2 viewportPoint, NodeView node)
+        void BeginGesture(Gesture kind, int pointerId, int button, Vector2 viewportPoint, DialogueNodeView node)
         {
             gesture = kind;
             gesturePointer = pointerId;
@@ -431,7 +436,7 @@ namespace TheDungeon.Editor.Dialogues
             viewport.CapturePointer(pointerId);
         }
 
-        internal void OnNodeDown(NodeView view, PointerDownEvent evt)
+        internal void OnNodeDown(DialogueNodeView view, PointerDownEvent evt)
         {
             viewport.Focus();
             HideCard();
@@ -456,7 +461,7 @@ namespace TheDungeon.Editor.Dialogues
             evt.StopPropagation();
         }
 
-        internal void OnPortDown(NodeView view, int choice, bool left, PointerDownEvent evt)
+        internal void OnPortDown(DialogueNodeView view, int choice, bool left, PointerDownEvent evt)
         {
             viewport.Focus();
             HideCard();
@@ -643,7 +648,7 @@ namespace TheDungeon.Editor.Dialogues
 
         #region Menus
 
-        void ShowNodeMenu(NodeView view, Vector2 viewportPoint)
+        void ShowNodeMenu(DialogueNodeView view, Vector2 viewportPoint)
         {
             var id = view.Id;
             var node = view.Node;
@@ -671,7 +676,7 @@ namespace TheDungeon.Editor.Dialogues
             menu.DropDown(new Rect(viewport.LocalToWorld(viewportPoint), Vector2.zero), viewport, DropdownMenuSizeMode.Content);
         }
 
-        void ShowPortMenu(NodeView view, int choice, Vector2 viewportPoint, bool immediate)
+        void ShowPortMenu(DialogueNodeView view, int choice, Vector2 viewportPoint, bool immediate)
         {
             var id = view.Id;
             void Unlink() => edit(() => DialogueEditing.SetLink(serialized, id, choice, DialogueEditing.End));
@@ -701,7 +706,7 @@ namespace TheDungeon.Editor.Dialogues
 
         #region Liens
 
-        static Color LinkColor(int choice, DialogueNode node) =>
+        internal static Color LinkColor(int choice, DialogueNode node) =>
             choice < 0 ? ChartColors.Neutral : node.choices[choice].conditions.Count > 0 ? ChartColors.Series(6) : ChartColors.Series(0);
 
         void DrawEdges(MeshGenerationContext context)
@@ -763,7 +768,7 @@ namespace TheDungeon.Editor.Dialogues
 
         #region Carte de survol
 
-        internal void ScheduleCard(NodeView view)
+        internal void ScheduleCard(DialogueNodeView view)
         {
             pendingCard?.Pause();
             if (gesture != Gesture.None)
@@ -793,7 +798,7 @@ namespace TheDungeon.Editor.Dialogues
             card.style.display = DisplayStyle.None;
         }
 
-        void ShowCard(NodeView view)
+        void ShowCard(DialogueNodeView view)
         {
             if (gesture != Gesture.None || view.panel == null)
                 return;
@@ -868,7 +873,7 @@ namespace TheDungeon.Editor.Dialogues
             return label;
         }
 
-        Color SpeakerColor(DialogueSpeaker speaker) => speaker switch
+        internal Color SpeakerColor(DialogueSpeaker speaker) => speaker switch
         {
             DialogueSpeaker.Player => ChartColors.Series(2),
             DialogueSpeaker.Narrator => ChartColors.Neutral,
@@ -896,243 +901,23 @@ namespace TheDungeon.Editor.Dialogues
             // L'arbre doit être à l'écran : on y fait défiler la fiche avant de commencer.
             var scroll = GetFirstAncestorOfType<ScrollView>();
             scroll?.ScrollTo(viewport);
-            schedule.Execute(() => ExportVisible(path, scroll, done)).StartingIn(100);
+            schedule.Execute(() => DialogueGraphExport.Run(this, ContentBounds(), path, scroll, done)).StartingIn(100);
         }
 
-        void ExportVisible(string path, ScrollView scroll, Action<bool> done)
+        /// <summary>Zone de la vue (dans son repère) où est dessiné l'arbre.</summary>
+        internal VisualElement Viewport => viewport;
+
+        /// <summary>Cadrage actuel : décalage et zoom.</summary>
+        internal (Vector2 pan, float zoom) View
         {
-            const float margin = 32f;
-            var savedPan = pan;
-            var savedZoom = zoom;
-            AddToClassList("forge-dialogue-graph--export");
-            var bounds = ContentBounds();
-            bounds = Rect.MinMaxRect(bounds.xMin - margin, bounds.yMin - margin, bounds.xMax + margin, bounds.yMax + margin);
-            Rect Visible()
+            get => (pan, zoom);
+            set
             {
-                var area = viewport.worldBound;
-                if (scroll != null)
-                {
-                    var shown = scroll.contentViewport.worldBound;
-                    area = Rect.MinMaxRect(Mathf.Max(area.xMin, shown.xMin), Mathf.Max(area.yMin, shown.yMin),
-                        Mathf.Min(area.xMax, shown.xMax), Mathf.Min(area.yMax, shown.yMax));
-                }
-                return area;
-            }
-            var visible = Visible();
-            var visibleOffset = visible.position - viewport.worldBound.position;
-            var tile = new Vector2(Mathf.Floor(visible.width) - 2f, Mathf.Floor(visible.height) - 2f);
-            if (tile.x < 40f || tile.y < 40f)
-            {
-                RemoveFromClassList("forge-dialogue-graph--export");
-                ForgeLists.Notify("Agrandissez la fenêtre pour que l'arbre soit visible, puis recommencez.");
-                done?.Invoke(false);
-                return;
-            }
-            var columns = Mathf.CeilToInt(bounds.width / tile.x);
-            var rows = Mathf.CeilToInt(bounds.height / tile.y);
-            var scale = EditorGUIUtility.pixelsPerPoint;
-            var image = new Texture2D(Mathf.CeilToInt(bounds.width * scale), Mathf.CeilToInt(bounds.height * scale), TextureFormat.RGBA32, false);
-            var index = 0;
-
-            void Finish(bool success)
-            {
-                RemoveFromClassList("forge-dialogue-graph--export");
-                pan = savedPan;
-                zoom = savedZoom;
+                (pan, zoom) = value;
                 ApplyTransform();
-                if (success)
-                {
-                    File.WriteAllBytes(path, image.EncodeToPNG());
-                    ForgeLists.Notify($"Arbre exporté : {Path.GetFileName(path)} ({image.width}×{image.height}).");
-                }
-                else
-                {
-                    ForgeLists.Notify("L'éditeur n'a pas permis la capture de l'arbre.");
-                }
-                UnityEngine.Object.DestroyImmediate(image);
-                done?.Invoke(success);
             }
-
-            void Next()
-            {
-                if (index >= columns * rows)
-                {
-                    Finish(true);
-                    return;
-                }
-                var column = index % columns;
-                var row = index / columns;
-                zoom = 1f;
-                pan = visibleOffset + Vector2.one - new Vector2(bounds.xMin + column * tile.x, bounds.yMin + row * tile.y);
-                ApplyTransform();
-                // On laisse l'éditeur redessiner la vue avant de la capturer.
-                schedule.Execute(() =>
-                {
-                    var area = viewport.worldBound;
-                    var grabbed = ForgeGrab.Region(viewport, new Rect(area.position + visibleOffset + Vector2.one, tile));
-                    if (grabbed == null)
-                    {
-                        Finish(false);
-                        return;
-                    }
-                    // Copie du morceau à sa place (les textures commencent en bas à gauche).
-                    var x = Mathf.RoundToInt(column * tile.x * scale);
-                    var yTop = Mathf.RoundToInt(row * tile.y * scale);
-                    var width = Mathf.Min(grabbed.width, image.width - x);
-                    var height = Mathf.Min(grabbed.height, image.height - yTop);
-                    if (width > 0 && height > 0)
-                        image.SetPixels(x, image.height - yTop - height, width, height, grabbed.GetPixels(0, grabbed.height - height, width, height));
-                    UnityEngine.Object.DestroyImmediate(grabbed);
-                    index++;
-                    Next();
-                }).StartingIn(120);
-            }
-
-            Next();
         }
 
         #endregion
-
-        /// <summary>Une réplique de l'arbre : en-tête, texte, réponses du joueur avec leur rond de sortie.</summary>
-        internal sealed class NodeView : VisualElement
-        {
-            readonly DialogueGraphView graph;
-            readonly VisualElement input;
-            readonly List<VisualElement> outputs = new();
-
-            public DialogueNode Node { get; }
-            public int Id => Node.id;
-            public Vector2 Position { get; private set; }
-
-            public NodeView(DialogueGraphView graph, DialogueNode node, bool orphan)
-            {
-                this.graph = graph;
-                Node = node;
-                var npc = graph.npc;
-                AddToClassList("forge-dialogue-node");
-                EnableInClassList("forge-dialogue-node--selected", node.id == graph.selectedId);
-                EnableInClassList("forge-dialogue-node--orphan", orphan);
-                EnableInClassList($"forge-dialogue-node--{node.speaker.ToString().ToLowerInvariant()}", true);
-                style.width = NodeWidth;
-                style.borderTopColor = graph.SpeakerColor(node.speaker);
-
-                input = new VisualElement { pickingMode = PickingMode.Ignore };
-                input.AddToClassList("forge-dialogue-node__input");
-                Add(input);
-
-                var header = new VisualElement();
-                header.AddToClassList("forge-dialogue-node__header");
-                header.Add(NodeLabel(DialogueText.Speaker(node.speaker, npc), "forge-dialogue-node__speaker"));
-                header.Add(NodeLabel($"#{node.id}", "forge-dialogue-node__id"));
-                foreach (var (text, className) in Tags())
-                {
-                    var chip = NodeLabel(text, "forge-chip");
-                    chip.AddToClassList(className);
-                    header.Add(chip);
-                }
-                Add(header);
-
-                var body = NodeLabel(string.IsNullOrWhiteSpace(node.text) ? ForgeText.Redacted : DialogueEditing.Excerpt(node.text, 140), "forge-dialogue-node__text");
-                Add(body);
-
-                if (node.consequences.Count > 0)
-                {
-                    var effects = NodeLabel($"✦ {node.consequences.Count} effet(s)", "forge-dialogue-node__effects");
-                    Add(effects);
-                }
-
-                if (node.choices.Count > 0)
-                {
-                    var choices = new VisualElement();
-                    choices.AddToClassList("forge-dialogue-node__choices");
-                    for (var i = 0; i < node.choices.Count; i++)
-                    {
-                        var choice = node.choices[i];
-                        var row = new VisualElement();
-                        row.AddToClassList("forge-dialogue-node__choice");
-                        // Un rond de chaque côté : le lien part de l'un ou de l'autre, jamais des deux.
-                        var linked = choice.target >= 0;
-                        row.Add(Port(i, true, LinkColor(i, node), "forge-dialogue-node__port--left", linked && choice.linkFromLeft, linked && !choice.linkFromLeft));
-                        if (choice.conditions.Count > 0)
-                            row.Add(NodeLabel("◆", "forge-dialogue-node__lock"));
-                        var choiceText = NodeLabel($"{i + 1}. {DialogueEditing.Excerpt(choice.text, 34)}", "forge-dialogue-node__choice-text");
-                        // Une réponse aux couleurs propres apparaît dans l'arbre avec sa couleur de texte.
-                        if (choice.customLook)
-                            choiceText.style.color = new Color(choice.textColor.r, choice.textColor.g, choice.textColor.b, 1f);
-                        row.Add(choiceText);
-                        row.Add(Port(i, false, LinkColor(i, node), "forge-dialogue-node__port--side", linked && !choice.linkFromLeft, linked && choice.linkFromLeft));
-                        choices.Add(row);
-                    }
-                    Add(choices);
-                }
-                else
-                {
-                    Add(Port(-1, false, ChartColors.Neutral, "forge-dialogue-node__port--bottom", node.next >= 0, false));
-                }
-
-                RegisterCallback<PointerDownEvent>(evt => graph.OnNodeDown(this, evt));
-                RegisterCallback<PointerEnterEvent>(_ => graph.ScheduleCard(this));
-                RegisterCallback<PointerLeaveEvent>(_ => graph.HideCard());
-            }
-
-            public IEnumerable<(string text, string className)> Tags()
-            {
-                if (Node.id == graph.npc.StartNode)
-                    yield return ("DÉBUT", "forge-chip--start");
-                if (graph.npc.Entries.Any(e => e.node == Node.id))
-                    yield return ("DÉBUT ALT.", "forge-chip--start");
-                if (Node.choices.Count == 0 && Node.next < 0)
-                    yield return ("FIN", "forge-chip--target");
-            }
-
-            /// <param name="linked">Le lien part de ce rond (rond plein).</param>
-            /// <param name="otherSide">Le lien part du rond de l'autre côté : celui-ci est estompé.</param>
-            VisualElement Port(int choice, bool left, Color color, string className, bool linked, bool otherSide)
-            {
-                var port = new VisualElement
-                {
-                    tooltip = choice < 0
-                        ? "Suite : glissez vers une réplique pour la relier (ou dans le vide pour en créer une). Ctrl+clic : retirer le lien."
-                        : "Réponse : glissez ce rond (à gauche ou à droite) vers la réplique qu'elle déclenche, ou dans le vide pour en créer une. " +
-                          "Un seul côté est relié à la fois. Ctrl+clic : retirer le lien."
-                };
-                port.AddToClassList("forge-dialogue-node__port");
-                port.AddToClassList(className);
-                port.EnableInClassList("forge-dialogue-node__port--idle", otherSide);
-                port.style.borderTopColor = port.style.borderBottomColor = port.style.borderLeftColor = port.style.borderRightColor = color;
-                port.style.backgroundColor = linked ? color : new Color(color.r, color.g, color.b, 0.12f);
-                port.RegisterCallback<PointerDownEvent>(evt => graph.OnPortDown(this, choice, left, evt));
-                outputs.Add(port);
-                port.userData = (choice, left);
-                return port;
-            }
-
-            public void MoveTo(Vector2 position)
-            {
-                Position = position;
-                style.left = position.x;
-                style.top = position.y;
-            }
-
-            public Vector2 PortPoint(int choice, bool left, VisualElement space)
-            {
-                var port = outputs.FirstOrDefault(p => ((int, bool))p.userData == (choice, choice >= 0 && left));
-                if (port == null || float.IsNaN(port.layout.width))
-                    return space.WorldToLocal(new Vector2(worldBound.center.x, worldBound.yMax));
-                return port.ChangeCoordinatesTo(space, port.contentRect.center);
-            }
-
-            public Vector2 InputPoint(VisualElement space) =>
-                float.IsNaN(input.layout.width)
-                    ? this.ChangeCoordinatesTo(space, new Vector2(NodeWidth / 2f, 0f))
-                    : input.ChangeCoordinatesTo(space, input.contentRect.center);
-
-            static Label NodeLabel(string text, string className)
-            {
-                var label = new Label(text) { pickingMode = PickingMode.Ignore };
-                label.AddToClassList(className);
-                return label;
-            }
-        }
     }
 }

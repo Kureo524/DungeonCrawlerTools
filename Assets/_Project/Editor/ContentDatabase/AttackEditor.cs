@@ -308,155 +308,180 @@ namespace TheDungeon.Editor.ContentDatabase
         static void BuildActionFields(VisualElement container, SerializedObject attack, string path, StepAction action, Action rebuild)
         {
             var step = attack.FindProperty(path);
-            var l = Limits;
             container.Add(ForgeUI.Label(EnemyPatternText.Describe(action), "forge-hint"));
             switch (action)
             {
                 case StepAction.Strike:
-                {
-                    var shape = (ZoneShape)step.FindPropertyRelative("shape").enumValueIndex;
-                    var shapes = new VisualElement();
-                    shapes.AddToClassList("forge-tiles");
-                    shapes.AddToClassList("forge-tiles--small");
-                    foreach (var option in (ZoneShape[])Enum.GetValues(typeof(ZoneShape)))
-                        shapes.Add(BehaviourGlyphs.Tile(EnemyPatternText.Label(option), $"Zone en {EnemyPatternText.Label(option).ToLowerInvariant()}.",
-                            (p, c, s) => BehaviourGlyphs.Shape(p, c, s, option), option == shape, () => SetEnum(attack, path, "shape", (int)option, rebuild)));
-                    container.Add(shapes);
-                    var size = new VisualElement();
-                    size.AddToClassList("forge-chips");
-                    if (shape == ZoneShape.Ring)
-                        size.Add(FloatPill(step, "innerRadius", "de", null, l.zoneSize, "Rayon intérieur : le joueur collé à l'ennemi n'est pas touché."));
-                    size.Add(FloatPill(step, "radius", shape switch { ZoneShape.Line => "longueur", ZoneShape.Ring => "à", _ => "rayon" }, "cases", l.zoneSize,
-                        shape == ZoneShape.Line ? "Longueur de la ligne." : "Rayon de la zone."));
-                    if (shape == ZoneShape.Cone)
-                        size.Add(FloatPill(step, "angle", "ouverture", "°", new FloatRange(10f, 360f), "Ouverture du cône."));
-                    if (shape == ZoneShape.Line)
-                        size.Add(FloatPill(step, "width", "largeur", "cases", l.zoneSize, "Largeur de la ligne."));
-                    container.Add(size);
-                    var anchors = (ZoneAnchor[])Enum.GetValues(typeof(ZoneAnchor));
-                    var anchorValue = (ZoneAnchor)step.FindPropertyRelative("anchor").enumValueIndex;
-                    var anchor = new DropdownField("Zone", anchors.Select(EnemyPatternText.Label).ToList(), (int)anchorValue)
-                    {
-                        tooltip = "Où apparaît la zone. Sur la cible : la force à bouger. Lancé : un projectile vole pendant la préparation et la zone apparaît où il tombe " +
-                                  "(boule de putréfaction…). Au hasard : pluie de zones."
-                    };
-                    anchor.RegisterValueChangedCallback(evt => SetEnum(attack, path, "anchor", anchor.index, rebuild));
-                    container.Add(anchor);
-                    var placement = new VisualElement();
-                    placement.AddToClassList("forge-chips");
-                    if (anchorValue != ZoneAnchor.Self && anchorValue != ZoneAnchor.Target)
-                        placement.Add(FloatPill(step, "anchorDistance", anchorValue switch
-                        {
-                            ZoneAnchor.Ahead => "à",
-                            ZoneAnchor.Thrown => "lancer jusqu'à",
-                            _ => "dispersion"
-                        }, "cases", new FloatRange(0f, 15f), "Distance devant l'attaquant, portée maximale du lancer, ou rayon de dispersion des zones au hasard."));
-                    placement.Add(IntPill(step, "zoneCount", "zones", null, new IntRange(1, 12),
-                        "Nombre de zones à la fois : chapelet devant l'attaquant, dispersées au hasard, ou autour du point d'impact."));
-                    container.Add(placement);
+                    AddStrikeFields(container, attack, path, step, rebuild);
                     break;
-                }
                 case StepAction.Projectiles:
-                {
-                    var pattern = (ProjectilePattern)step.FindPropertyRelative("pattern").enumValueIndex;
-                    var patterns = new VisualElement();
-                    patterns.AddToClassList("forge-tiles");
-                    patterns.AddToClassList("forge-tiles--small");
-                    foreach (var option in (ProjectilePattern[])Enum.GetValues(typeof(ProjectilePattern)))
-                        patterns.Add(BehaviourGlyphs.Tile(EnemyPatternText.Label(option), $"Projectiles : {EnemyPatternText.Label(option).ToLowerInvariant()}.",
-                            (p, c, s) => BehaviourGlyphs.Projectiles(p, c, s, option), option == pattern, () => SetEnum(attack, path, "pattern", (int)option, rebuild)));
-                    container.Add(patterns);
-                    var values = new VisualElement();
-                    values.AddToClassList("forge-chips");
-                    values.Add(IntPill(step, "projectiles", "projectiles", null, l.attackProjectiles, "Projectiles par salve."));
-                    values.Add(FloatPill(step, "projectileSpeed", "vitesse", "cases/s", l.projectileSpeed, "Vitesse des projectiles."));
-                    if (pattern == ProjectilePattern.Spread)
-                        values.Add(FloatPill(step, "spreadAngle", "ouverture", "°", l.attackSpread, "Angle total de l'éventail."));
-                    container.Add(values);
+                    AddProjectileFields(container, attack, path, step, rebuild);
                     break;
-                }
                 case StepAction.Dash:
-                {
-                    var direction = (DashDirection)step.FindPropertyRelative("dashDirection").enumValueIndex;
-                    var directions = new VisualElement();
-                    directions.AddToClassList("forge-tiles");
-                    directions.AddToClassList("forge-tiles--small");
-                    foreach (var option in (DashDirection[])Enum.GetValues(typeof(DashDirection)))
-                        directions.Add(BehaviourGlyphs.Tile(EnemyPatternText.Label(option), $"Ruée {EnemyPatternText.Label(option).ToLowerInvariant()}.",
-                            (p, c, s) => BehaviourGlyphs.Dash(p, c, s, option), option == direction, () => SetEnum(attack, path, "dashDirection", (int)option, rebuild)));
-                    container.Add(directions);
-                    var values = new VisualElement();
-                    values.AddToClassList("forge-chips");
-                    values.Add(FloatPill(step, "dashDistance", "distance", "cases", l.dashDistance, "Distance parcourue (une ruée vers le joueur s'arrête à son contact)."));
-                    values.Add(FloatPill(step, "dashSpeed", "vitesse", "cases/s", l.dashSpeed, "Vitesse de la ruée."));
-                    container.Add(values);
+                    AddDashFields(container, attack, path, step, rebuild);
                     break;
-                }
                 case StepAction.Summon:
-                {
-                    container.Add(new AssetPicker<EnemyData>("Ennemi invoqué", step.FindPropertyRelative("summon"),
-                        "Ennemi qui apparaît (clones, sbires…). Vide : un ennemi ordinaire du biome de la salle."));
-                    var values = new VisualElement();
-                    values.AddToClassList("forge-chips");
-                    values.Add(IntPill(step, "summons", "invoque", "ennemi(s)", l.summons, "Ennemis invoqués par cette étape (3 au plus en tout par invocateur)."));
-                    values.Add(FloatPill(step, "anchorDistance", "à", "cases", new FloatRange(0f, 8f), "Distance d'apparition autour de l'invocateur."));
-                    container.Add(values);
+                    AddSummonFields(container, step);
                     break;
-                }
                 case StepAction.Teleport:
-                {
-                    var target = (TeleportTarget)step.FindPropertyRelative("teleportTo").enumValueIndex;
-                    var targets = new VisualElement();
-                    targets.AddToClassList("forge-tiles");
-                    targets.AddToClassList("forge-tiles--small");
-                    foreach (var option in (TeleportTarget[])Enum.GetValues(typeof(TeleportTarget)))
-                        targets.Add(BehaviourGlyphs.Tile(EnemyPatternText.Label(option), $"Réapparaît : {EnemyPatternText.Label(option).ToLowerInvariant()}.",
-                            (p, c, sz) => BehaviourGlyphs.Action(p, c, sz, StepAction.Teleport), option == target,
-                            () => SetEnum(attack, path, "teleportTo", (int)option, rebuild)));
-                    container.Add(targets);
-                    var values = new VisualElement();
-                    values.AddToClassList("forge-chips");
-                    values.Add(FloatPill(step, "anchorDistance", "distance", "cases", new FloatRange(0.5f, 15f), "Distance de la cible ou du point de départ."));
-                    container.Add(values);
-                    container.Add(ForgeUI.Label("Invulnérable pendant la préparation (disparition), réapparaît à la fin.", "forge-hint"));
+                    AddTeleportFields(container, attack, path, step, rebuild);
                     break;
-                }
                 case StepAction.Buff:
                 case StepAction.Absorb:
-                {
-                    var buffs = (BuffType[])Enum.GetValues(typeof(BuffType));
-                    var buff = new DropdownField(action == StepAction.Absorb ? "Par allié absorbé" : "Effet sur soi", buffs.Select(EnemyPatternText.Label).ToList(),
-                        step.FindPropertyRelative("buff").enumValueIndex) { tooltip = "Effet appliqué à l'attaquant." };
-                    buff.RegisterValueChangedCallback(_ => SetEnum(attack, path, "buff", buff.index, rebuild));
-                    container.Add(buff);
-                    var values = new VisualElement();
-                    values.AddToClassList("forge-chips");
-                    if (action == StepAction.Absorb)
-                        values.Add(FloatPill(step, "radius", "alliés à moins de", "cases", new FloatRange(0f, 30f), "Rayon d'absorption (0 = toute la salle)."));
-                    var type = (BuffType)step.FindPropertyRelative("buff").enumValueIndex;
-                    if (type != BuffType.Invulnerable)
-                        values.Add(FloatPill(step, "buffPower", type == BuffType.Heal ? "soigne" : "+", type == BuffType.Heal ? "% des PV max" : "%", new FloatRange(1f, 300f),
-                            action == StepAction.Absorb ? "Par allié absorbé (s'additionne)." : "Puissance de l'effet."));
-                    if (type != BuffType.Heal)
-                        values.Add(FloatPill(step, "buffDuration", "pendant", "s", new FloatRange(0.5f, 120f), "Durée de l'effet."));
-                    container.Add(values);
+                    AddBuffFields(container, attack, path, step, action, rebuild);
                     break;
-                }
                 case StepAction.Phase:
-                {
-                    var values = new VisualElement();
-                    values.AddToClassList("forge-chips");
-                    values.Add(IntPill(step, "phase", "passe en phase", null, new IntRange(0, 9),
-                        "Numéro de la phase (définie dans l'ennemi > Comportement > Phases ; 0 = retour à la phase de départ)."));
-                    container.Add(values);
-                    container.Add(ForgeUI.Label("Chaque ennemi qui utilise cette attaque définit ses phases (stats, aura, renforts) dans sa vue Comportement.", "forge-hint"));
+                    AddPhaseFields(container, step);
                     break;
-                }
             }
+            AddRhythmFields(container, step, action);
+            container.Add(Options(attack, path, action, rebuild));
+        }
 
-            // Rythme et dégâts de l'étape.
-            var rhythm = new VisualElement();
-            rhythm.AddToClassList("forge-chips");
+        /// <summary>Tuiles illustrées pour choisir une valeur d'enum de l'étape (forme, salve, direction…).</summary>
+        static VisualElement ChoiceTiles<T>(T current, Func<T, string> label, Func<T, string> tooltip, Func<T, Action<Painter2D, Vector2, float>> glyph,
+            Action<T> select) where T : struct, Enum
+        {
+            var tiles = new VisualElement();
+            tiles.AddToClassList("forge-tiles");
+            tiles.AddToClassList("forge-tiles--small");
+            foreach (var option in (T[])Enum.GetValues(typeof(T)))
+                tiles.Add(BehaviourGlyphs.Tile(label(option), tooltip(option), glyph(option), option.Equals(current), () => select(option)));
+            return tiles;
+        }
+
+        static VisualElement Chips()
+        {
+            var chips = new VisualElement();
+            chips.AddToClassList("forge-chips");
+            return chips;
+        }
+
+        /// <summary>Frappe : forme et taille de la zone, puis où elle apparaît et combien de zones à la fois.</summary>
+        static void AddStrikeFields(VisualElement container, SerializedObject attack, string path, SerializedProperty step, Action rebuild)
+        {
+            var l = Limits;
+            var shape = (ZoneShape)step.FindPropertyRelative("shape").enumValueIndex;
+            container.Add(ChoiceTiles(shape, EnemyPatternText.Label, option => $"Zone en {EnemyPatternText.Label(option).ToLowerInvariant()}.",
+                option => (p, c, s) => BehaviourGlyphs.Shape(p, c, s, option), option => SetEnum(attack, path, "shape", (int)option, rebuild)));
+            var size = Chips();
+            if (shape == ZoneShape.Ring)
+                size.Add(FloatPill(step, "innerRadius", "de", null, l.zoneSize, "Rayon intérieur : le joueur collé à l'ennemi n'est pas touché."));
+            size.Add(FloatPill(step, "radius", shape switch { ZoneShape.Line => "longueur", ZoneShape.Ring => "à", _ => "rayon" }, "cases", l.zoneSize,
+                shape == ZoneShape.Line ? "Longueur de la ligne." : "Rayon de la zone."));
+            if (shape == ZoneShape.Cone)
+                size.Add(FloatPill(step, "angle", "ouverture", "°", new FloatRange(10f, 360f), "Ouverture du cône."));
+            if (shape == ZoneShape.Line)
+                size.Add(FloatPill(step, "width", "largeur", "cases", l.zoneSize, "Largeur de la ligne."));
+            container.Add(size);
+            AddZonePlacement(container, attack, path, step, rebuild);
+        }
+
+        static void AddZonePlacement(VisualElement container, SerializedObject attack, string path, SerializedProperty step, Action rebuild)
+        {
+            var anchors = (ZoneAnchor[])Enum.GetValues(typeof(ZoneAnchor));
+            var anchorValue = (ZoneAnchor)step.FindPropertyRelative("anchor").enumValueIndex;
+            var anchor = new DropdownField("Zone", anchors.Select(EnemyPatternText.Label).ToList(), (int)anchorValue)
+            {
+                tooltip = "Où apparaît la zone. Sur la cible : la force à bouger. Lancé : un projectile vole pendant la préparation et la zone apparaît où il tombe " +
+                          "(boule de putréfaction…). Au hasard : pluie de zones."
+            };
+            anchor.RegisterValueChangedCallback(evt => SetEnum(attack, path, "anchor", anchor.index, rebuild));
+            container.Add(anchor);
+            var placement = Chips();
+            if (anchorValue != ZoneAnchor.Self && anchorValue != ZoneAnchor.Target)
+                placement.Add(FloatPill(step, "anchorDistance", anchorValue switch
+                {
+                    ZoneAnchor.Ahead => "à",
+                    ZoneAnchor.Thrown => "lancer jusqu'à",
+                    _ => "dispersion"
+                }, "cases", new FloatRange(0f, 15f), "Distance devant l'attaquant, portée maximale du lancer, ou rayon de dispersion des zones au hasard."));
+            placement.Add(IntPill(step, "zoneCount", "zones", null, new IntRange(1, 12),
+                "Nombre de zones à la fois : chapelet devant l'attaquant, dispersées au hasard, ou autour du point d'impact."));
+            container.Add(placement);
+        }
+
+        static void AddProjectileFields(VisualElement container, SerializedObject attack, string path, SerializedProperty step, Action rebuild)
+        {
+            var l = Limits;
+            var pattern = (ProjectilePattern)step.FindPropertyRelative("pattern").enumValueIndex;
+            container.Add(ChoiceTiles(pattern, EnemyPatternText.Label, option => $"Projectiles : {EnemyPatternText.Label(option).ToLowerInvariant()}.",
+                option => (p, c, s) => BehaviourGlyphs.Projectiles(p, c, s, option), option => SetEnum(attack, path, "pattern", (int)option, rebuild)));
+            var values = Chips();
+            values.Add(IntPill(step, "projectiles", "projectiles", null, l.attackProjectiles, "Projectiles par salve."));
+            values.Add(FloatPill(step, "projectileSpeed", "vitesse", "cases/s", l.projectileSpeed, "Vitesse des projectiles."));
+            if (pattern == ProjectilePattern.Spread)
+                values.Add(FloatPill(step, "spreadAngle", "ouverture", "°", l.attackSpread, "Angle total de l'éventail."));
+            container.Add(values);
+        }
+
+        static void AddDashFields(VisualElement container, SerializedObject attack, string path, SerializedProperty step, Action rebuild)
+        {
+            var l = Limits;
+            var direction = (DashDirection)step.FindPropertyRelative("dashDirection").enumValueIndex;
+            container.Add(ChoiceTiles(direction, EnemyPatternText.Label, option => $"Ruée {EnemyPatternText.Label(option).ToLowerInvariant()}.",
+                option => (p, c, s) => BehaviourGlyphs.Dash(p, c, s, option), option => SetEnum(attack, path, "dashDirection", (int)option, rebuild)));
+            var values = Chips();
+            values.Add(FloatPill(step, "dashDistance", "distance", "cases", l.dashDistance, "Distance parcourue (une ruée vers le joueur s'arrête à son contact)."));
+            values.Add(FloatPill(step, "dashSpeed", "vitesse", "cases/s", l.dashSpeed, "Vitesse de la ruée."));
+            container.Add(values);
+        }
+
+        static void AddSummonFields(VisualElement container, SerializedProperty step)
+        {
+            container.Add(new AssetPicker<EnemyData>("Ennemi invoqué", step.FindPropertyRelative("summon"),
+                "Ennemi qui apparaît (clones, sbires…). Vide : un ennemi ordinaire du biome de la salle."));
+            var values = Chips();
+            values.Add(IntPill(step, "summons", "invoque", "ennemi(s)", Limits.summons, "Ennemis invoqués par cette étape (3 au plus en tout par invocateur)."));
+            values.Add(FloatPill(step, "anchorDistance", "à", "cases", new FloatRange(0f, 8f), "Distance d'apparition autour de l'invocateur."));
+            container.Add(values);
+        }
+
+        static void AddTeleportFields(VisualElement container, SerializedObject attack, string path, SerializedProperty step, Action rebuild)
+        {
+            var target = (TeleportTarget)step.FindPropertyRelative("teleportTo").enumValueIndex;
+            container.Add(ChoiceTiles(target, EnemyPatternText.Label, option => $"Réapparaît : {EnemyPatternText.Label(option).ToLowerInvariant()}.",
+                _ => (p, c, sz) => BehaviourGlyphs.Action(p, c, sz, StepAction.Teleport), option => SetEnum(attack, path, "teleportTo", (int)option, rebuild)));
+            var values = Chips();
+            values.Add(FloatPill(step, "anchorDistance", "distance", "cases", new FloatRange(0.5f, 15f), "Distance de la cible ou du point de départ."));
+            container.Add(values);
+            container.Add(ForgeUI.Label("Invulnérable pendant la préparation (disparition), réapparaît à la fin.", "forge-hint"));
+        }
+
+        /// <summary>Renforcement (sur soi) ou absorption (par allié absorbé) : effet, puissance et durée.</summary>
+        static void AddBuffFields(VisualElement container, SerializedObject attack, string path, SerializedProperty step, StepAction action, Action rebuild)
+        {
+            var buffs = (BuffType[])Enum.GetValues(typeof(BuffType));
+            var buff = new DropdownField(action == StepAction.Absorb ? "Par allié absorbé" : "Effet sur soi", buffs.Select(EnemyPatternText.Label).ToList(),
+                step.FindPropertyRelative("buff").enumValueIndex) { tooltip = "Effet appliqué à l'attaquant." };
+            buff.RegisterValueChangedCallback(_ => SetEnum(attack, path, "buff", buff.index, rebuild));
+            container.Add(buff);
+            var values = Chips();
+            if (action == StepAction.Absorb)
+                values.Add(FloatPill(step, "radius", "alliés à moins de", "cases", new FloatRange(0f, 30f), "Rayon d'absorption (0 = toute la salle)."));
+            var type = (BuffType)step.FindPropertyRelative("buff").enumValueIndex;
+            if (type != BuffType.Invulnerable)
+                values.Add(FloatPill(step, "buffPower", type == BuffType.Heal ? "soigne" : "+", type == BuffType.Heal ? "% des PV max" : "%", new FloatRange(1f, 300f),
+                    action == StepAction.Absorb ? "Par allié absorbé (s'additionne)." : "Puissance de l'effet."));
+            if (type != BuffType.Heal)
+                values.Add(FloatPill(step, "buffDuration", "pendant", "s", new FloatRange(0.5f, 120f), "Durée de l'effet."));
+            container.Add(values);
+        }
+
+        static void AddPhaseFields(VisualElement container, SerializedProperty step)
+        {
+            var values = Chips();
+            values.Add(IntPill(step, "phase", "passe en phase", null, new IntRange(0, 9),
+                "Numéro de la phase (définie dans l'ennemi > Comportement > Phases ; 0 = retour à la phase de départ)."));
+            container.Add(values);
+            container.Add(ForgeUI.Label("Chaque ennemi qui utilise cette attaque définit ses phases (stats, aura, renforts) dans sa vue Comportement.", "forge-hint"));
+        }
+
+        /// <summary>Rythme et dégâts de l'étape.</summary>
+        static void AddRhythmFields(VisualElement container, SerializedProperty step, StepAction action)
+        {
+            var l = Limits;
+            var rhythm = Chips();
             rhythm.Add(FloatPill(step, "windup", "préparation", "s", l.attackWindup,
                 "L'ennemi s'arrête et annonce l'étape (la zone s'affiche au sol) : le temps laissé au joueur pour esquiver."));
             if (action != StepAction.Pause)
@@ -471,7 +496,6 @@ namespace TheDungeon.Editor.ContentDatabase
                 track.BindProperty(step.FindPropertyRelative("trackDuringWindup"));
                 container.Add(track);
             }
-            container.Add(Options(attack, path, action, rebuild));
         }
 
         #region Options d'étape
@@ -709,282 +733,5 @@ namespace TheDungeon.Editor.ContentDatabase
         }
 
         #endregion
-    }
-
-    /// <summary>Petite vue de dessus d'une étape : l'ennemi, la direction visée (le joueur à droite) et la zone ou la trajectoire, à l'échelle.</summary>
-    public sealed class StepPreview : VisualElement
-    {
-        readonly Func<AttackStep> step;
-
-        public StepPreview(Func<AttackStep> step)
-        {
-            this.step = step;
-            AddToClassList("forge-step-preview");
-            tooltip = "Vue de dessus, à l'échelle : l'attaquant (bleu) et la cible (blanc) à 3,5 cases. Une case = un carreau. Pointillés : la zone à la fin de sa durée.";
-            generateVisualContent += Draw;
-            schedule.Execute(MarkDirtyRepaint).Every(300);
-        }
-
-        void Draw(MeshGenerationContext context)
-        {
-            var current = step();
-            var rect = contentRect;
-            if (current == null || rect.width < 10f)
-                return;
-            var painter = context.painter2D;
-
-            // Scène en cases : l'attaquant en (0, 0), la cible à 3,5 cases à droite.
-            var target = new Vector2(3.5f, 0f);
-            var points = new List<Vector2> { Vector2.zero, target };
-            List<Vector2> origins = null;
-            var reach = 0f;
-            switch (current.action)
-            {
-                case StepAction.Strike:
-                    origins = EnemyLogic.ZoneOrigins(current, Vector2.zero, Vector2.right, target);
-                    var duration = Mathf.Max(0f, current.activeDuration);
-                    reach = current.radius + Mathf.Max(0f, current.growth) * duration;
-                    foreach (var origin in origins)
-                    {
-                        points.Add(origin + new Vector2(reach, reach));
-                        points.Add(origin - new Vector2(reach, reach));
-                        points.Add(origin + Vector2.right * (current.travelSpeed * duration + reach));
-                    }
-                    break;
-                case StepAction.Projectiles:
-                    points.Add(new Vector2(6f, 3f));
-                    points.Add(new Vector2(-1f, -3f));
-                    if (current.pattern == ProjectilePattern.Ring)
-                        points.Add(new Vector2(-6f, 0f));
-                    break;
-                case StepAction.Dash:
-                    var direction = current.dashDirection switch
-                    {
-                        DashDirection.AwayFromPlayer => Vector2.left,
-                        DashDirection.Sideways => Vector2.down,
-                        _ => Vector2.right
-                    };
-                    points.Add(direction * current.dashDistance);
-                    break;
-            }
-            var min = new Vector2(points.Min(p => p.x), points.Min(p => p.y)) - Vector2.one * 0.8f;
-            var max = new Vector2(points.Max(p => p.x), points.Max(p => p.y)) + Vector2.one * 0.8f;
-            var scale = Mathf.Min(rect.width / (max.x - min.x), rect.height / (max.y - min.y));
-            var offset = rect.center - (min + max) / 2f * scale;
-            Vector2 Px(Vector2 cases) => offset + new Vector2(cases.x, -cases.y) * scale;
-
-            // Grille d'une case.
-            painter.strokeColor = new Color(1f, 1f, 1f, 0.05f);
-            painter.lineWidth = 1f;
-            painter.BeginPath();
-            for (var x = Mathf.Floor(min.x); x <= max.x; x++)
-            {
-                painter.MoveTo(Px(new Vector2(x, min.y)));
-                painter.LineTo(Px(new Vector2(x, max.y)));
-            }
-            for (var y = Mathf.Floor(min.y); y <= max.y; y++)
-            {
-                painter.MoveTo(Px(new Vector2(min.x, y)));
-                painter.LineTo(Px(new Vector2(max.x, y)));
-            }
-            painter.Stroke();
-
-            var red = new Color(1f, 0.45f, 0.38f, 1f);
-            painter.strokeColor = red;
-            painter.fillColor = new Color(red.r, red.g, red.b, 0.22f);
-            painter.lineWidth = 1.5f;
-            var self = Px(Vector2.zero);
-            switch (current.action)
-            {
-                case StepAction.Strike:
-                    foreach (var origin in origins)
-                    {
-                        if (current.anchor == ZoneAnchor.Thrown)
-                        {
-                            // Trajectoire du lancer, en cloche.
-                            painter.strokeColor = new Color(red.r, red.g, red.b, 0.5f);
-                            painter.BeginPath();
-                            painter.MoveTo(self);
-                            painter.QuadraticCurveTo((self + Px(origin)) / 2f + Vector2.down * scale * 1.5f, Px(origin));
-                            painter.Stroke();
-                            painter.strokeColor = red;
-                        }
-                        ZonePath(painter, current, Px(origin), Vector2.right, scale);
-                        // Zone qui dure : sa position et sa taille à la fin, en pointillés.
-                        if (current.activeDuration > 0f && (current.travelSpeed != 0f || current.growth != 0f))
-                        {
-                            var end = Px(origin + Vector2.right * current.travelSpeed * current.activeDuration);
-                            var radius = (current.radius + current.growth * current.activeDuration) * scale;
-                            painter.strokeColor = new Color(red.r, red.g, red.b, 0.45f);
-                            for (var d = 0; d < 24; d++)
-                            {
-                                painter.BeginPath();
-                                painter.Arc(end, Mathf.Max(1f, radius), Angle.Degrees(d * 15f), Angle.Degrees(d * 15f + 7f));
-                                painter.Stroke();
-                            }
-                            if (current.travelSpeed != 0f)
-                                BehaviourGlyphs.Arrow(painter, Px(origin), end);
-                            painter.strokeColor = red;
-                        }
-                        if (current.sweepAngle != 0f && current.activeDuration > 0f)
-                        {
-                            painter.BeginPath();
-                            painter.Arc(Px(origin), current.radius * scale + 6f, Angle.Degrees(-current.sweepAngle / 2f), Angle.Degrees(current.sweepAngle / 2f));
-                            painter.Stroke();
-                        }
-                    }
-                    break;
-                case StepAction.Projectiles:
-                    var count = Mathf.Max(1, current.projectiles);
-                    for (var i = 0; i < count; i++)
-                    {
-                        var angle = current.pattern switch
-                        {
-                            ProjectilePattern.Ring => 360f * i / count,
-                            ProjectilePattern.Spread => count == 1 ? 0f : -current.spreadAngle / 2f + current.spreadAngle * i / (count - 1),
-                            _ => count == 1 ? 0f : -4f * (count - 1) + 8f * i
-                        } * Mathf.Deg2Rad;
-                        BehaviourGlyphs.Arrow(painter, self, self + new Vector2(Mathf.Cos(angle), -Mathf.Sin(angle)) * 5f * scale);
-                    }
-                    break;
-                case StepAction.Dash:
-                    var dashDirection = current.dashDirection switch
-                    {
-                        DashDirection.AwayFromPlayer => Vector2.left,
-                        DashDirection.Sideways => Vector2.down,
-                        _ => Vector2.right
-                    };
-                    painter.lineWidth = 3f;
-                    BehaviourGlyphs.Arrow(painter, self, Px(dashDirection * current.dashDistance));
-                    break;
-            }
-
-            // La cible (cercle blanc) et l'attaquant (cercle plein bleu).
-            painter.strokeColor = new Color(1f, 1f, 1f, 0.7f);
-            painter.lineWidth = 1.5f;
-            painter.BeginPath();
-            painter.Arc(Px(target), scale * 0.3f, Angle.Degrees(0f), Angle.Degrees(360f));
-            painter.Stroke();
-            painter.fillColor = new Color(0.66f, 0.77f, 0.94f, 1f);
-            painter.BeginPath();
-            painter.Arc(self, scale * 0.3f, Angle.Degrees(0f), Angle.Degrees(360f));
-            painter.Fill();
-        }
-
-        /// <summary>Contour rempli de la zone d'une étape (aussi utilisé par l'arène de test).</summary>
-        public static void ZonePath(Painter2D painter, AttackStep step, Vector2 origin, Vector2 aim, float scale)
-        {
-            var heading = Mathf.Atan2(aim.y, aim.x) * Mathf.Rad2Deg;
-            painter.BeginPath();
-            switch (step.shape)
-            {
-                case ZoneShape.Circle:
-                    painter.Arc(origin, step.radius * scale, Angle.Degrees(0f), Angle.Degrees(360f));
-                    painter.Fill();
-                    painter.Stroke();
-                    break;
-                case ZoneShape.Ring:
-                    painter.Arc(origin, step.radius * scale, Angle.Degrees(0f), Angle.Degrees(360f));
-                    painter.Arc(origin, Mathf.Max(0f, step.innerRadius) * scale, Angle.Degrees(360f), Angle.Degrees(0f), ArcDirection.CounterClockwise);
-                    painter.Fill(FillRule.OddEven);
-                    painter.BeginPath();
-                    painter.Arc(origin, step.radius * scale, Angle.Degrees(0f), Angle.Degrees(360f));
-                    painter.Stroke();
-                    painter.BeginPath();
-                    painter.Arc(origin, Mathf.Max(0f, step.innerRadius) * scale, Angle.Degrees(0f), Angle.Degrees(360f));
-                    painter.Stroke();
-                    break;
-                case ZoneShape.Cone:
-                    painter.MoveTo(origin);
-                    painter.Arc(origin, step.radius * scale, Angle.Degrees(heading - step.angle / 2f), Angle.Degrees(heading + step.angle / 2f));
-                    painter.ClosePath();
-                    painter.Fill();
-                    painter.Stroke();
-                    break;
-                case ZoneShape.Line:
-                    var forward = aim.normalized * step.radius * scale;
-                    var side = new Vector2(-aim.y, aim.x).normalized * step.width * scale / 2f;
-                    painter.MoveTo(origin - side);
-                    painter.LineTo(origin + forward - side);
-                    painter.LineTo(origin + forward + side);
-                    painter.LineTo(origin + side);
-                    painter.ClosePath();
-                    painter.Fill();
-                    painter.Stroke();
-                    break;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Frise d'une attaque, à l'échelle : pour chaque étape, préparation (le joueur voit venir), action, récupération (fenêtre de riposte).
-    /// Les étapes conditionnelles sont hachurées : elles peuvent ne pas être jouées.
-    /// </summary>
-    public sealed class AttackTimeline : VisualElement
-    {
-        readonly Func<ResolvedAttack> attack;
-        readonly VisualElement bar;
-        readonly Label total;
-        string signature;
-
-        public AttackTimeline(Func<ResolvedAttack> attack)
-        {
-            this.attack = attack;
-            AddToClassList("forge-timeline");
-            style.flexDirection = FlexDirection.Column;
-            style.alignSelf = Align.Stretch;
-            bar = new VisualElement();
-            bar.AddToClassList("forge-timeline__bar");
-            bar.style.alignSelf = Align.Stretch;
-            Add(bar);
-            total = ForgeUI.Label(string.Empty, "forge-hint");
-            Add(total);
-            Refresh();
-            schedule.Execute(Refresh).Every(300);
-        }
-
-        void Refresh()
-        {
-            var current = attack();
-            if (current == null)
-                return;
-            var tempo = current.Tempo;
-            var key = string.Join("|", current.Steps.Select(s => $"{s.name}{s.action}{s.windup}{s.recovery}{s.trigger}{s.conditions.Count}{s.dashDistance}{s.dashSpeed}")) + tempo;
-            if (key == signature)
-                return;
-            signature = key;
-            bar.Clear();
-            var longest = 0f;
-            for (var i = 0; i < current.Steps.Count; i++)
-            {
-                var step = current.Steps[i];
-                var conditional = i > 0 && (step.trigger != StepTrigger.Always || step.conditions.Count > 0) || i == 0 && step.conditions.Count > 0;
-                var actionTime = step.action == StepAction.Dash ? step.dashDistance / Mathf.Max(1f, step.dashSpeed) : 0.08f;
-                Segment(step.windup * tempo, "forge-timeline__windup", $"{i + 1}. {Name(step, i)} : préparation {step.windup * tempo:0.##} s", conditional, $"{i + 1}");
-                Segment(actionTime, "forge-timeline__hit", $"{i + 1}. {Name(step, i)} : {EnemyPatternText.Label(step.action).ToLowerInvariant()}", conditional, null);
-                Segment(step.recovery * tempo, "forge-timeline__recovery", $"{i + 1}. {Name(step, i)} : récupération {step.recovery * tempo:0.##} s", conditional, null);
-                longest += (step.windup + step.recovery) * tempo + actionTime;
-            }
-            Segment(current.Settings.cooldown, "forge-timeline__cooldown", $"Recharge {current.Settings.cooldown:0.#} s", false, "recharge");
-            var dodge = current.Steps.Count > 0 ? current.Steps.Min(s => s.windup) * tempo : 0f;
-            total.text = $"Durée : {longest:0.#} s au plus (+ {current.Settings.cooldown:0.#} s de recharge). Plus courte préparation : {dodge:0.##} s. " +
-                         "Hachuré : étape conditionnelle.";
-        }
-
-        static string Name(AttackStep step, int index) => string.IsNullOrWhiteSpace(step.name) ? $"Étape {index + 1}" : step.name;
-
-        void Segment(float seconds, string className, string tooltip, bool conditional, string label)
-        {
-            if (seconds <= 0.001f)
-                return;
-            var segment = new VisualElement { tooltip = tooltip };
-            segment.AddToClassList("forge-timeline__segment");
-            segment.AddToClassList(className);
-            segment.EnableInClassList("forge-timeline__segment--conditional", conditional);
-            segment.style.flexGrow = seconds;
-            if (label != null)
-                segment.Add(ForgeUI.Label(label, "forge-timeline__label"));
-            bar.Add(segment);
-        }
     }
 }
