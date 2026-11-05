@@ -6,6 +6,12 @@
 
 Workshop B3 (La Horde). Outils intégrés à l'éditeur **Unity** pour produire le contenu du dungeon crawler *The Dungeon* (objets, ennemis, butin, salles, progression) vite et sans erreur, sans écrire de code.
 
+![Tableau de bord de Forge Studio : avancement de la production, règles de cohérence et santé des données](Docs/Images/dashboard.png)
+
+| Progression : courbes modifiables à la souris | Étages : plan généré et portes contrôlées |
+|---|---|
+| ![Onglet Progression](Docs/Images/progression.png) | ![Onglet Étages](Docs/Images/etages.png) |
+
 ## Ouvrir le projet
 1. Installer **Unity 6000.3.23f1** (Unity 6 LTS) avec Unity Hub.
 2. Unity Hub → **Add** → **Add project from disk** → sélectionner ce dossier.
