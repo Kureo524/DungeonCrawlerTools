@@ -87,7 +87,7 @@ namespace TheDungeon.Editor.Progression
             else if (ProgressionTab.IsActive(saved))
                 activateButton.text = "Utilisée par le jeu";
             actions.Add(activateButton);
-            actions.Add(ForgeUI.Button("Exporter en SVG…",
+            actions.Add(ForgeUI.Button("Exporter en SVG",
                 "Enregistre les courbes dans une image SVG : lisible partout, retouchable dans un logiciel de dessin et réimportable.", exportSvg));
             identity.Add(actions);
             return identity;

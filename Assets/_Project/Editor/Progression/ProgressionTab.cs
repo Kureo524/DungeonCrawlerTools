@@ -55,7 +55,7 @@ namespace TheDungeon.Editor.Progression
         /// <summary>Sous la recherche : import d'une progression exportée en SVG.</summary>
         protected override VisualElement BuildFilters()
         {
-            var import = ForgeUI.Button("Importer un SVG…",
+            var import = ForgeUI.Button("Importer un SVG",
                 "Crée une progression à partir d'un fichier SVG exporté par Forge Studio (éventuellement retouché dans Inkscape ou Figma).",
                 () => ProgressionImportExport.ImportProgression(imported => OpenDraft(() => DraftSession<PlayerProgression>.CreateFrom(imported))));
             import.style.marginTop = 4;

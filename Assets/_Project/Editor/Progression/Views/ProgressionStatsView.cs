@@ -178,7 +178,7 @@ namespace TheDungeon.Editor.Progression
             var range = ForgeUI.Label(string.Empty, "forge-curve-head__range");
             range.AddToClassList("forge-mono");
             head.Add(range);
-            head.Add(ForgeUI.Button("Importer une courbe…",
+            head.Add(ForgeUI.Button("Importer une courbe",
                 "Remplace la courbe par la forme d'une courbe SVG (dessinée dans Inkscape, Figma…), entre ses valeurs actuelles la plus basse et la plus haute.",
                 ImportShape));
             var expanded = State.Expanded;

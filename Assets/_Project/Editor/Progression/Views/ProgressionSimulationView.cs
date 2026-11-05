@@ -45,7 +45,9 @@ namespace TheDungeon.Editor.Progression
             var levels = ForgeUI.Section("Niveau par niveau", parent,
                 "Les pastilles montrent ce qui change : une couleur par stat modifiée (cerclée de rouge en cas de problème), puis les récompenses. " +
                 "Dépliez un niveau pour modifier ses valeurs et ses récompenses.");
-            levels.Add(ProgressionRewardsView.Legend(true));
+            var legend = ProgressionRewardsView.Legend(true);
+            legend.AddToClassList("forge-legend--above");
+            levels.Add(legend);
             levelRows.Clear();
             for (var l = 1; l <= draft.MaxLevel; l++)
                 levels.Add(LevelRow(draft, l));
@@ -200,9 +202,10 @@ namespace TheDungeon.Editor.Progression
                 item.EnableInClassList("forge-sim-action--locked", !action.Available);
                 item.Add(Dot(action.Mechanic.color));
                 var text = new VisualElement();
-                text.style.flexShrink = 1;
+                text.AddToClassList("forge-sim-action__text");
                 var title = new VisualElement();
                 title.AddToClassList("forge-row");
+                title.AddToClassList("forge-sim-action__title");
                 title.Add(ForgeUI.Label($"<b>{action.Mechanic.displayName}</b>" + (action.Rank > 1 ? $"  rang {action.Rank}" : string.Empty)));
                 title.Add(ForgeUI.Label(ProgressionLabels.InputLabel(action.Mechanic.input), "forge-key"));
                 text.Add(title);
