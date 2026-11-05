@@ -19,7 +19,7 @@ namespace TheDungeon.Editor.Dialogues
     {
         const int CharactersPerTick = 2;
 
-        readonly SimulatedState state = new();
+        readonly SimulatedDialogueState state = new();
         readonly VisualElement screen;
         readonly VisualElement hud;
         readonly VisualElement box;
@@ -28,7 +28,7 @@ namespace TheDungeon.Editor.Dialogues
         readonly Label text;
         readonly VisualElement choices;
         readonly Label prompt;
-        readonly VisualElement statePanel;
+        readonly SimulatedPlayerPanel playerPanel;
         readonly VisualElement journal;
         readonly Toggle showLocked;
 
@@ -93,9 +93,8 @@ namespace TheDungeon.Editor.Dialogues
             var right = new VisualElement();
             right.AddToClassList("forge-preview-game__right");
             right.Add(ForgeUI.Label(ForgeText.WindowRich("Joueur simulé"), "forge-section-title"));
-            statePanel = new VisualElement();
-            ForgeLabels.Track(statePanel);
-            right.Add(statePanel);
+            playerPanel = new SimulatedPlayerPanel(state, () => npc, Restart);
+            right.Add(playerPanel);
             var journalTitle = ForgeUI.Label(ForgeText.WindowRich("Journal"), "forge-section-title");
             journalTitle.AddToClassList("forge-preview-game__journal-title");
             right.Add(journalTitle);
@@ -342,160 +341,11 @@ namespace TheDungeon.Editor.Dialogues
             }
         }
 
-        /// <summary>Contrôles de l'état simulé : niveau, or, étage, marqueurs et inventaire.</summary>
+        /// <summary>Contrôles de l'état simulé, puis la barre d'état.</summary>
         void RefreshState()
         {
-            statePanel.Clear();
-            var limits = ForgeDesignLimits.Instance;
-            // Le niveau ne dépasse pas le niveau maximum de la progression utilisée en jeu.
-            var progression = TheDungeon.Editor.Play.GameLauncher.ActiveProgression;
-            var maxLevel = progression != null ? Mathf.Clamp(progression.MaxLevel, 1, limits.maxLevelCap) : limits.maxLevelCap;
-            state.PlayerLevel = Mathf.Clamp(state.PlayerLevel, 1, maxLevel);
-            var level = new SliderInt("Niveau", 1, maxLevel)
-            {
-                value = state.PlayerLevel,
-                showInputField = true,
-                tooltip = progression != null
-                    ? $"Niveau du joueur, pour tester les conditions de niveau (1 à {maxLevel}, progression '{progression.DisplayName}')."
-                    : "Niveau du joueur, pour tester les conditions de niveau."
-            };
-            level.RegisterValueChangedCallback(evt => { state.PlayerLevel = Mathf.Clamp(evt.newValue, 1, maxLevel); Restart(); });
-            statePanel.Add(level);
-            var gold = new IntegerField("Or") { value = state.Gold, tooltip = "Or du joueur." };
-            gold.RegisterValueChangedCallback(evt => { state.Gold = Mathf.Max(0, evt.newValue); Restart(); });
-            statePanel.Add(gold);
-            var floor = new SliderInt("Étage", 1, limits.floorCount) { value = state.Floor, showInputField = true, tooltip = "Étage où a lieu la rencontre." };
-            floor.RegisterValueChangedCallback(evt => { state.Floor = evt.newValue; Restart(); });
-            statePanel.Add(floor);
-
-            // Mécaniques citées par les conditions : leur niveau (0 = pas encore débloquée).
-            var mechanicIds = npc == null ? new List<string>() : npc.Entries.SelectMany(e => e.conditions)
-                .Concat(npc.Nodes.SelectMany(n => n.choices).SelectMany(c => c.conditions))
-                .Where(c => c.type == ConditionType.MechanicAtLeast && !string.IsNullOrEmpty(c.flag)).Select(c => c.flag).Distinct().ToList();
-            if (mechanicIds.Count > 0)
-            {
-                statePanel.Add(ForgeUI.Label("Mécaniques", "forge-palette__title"));
-                foreach (var id in mechanicIds)
-                {
-                    var mechanic = DialogueText.FindMechanic(id);
-                    var slider = new SliderInt(mechanic != null ? mechanic.displayName : ForgeText.Redacted, 0, Mathf.Max(1, mechanic?.MaxRank ?? 1))
-                        { value = state.MechanicLevel(id), showInputField = true, tooltip = "Niveau de la mécanique (0 = pas encore débloquée)." };
-                    slider.RegisterValueChangedCallback(evt => { state.SetMechanicLevel(id, evt.newValue); Restart(); });
-                    statePanel.Add(slider);
-                }
-            }
-
-            statePanel.Add(ForgeUI.Label("Marqueurs d'histoire", "forge-palette__title"));
-            var flags = npc == null ? new List<string>() : DialogueRulesEditor.FlagsUsedIn(new[] { npc }).Distinct().OrderBy(f => f).ToList();
-            if (flags.Count == 0)
-                statePanel.Add(ForgeUI.Label("Aucun marqueur dans cette conversation.", "forge-hint"));
-            foreach (var flag in flags)
-            {
-                var toggle = new Toggle(flag) { value = state.HasFlag(flag), tooltip = "Cochez pour simuler un marqueur déjà activé (ex : quête acceptée plus tôt)." };
-                toggle.RegisterValueChangedCallback(evt => { state.SetFlag(flag, evt.newValue); Restart(); });
-                statePanel.Add(toggle);
-            }
-
-            statePanel.Add(ForgeUI.Label("Inventaire", "forge-palette__title"));
-            var items = npc == null ? new List<ItemData>() : ItemsUsedIn(npc).ToList();
-            if (items.Count == 0)
-                statePanel.Add(ForgeUI.Label("Aucun objet cité dans cette conversation.", "forge-hint"));
-            foreach (var item in items)
-            {
-                var toggle = new Toggle(item.DisplayName) { value = state.HasItem(item), tooltip = "Cochez si le joueur possède déjà cet objet." };
-                toggle.RegisterValueChangedCallback(evt =>
-                {
-                    if (evt.newValue) state.AddItem(item); else state.RemoveItem(item);
-                    Restart();
-                });
-                statePanel.Add(toggle);
-            }
+            playerPanel.Refresh();
             RefreshHud();
-        }
-
-        static IEnumerable<ItemData> ItemsUsedIn(NpcData npc)
-        {
-            var conditions = npc.Entries.SelectMany(e => e.conditions)
-                .Concat(npc.Nodes.SelectMany(n => n.choices).SelectMany(c => c.conditions));
-            var consequences = npc.Nodes.SelectMany(n => n.consequences)
-                .Concat(npc.Nodes.SelectMany(n => n.choices).SelectMany(c => c.consequences));
-            return conditions.Select(c => c.item).Concat(consequences.Select(c => c.item)).Where(i => i != null).Distinct();
-        }
-
-        /// <summary>État de jeu simulé pour l'aperçu.</summary>
-        sealed class SimulatedState : IDialogueState
-        {
-            readonly HashSet<string> flags = new();
-            readonly List<ItemData> items = new();
-            readonly Dictionary<string, int> mechanics = new();
-
-            public event Action Changed;
-            public int PlayerLevel { get; set; } = 1;
-            public int Gold { get; set; }
-            public int Floor { get; set; } = 1;
-            public int Xp { get; private set; }
-            public int Healed { get; private set; }
-
-            public bool HasFlag(string flag) => flags.Contains(flag);
-            public bool HasItem(ItemData item) => items.Contains(item);
-            public int MechanicLevel(string mechanicId) => mechanics.TryGetValue(mechanicId ?? string.Empty, out var level) ? level : 0;
-
-            public void SetMechanicLevel(string mechanicId, int level)
-            {
-                mechanics[mechanicId] = Mathf.Max(0, level);
-                Changed?.Invoke();
-            }
-
-            public void SetFlag(string flag, bool value)
-            {
-                if (string.IsNullOrEmpty(flag))
-                    return;
-                if (value) flags.Add(flag); else flags.Remove(flag);
-                Changed?.Invoke();
-            }
-
-            public void AddGold(int amount)
-            {
-                Gold = Mathf.Max(0, Gold + amount);
-                Changed?.Invoke();
-            }
-
-            public void AddItem(ItemData item)
-            {
-                if (item != null && !items.Contains(item))
-                    items.Add(item);
-                Changed?.Invoke();
-            }
-
-            public void RemoveItem(ItemData item)
-            {
-                items.Remove(item);
-                Changed?.Invoke();
-            }
-
-            public void AddXp(int amount)
-            {
-                Xp += amount;
-                Changed?.Invoke();
-            }
-
-            public void Heal(int amount)
-            {
-                Healed += amount;
-                Changed?.Invoke();
-            }
-
-            public void Reset()
-            {
-                flags.Clear();
-                items.Clear();
-                mechanics.Clear();
-                PlayerLevel = 1;
-                Gold = 0;
-                Xp = 0;
-                Healed = 0;
-                Changed?.Invoke();
-            }
         }
     }
 }
