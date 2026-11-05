@@ -14,9 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: TheDungeon.Runtime::TheDungeon.Data.ItemData
   displayName: Naroe
   icon: {fileID: 21300000, guid: 51ddd8faa9e8c8f099eed085f8901f3d, type: 3}
-  rarity: 0
-  type: 0
-  stats: []
+  rarity: 5
+  type: 2
+  stats:
+  - stat: 1
+    value: 60
+  - stat: 3
+    value: 60
+  - stat: 2
+    value: -60
   effects: []
-  price: 5
+  price: 4000
   description: Common currencies aren't used in the dungeon, instead they use Naroes
+  attack: {fileID: 0}
+  skill: {fileID: 0}
