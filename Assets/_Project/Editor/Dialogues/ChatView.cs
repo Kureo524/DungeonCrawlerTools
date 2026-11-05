@@ -115,6 +115,19 @@ namespace TheDungeon.Editor.Dialogues
                 line.Add(avatar);
             }
 
+            var bubble = Bubble(npc, node, selected);
+            line.Add(bubble);
+            block.Add(line);
+
+            var after = AfterLine(npc, node, nextShown, alreadyShown);
+            if (after != null)
+                block.Add(after);
+            return block;
+        }
+
+        /// <summary>Bulle de la réplique : interlocuteur, numéro, badges de début, texte et effets ; un clic la sélectionne.</summary>
+        VisualElement Bubble(NpcData npc, DialogueNode node, bool selected)
+        {
             var bubble = new VisualElement { tooltip = $"{DialogueText.Speaker(node.speaker, npc)} · réplique #{node.id}\n\n{node.text}\n\nCliquez pour modifier." };
             bubble.AddToClassList("forge-chat__bubble");
             bubble.EnableInClassList("forge-chat__bubble--selected", selected);
@@ -154,30 +167,31 @@ namespace TheDungeon.Editor.Dialogues
 
             bubble.RegisterCallback<ClickEvent>(_ => select(node.id));
             bubbles[node.id] = bubble;
-            line.Add(bubble);
-            block.Add(line);
+            return bubble;
+        }
 
+        /// <summary>Sous la réplique : les réponses du joueur, la fin de la conversation, ou un lien vers la suite si elle n'est pas affichée juste après.</summary>
+        VisualElement AfterLine(NpcData npc, DialogueNode node, int nextShown, HashSet<int> alreadyShown)
+        {
             if (node.choices.Count > 0)
             {
                 var replies = new VisualElement();
                 replies.AddToClassList("forge-chat__replies");
                 foreach (var choice in node.choices)
                     replies.Add(Reply(npc, choice, alreadyShown));
-                block.Add(replies);
+                return replies;
             }
-            else if (node.next < 0)
-            {
-                block.Add(System("Fin de la conversation"));
-            }
-            else if (node.next != nextShown)
+            if (node.next < 0)
+                return System("Fin de la conversation");
+            if (node.next != nextShown)
             {
                 var jump = new Label($"↪ suite : réplique #{node.next}") { tooltip = "Cliquez pour aller à la suite." };
                 jump.AddToClassList("forge-chat__jump");
                 var target = node.next;
                 jump.RegisterCallback<ClickEvent>(_ => GoTo(target));
-                block.Add(jump);
+                return jump;
             }
-            return block;
+            return null;
         }
 
         VisualElement Reply(NpcData npc, DialogueChoice choice, HashSet<int> alreadyShown)

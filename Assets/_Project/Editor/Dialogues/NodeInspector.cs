@@ -44,6 +44,14 @@ namespace TheDungeon.Editor.Dialogues
             var path = $"nodes.Array.data[{index}]";
             var node = npc.FindProperty(path);
 
+            AddHeader(nodeId);
+            AddTextFields(node, limits);
+            AddFollowUps(node, path, nodeId, limits);
+        }
+
+        /// <summary>Titre, badge « début » et actions (définir comme début, supprimer).</summary>
+        void AddHeader(int nodeId)
+        {
             var header = new VisualElement();
             header.AddToClassList("forge-row");
             var title = ForgeUI.Label(ForgeText.WindowRich($"Réplique #{nodeId}"), "forge-section-title");
@@ -65,7 +73,11 @@ namespace TheDungeon.Editor.Dialogues
                 select(draft.StartNode);
             }, "forge-button--danger"));
             Add(actions);
+        }
 
+        /// <summary>Qui parle, texte et compteur de caractères.</summary>
+        void AddTextFields(SerializedProperty node, ForgeDesignLimits limits)
+        {
             Add(SpeakerField(node));
 
             var text = new TextField("Texte") { multiline = true, tooltip = "Ce que dit le personnage. Survolez la bulle pour relire le texte complet." };
@@ -83,7 +95,11 @@ namespace TheDungeon.Editor.Dialogues
             Count(node.FindPropertyRelative("text").stringValue);
             Add(text);
             Add(counter);
+        }
 
+        /// <summary>Suite directe ou réponses du joueur, puis effets de la réplique.</summary>
+        void AddFollowUps(SerializedProperty node, string path, int nodeId, ForgeDesignLimits limits)
+        {
             // La suite directe n'a de sens que sans réponse du joueur : sinon, chaque réponse mène à sa propre suite.
             var choices = node.FindPropertyRelative("choices");
             if (choices.arraySize == 0)

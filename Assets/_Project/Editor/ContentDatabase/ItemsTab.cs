@@ -247,45 +247,9 @@ namespace TheDungeon.Editor.ContentDatabase
                 var head = new VisualElement();
                 head.AddToClassList("forge-row");
                 if (EffectInfo.CanHavePassives(itemType) || trigger == EffectTrigger.Passive)
-                {
-                    var triggerField = new DropdownField(new List<string> { "Actif", "Passif" }, (int)trigger)
-                    {
-                        tooltip = "Actif : à l'impact. Passif : permanent tant que l'arme est équipée (nombre limité par la rareté)."
-                    };
-                    triggerField.AddToClassList("forge-effect-trigger");
-                    triggerField.style.width = 96;
-                    triggerField.style.flexGrow = 0;
-                    triggerField.EnableInClassList("forge-effect-trigger--passive", trigger == EffectTrigger.Passive);
-                    triggerField.RegisterValueChangedCallback(evt =>
-                    {
-                        var next = evt.newValue == "Passif" ? EffectTrigger.Passive : EffectTrigger.Active;
-                        var p = serializedObject.FindProperty(path);
-                        p.FindPropertyRelative("trigger").enumValueIndex = (int)next;
-                        // L'effet choisi doit exister pour ce déclenchement.
-                        var allowedNow = EffectInfo.Allowed(itemType, next);
-                        if (allowedNow.Count > 0 && !allowedNow.Contains((EffectType)p.FindPropertyRelative("type").enumValueIndex))
-                            p.FindPropertyRelative("type").enumValueIndex = (int)allowedNow[0];
-                        serializedObject.ApplyModifiedProperties();
-                    });
-                    head.Add(triggerField);
-                }
+                    head.Add(TriggerField(serializedObject, path, itemType, trigger));
 
-                var allowed = EffectInfo.Allowed(itemType, trigger).ToList();
-                var options = allowed.ToList();
-                if (!options.Contains(type))
-                    options.Add(type);
-                var labels = options.Select(t => allowed.Contains(t) ? EffectInfo.Label(t) : $"⚠ {EffectInfo.Label(t)} (sans effet ici)").ToList();
-                var typeField = new DropdownField(labels, options.IndexOf(type)) { tooltip = EffectInfo.Description(type, trigger) };
-                typeField.style.flexGrow = 1;
-                typeField.RegisterValueChangedCallback(evt =>
-                {
-                    var index = labels.IndexOf(evt.newValue);
-                    if (index < 0)
-                        return;
-                    serializedObject.FindProperty(path).FindPropertyRelative("type").enumValueIndex = (int)options[index];
-                    serializedObject.ApplyModifiedProperties();
-                });
-                head.Add(typeField);
+                head.Add(TypeField(serializedObject, path, itemType, trigger, type));
                 row.Add(head);
                 row.Add(ForgeUI.Label(EffectInfo.Description(type, trigger), "forge-hint"));
 
@@ -308,6 +272,52 @@ namespace TheDungeon.Editor.ContentDatabase
             row.TrackPropertyValue(element.FindPropertyRelative("trigger"), _ => row.schedule.Execute(Fill));
             row.TrackPropertyValue(element.FindPropertyRelative("type"), _ => row.schedule.Execute(Fill));
             return row;
+        }
+
+        /// <summary>Actif (à l'impact) ou passif (tant que l'arme est équipée) ; l'effet choisi doit exister pour ce déclenchement.</summary>
+        static DropdownField TriggerField(SerializedObject serializedObject, string path, ItemType itemType, EffectTrigger trigger)
+        {
+            var triggerField = new DropdownField(new List<string> { "Actif", "Passif" }, (int)trigger)
+            {
+                tooltip = "Actif : à l'impact. Passif : permanent tant que l'arme est équipée (nombre limité par la rareté)."
+            };
+            triggerField.AddToClassList("forge-effect-trigger");
+            triggerField.style.width = 96;
+            triggerField.style.flexGrow = 0;
+            triggerField.EnableInClassList("forge-effect-trigger--passive", trigger == EffectTrigger.Passive);
+            triggerField.RegisterValueChangedCallback(evt =>
+            {
+                var next = evt.newValue == "Passif" ? EffectTrigger.Passive : EffectTrigger.Active;
+                var p = serializedObject.FindProperty(path);
+                p.FindPropertyRelative("trigger").enumValueIndex = (int)next;
+                // L'effet choisi doit exister pour ce déclenchement.
+                var allowedNow = EffectInfo.Allowed(itemType, next);
+                if (allowedNow.Count > 0 && !allowedNow.Contains((EffectType)p.FindPropertyRelative("type").enumValueIndex))
+                    p.FindPropertyRelative("type").enumValueIndex = (int)allowedNow[0];
+                serializedObject.ApplyModifiedProperties();
+            });
+            return triggerField;
+        }
+
+        /// <summary>Effets proposés pour ce type d'objet et ce déclenchement ; un effet devenu impossible reste affiché, signalé.</summary>
+        static DropdownField TypeField(SerializedObject serializedObject, string path, ItemType itemType, EffectTrigger trigger, EffectType type)
+        {
+            var allowed = EffectInfo.Allowed(itemType, trigger).ToList();
+            var options = allowed.ToList();
+            if (!options.Contains(type))
+                options.Add(type);
+            var labels = options.Select(t => allowed.Contains(t) ? EffectInfo.Label(t) : $"⚠ {EffectInfo.Label(t)} (sans effet ici)").ToList();
+            var typeField = new DropdownField(labels, options.IndexOf(type)) { tooltip = EffectInfo.Description(type, trigger) };
+            typeField.style.flexGrow = 1;
+            typeField.RegisterValueChangedCallback(evt =>
+            {
+                var index = labels.IndexOf(evt.newValue);
+                if (index < 0)
+                    return;
+                serializedObject.FindProperty(path).FindPropertyRelative("type").enumValueIndex = (int)options[index];
+                serializedObject.ApplyModifiedProperties();
+            });
+            return typeField;
         }
 
         /// <summary>Un nouvel effet est actif s'il reste de la place, sinon passif (armes) ; il prend le premier effet proposé.</summary>
