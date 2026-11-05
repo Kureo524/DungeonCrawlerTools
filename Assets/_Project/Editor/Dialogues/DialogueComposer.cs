@@ -43,7 +43,8 @@ namespace TheDungeon.Editor.Dialogues
             foreach (var (option, label, tooltip) in new[]
                      {
                          (DialogueSpeaker.Npc, "PNJ", "La réplique est dite par le personnage et suit la réplique sélectionnée."),
-                         (DialogueSpeaker.Player, "Réponse du joueur", "Ajoute une réponse au choix du joueur sous la réplique sélectionnée."),
+                         (DialogueSpeaker.Player, "Réponse du joueur", "Sous une réplique du PNJ : ajoute un intitulé de réponse à choisir. " +
+                                                                       "Sous une réplique du joueur : le joueur enchaîne avec une nouvelle réplique, dans son cadre."),
                          (DialogueSpeaker.Narrator, "Narration", "Texte de narration (sans personnage).")
                      })
             {
@@ -96,9 +97,23 @@ namespace TheDungeon.Editor.Dialogues
                 return;
             }
 
-            if (speaker == DialogueSpeaker.Player)
+            var current = draft.FindNode(selected());
+            if (speaker == DialogueSpeaker.Player && current != null && current.speaker == DialogueSpeaker.Player && current.choices.Count == 0)
             {
-                if (draft.FindNode(selected()) == null)
+                // Le joueur enchaîne : nouvelle réplique du joueur juste après la sienne.
+                if (draft.Nodes.Count >= ForgeDesignLimits.Instance.maxDialogueNodes)
+                {
+                    ForgeLists.Notify($"Maximum atteint : {ForgeDesignLimits.Instance.maxDialogueNodes} répliques par personnage.");
+                    return;
+                }
+                var added = -1;
+                edit(() => added = DialogueEditing.AddLineAfter(npc, current.id, DialogueSpeaker.Player, text));
+                select(added);
+                scrollTo(added);
+            }
+            else if (speaker == DialogueSpeaker.Player)
+            {
+                if (current == null)
                 {
                     ForgeLists.Notify("Sélectionnez la réplique à laquelle le joueur répond.");
                     return;

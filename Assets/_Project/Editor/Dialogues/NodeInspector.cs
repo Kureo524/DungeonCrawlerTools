@@ -107,7 +107,7 @@ namespace TheDungeon.Editor.Dialogues
 
             var replies = ForgeLists.Array(npc, $"{path}.choices", "Réponses du joueur",
                 "Réponses proposées après cette réplique. Sans réponse, la conversation passe à la « Suite ».", limits.maxChoicesPerNode,
-                (choice, choiceIndex) => ChoiceRow(choice, $"{path}.choices.Array.data[{choiceIndex}]", nodeId),
+                (choice, choiceIndex) => ChoiceRow(choice, $"{path}.choices.Array.data[{choiceIndex}]", nodeId, choiceIndex),
                 choice =>
                 {
                     choice.FindPropertyRelative("text").stringValue = "Nouvelle réponse";
@@ -148,15 +148,20 @@ namespace TheDungeon.Editor.Dialogues
             return field;
         }
 
-        VisualElement ChoiceRow(SerializedProperty choice, string choicePath, int nodeId)
+        VisualElement ChoiceRow(SerializedProperty choice, string choicePath, int nodeId, int choiceIndex)
         {
             var row = new VisualElement();
             row.AddToClassList("forge-dialogue-choice");
-            var text = new TextField { tooltip = "Texte de la réponse du joueur.", multiline = true };
+            var text = new TextField("Intitulé")
+            {
+                tooltip = "Texte cliquable proposé au joueur dans la boîte de dialogue du PNJ (ex : « Parler de la quête »).",
+                multiline = true
+            };
             text.AddToClassList("forge-wrap");
             text.BindProperty(choice.FindPropertyRelative("text"));
             row.Add(text);
             row.Add(TargetField("Mène à", choice.FindPropertyRelative("target"), nodeId, "Réplique déclenchée par cette réponse."));
+            row.Add(SpokenLine(choice, nodeId, choiceIndex));
 
             var details = new Foldout { text = RuleSummary(choice), value = false };
             details.AddToClassList("forge-dialogue-choice__rules");
@@ -167,6 +172,33 @@ namespace TheDungeon.Editor.Dialogues
             row.Add(details);
             row.Add(ChoiceLook(choice));
             return row;
+        }
+
+        /// <summary>
+        /// Réplique que le joueur dit après avoir choisi la réponse, dans son propre cadre : la modifier si elle existe,
+        /// sinon l'insérer entre la réponse et sa suite.
+        /// </summary>
+        VisualElement SpokenLine(SerializedProperty choice, int nodeId, int choiceIndex)
+        {
+            var spoken = draft.FindNode(choice.FindPropertyRelative("target").intValue);
+            if (spoken != null && spoken.speaker == DialogueSpeaker.Player)
+            {
+                var line = ForgeUI.Label($"Le joueur dit ensuite : {ForgeText.Quote(DialogueEditing.Excerpt(spoken.text, 60))}", "forge-hint");
+                var open = ForgeUI.Button("Modifier", "Ouvre la réplique du joueur (elle peut mener à une autre réplique du joueur).", () => select(spoken.id));
+                return ForgeLists.Row(line, open);
+            }
+            var choiceText = choice.FindPropertyRelative("text").stringValue;
+            var add = ForgeUI.Button("+ Réplique du joueur",
+                "Après le clic, le joueur dit une réplique dans son propre cadre (portrait et nom du joueur), puis la conversation reprend la suite de la réponse.",
+                () =>
+                {
+                    var newId = -1;
+                    edit(() => newId = DialogueEditing.AddSpokenLine(npc, nodeId, choiceIndex, string.IsNullOrWhiteSpace(choiceText) ? "…" : choiceText));
+                    if (newId >= 0)
+                        select(newId);
+                });
+            add.style.alignSelf = Align.FlexStart;
+            return add;
         }
 
         /// <summary>Couleurs propres à une réponse, à la place de celles du personnage (Apparence de la boîte de dialogue).</summary>
@@ -229,18 +261,21 @@ namespace TheDungeon.Editor.Dialogues
         VisualElement TargetField(string label, SerializedProperty target, int ownerId, string tooltip)
         {
             const string create = "+ Nouvelle réplique du PNJ";
+            const string createPlayer = "+ Nouvelle réplique du joueur";
             var (labels, ids) = DialogueEditing.TargetChoices(draft, ownerId);
             labels.Add(create);
+            labels.Add(createPlayer);
             var index = Mathf.Max(0, ids.IndexOf(target.intValue));
             var field = new DropdownField(label, labels, index) { tooltip = tooltip };
             field.RegisterValueChangedCallback(evt =>
             {
-                if (evt.newValue == create)
+                if (evt.newValue == create || evt.newValue == createPlayer)
                 {
                     var targetPath = target.propertyPath;
+                    var speaker = evt.newValue == create ? DialogueSpeaker.Npc : DialogueSpeaker.Player;
                     edit(() =>
                     {
-                        var newId = DialogueEditing.AddNode(npc, DialogueSpeaker.Npc, "…");
+                        var newId = DialogueEditing.AddNode(npc, speaker, "…");
                         npc.FindProperty(targetPath).intValue = newId;
                     });
                     select(ownerId);

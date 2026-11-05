@@ -115,6 +115,39 @@ namespace TheDungeon.Editor.Dialogues
         }
 
         /// <summary>
+        /// Insère une réplique dite par le joueur entre une réponse et sa suite : l'intitulé reste le texte cliquable de la boîte
+        /// du PNJ, puis la réplique s'affiche dans le cadre du joueur. Renvoie son identifiant, ou -1 si la réponse n'existe pas.
+        /// </summary>
+        public static int AddSpokenLine(SerializedObject npc, int nodeId, int choiceIndex, string text)
+        {
+            var node = Node(npc, nodeId);
+            if (node == null || choiceIndex < 0 || choiceIndex >= node.FindPropertyRelative("choices").arraySize)
+                return -1;
+            var target = node.FindPropertyRelative("choices").GetArrayElementAtIndex(choiceIndex).FindPropertyRelative("target").intValue;
+            var id = AddNode(npc, DialogueSpeaker.Player, text);
+            // Ajouter une réplique agrandit le tableau : on relit les propriétés.
+            Node(npc, id).FindPropertyRelative("next").intValue = target;
+            Node(npc, nodeId).FindPropertyRelative("choices").GetArrayElementAtIndex(choiceIndex).FindPropertyRelative("target").intValue = id;
+            return id;
+        }
+
+        /// <summary>
+        /// Le joueur enchaîne : une nouvelle réplique du joueur s'insère juste après celle-ci (elle reprend sa suite).
+        /// Renvoie son identifiant, ou -1 si la réplique n'existe pas ou propose des réponses (sa suite passe alors par elles).
+        /// </summary>
+        public static int AddLineAfter(SerializedObject npc, int fromId, DialogueSpeaker speaker, string text)
+        {
+            var from = Node(npc, fromId);
+            if (from == null || from.FindPropertyRelative("choices").arraySize > 0)
+                return -1;
+            var next = from.FindPropertyRelative("next").intValue;
+            var id = AddNode(npc, speaker, text);
+            Node(npc, id).FindPropertyRelative("next").intValue = next;
+            Node(npc, fromId).FindPropertyRelative("next").intValue = id;
+            return id;
+        }
+
+        /// <summary>
         /// Saisie « messagerie » : relie la nouvelle réplique à la suite logique de la réplique sélectionnée.
         /// Priorité à la dernière réponse du joueur qui ne mène encore nulle part, sinon à la suite directe.
         /// Renvoie false si rien n'a pu être relié (la réplique reste isolée).

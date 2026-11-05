@@ -60,6 +60,24 @@ namespace TheDungeon.Editor.Tests
                 new RoomData[0], new FloorData[0], new PlayerProgression[0], limits, others.Append(npc).ToArray())).ToList();
 
         [Test]
+        public void PlayerAnswer_CanSayALineThatLeadsToAnotherPlayerLine()
+        {
+            var greeting = Add("Que veux-tu ?");
+            var reply = Add("Très bien.");
+            DialogueEditing.AddChoice(serialized, greeting, "Parler de la quête", reply, 4);
+            var spoken = DialogueEditing.AddSpokenLine(serialized, greeting, 0, "Je cherche le forgeron disparu.");
+            var more = DialogueEditing.AddLineAfter(serialized, spoken, DialogueSpeaker.Player, "On m'a dit qu'il était ici.");
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.AreEqual("Parler de la quête", npc.FindNode(greeting).choices[0].text, "L'intitulé reste le texte cliquable.");
+            Assert.AreEqual(spoken, npc.FindNode(greeting).choices[0].target, "La réponse mène à la réplique dite par le joueur.");
+            Assert.AreEqual(DialogueSpeaker.Player, npc.FindNode(spoken).speaker);
+            Assert.AreEqual(more, npc.FindNode(spoken).next, "Une réplique du joueur peut mener à une autre réplique du joueur.");
+            Assert.AreEqual(reply, npc.FindNode(more).next, "La chaîne reprend la suite d'origine de la réponse.");
+            Assert.IsEmpty(Validate().Where(i => i.Severity == Severity.Error));
+        }
+
+        [Test]
         public void GraphLayout_PlacesAnswersBelowAndSideBySide()
         {
             var start = Add("Bonjour.");
