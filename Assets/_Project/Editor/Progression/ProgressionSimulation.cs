@@ -141,6 +141,22 @@ namespace TheDungeon.Editor.Progression
             return enemies.Count > 0 ? (float)enemies.Average(e => e.GetXpReward(1)) : 25f;
         }
 
+        /// <summary>
+        /// Ennemis à vaincre pour atteindre chaque niveau depuis le précédent (index 0 : niveau 1, point de départ, donc 0),
+        /// ou null si la progression n'a pas de stat d'XP ou qu'un seul niveau.
+        /// </summary>
+        public static List<int> EnemiesPerLevel(PlayerProgression progression, float xpPerEnemy)
+        {
+            var xp = progression.Find(StatRole.XpToNext);
+            if (xp == null || progression.MaxLevel <= 1)
+                return null;
+            var perEnemy = Mathf.Max(1f, xpPerEnemy);
+            return Enumerable.Range(1, progression.MaxLevel).Select(level => level == 1 ? 0 : Mathf.CeilToInt(xp.GetValue(level - 1) / perEnemy)).ToList();
+        }
+
+        /// <summary>Écart de la stat avec le niveau précédent (0 au niveau 1).</summary>
+        public static float Delta(ProgressionStat stat, int level) => level > 1 ? stat.GetValue(level) - stat.GetValue(level - 1) : 0f;
+
         /// <summary>Écart signé, au format de la stat : « +18 », « −2 », « ±0 ».</summary>
         public static string Signed(ProgressionStat stat, float delta) =>
             (delta > 0f ? "+" : delta < 0f ? "−" : "±") + stat.Format(Mathf.Abs(delta));

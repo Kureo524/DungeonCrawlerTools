@@ -270,6 +270,45 @@ namespace TheDungeon.Editor.Tests
         }
 
         [Test]
+        public void Simulation_CountsEnemiesBetweenLevels()
+        {
+            var progression = Default();
+            try
+            {
+                var xp = progression.Find(StatRole.XpToNext);
+                var counts = ProgressionSimulation.EnemiesPerLevel(progression, 25f);
+
+                Assert.AreEqual(progression.MaxLevel, counts.Count);
+                Assert.AreEqual(0, counts[0], "Le niveau 1 est le point de départ.");
+                Assert.AreEqual(Mathf.CeilToInt(xp.GetValue(4) / 25f), counts[4], "Pour atteindre le niveau 5, il faut l'XP du niveau 4.");
+                Assert.AreEqual(Mathf.CeilToInt(xp.GetValue(4) / 1f), ProgressionSimulation.EnemiesPerLevel(progression, 0f)[4], "Au moins 1 XP par ennemi.");
+
+                ProgressionEditing.RemoveStat(new SerializedObject(progression), progression.Stats.ToList().IndexOf(xp));
+                Assert.IsNull(ProgressionSimulation.EnemiesPerLevel(progression, 25f), "Sans stat d'XP, l'effort n'est pas calculable.");
+            }
+            finally
+            {
+                TestData.Destroy(progression);
+            }
+        }
+
+        [Test]
+        public void ImportedShape_IsScaledBetweenTheCurveExtremes()
+        {
+            var stat = new ProgressionStat { min = 0f, max = 100f, decimals = 0 };
+            stat.values.AddRange(new[] { 10f, 20f, 50f });
+            var values = ProgressionImportExport.FitShape(new[] { 0f, 0.5f, 1f }, stat, out var low, out var high);
+            Assert.AreEqual((10f, 50f), (low, high));
+            CollectionAssert.AreEqual(new[] { 10f, 30f, 50f }, values);
+
+            var flat = new ProgressionStat { min = 0f, max = 10f, decimals = 1 };
+            flat.values.AddRange(new[] { 5f, 5f });
+            var spread = ProgressionImportExport.FitShape(new[] { 0f, 0.25f, 2f }, flat, out low, out high);
+            Assert.AreEqual((0f, 10f), (low, high), "Une courbe plate prend toute la plage de la stat.");
+            CollectionAssert.AreEqual(new[] { 0f, 2.5f, 10f }, spread, "Arrondi aux décimales et gardé dans les bornes.");
+        }
+
+        [Test]
         public void ChangingLevelCount_ExtendsCurvesAndDropsLaterRewards()
         {
             var progression = TestData.Create<PlayerProgression>("PRG_Test", so =>
