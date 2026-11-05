@@ -40,6 +40,11 @@ namespace TheDungeon.Editor.Validation
     /// </summary>
     public static class FloorGraph
     {
+        /// <summary>Biome d'un étage : celui de ses salles (le plus présent si elles en mélangent plusieurs), ou null si aucune n'en a.</summary>
+        public static BiomeData BiomeOf(IEnumerable<RoomData> rooms) =>
+            rooms.Where(room => room != null && room.Biome != null).GroupBy(room => room.Biome)
+                .OrderByDescending(group => group.Count()).Select(group => group.Key).FirstOrDefault();
+
         public static Dictionary<Vector2Int, RoomData> Map(IEnumerable<FloorRoomSlot> slots)
         {
             var map = new Dictionary<Vector2Int, RoomData>();

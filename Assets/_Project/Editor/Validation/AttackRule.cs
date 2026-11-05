@@ -12,7 +12,7 @@ namespace TheDungeon.Editor.Validation
         public override IEnumerable<ValidationIssue> Run(ValidationContext context)
         {
             var used = context.Enemies.SelectMany(e => e.Attacks).Select(a => a.attack)
-                .Concat(context.Items.SelectMany(i => new[] { i.WeaponAttack, i.WeaponSkill })).Where(a => a != null).ToHashSet();
+                .Concat(context.Items.SelectMany(i => new[] { i.WeaponAttack, i.WeaponSkill })).Where(a => a != null).Select(context.Current).ToHashSet();
             var mechanics = context.Progressions.SelectMany(p => p.Mechanics).Select(m => m.id).ToHashSet();
             foreach (var attack in context.Attacks)
             {

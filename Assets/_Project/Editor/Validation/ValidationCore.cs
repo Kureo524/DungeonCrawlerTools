@@ -51,6 +51,9 @@ namespace TheDungeon.Editor.Validation
         public IReadOnlyList<AttackData> Attacks { get; }
         public ForgeDesignLimits Limits { get; }
 
+        Object original;
+        Object draft;
+
         public ValidationContext(
             IReadOnlyList<ItemData> items, IReadOnlyList<EnemyData> enemies, IReadOnlyList<LootTable> lootTables,
             IReadOnlyList<BiomeData> biomes, IReadOnlyList<RoomData> rooms, IReadOnlyList<FloorData> floors,
@@ -69,13 +72,29 @@ namespace TheDungeon.Editor.Validation
             Limits = limits;
         }
 
+        /// <summary>
+        /// Une copie de travail remplace ici son asset d'origine, mais les autres données référencent toujours l'origine :
+        /// cette méthode renvoie ce qui représente réellement une référence dans ce contexte.
+        /// </summary>
+        public T Current<T>(T reference) where T : Object =>
+            original != null && reference == original && draft is T working ? working : reference;
+
+        /// <summary>Indique qu'une copie de travail remplace cet asset d'origine dans les données du contexte.</summary>
+        public ValidationContext WithWorkingCopy(Object originalAsset, Object workingCopy)
+        {
+            original = originalAsset;
+            draft = workingCopy;
+            return this;
+        }
+
         public static ValidationContext FromProject() => FromProject(null, null);
 
         /// <summary>Données du projet, où la copie de travail remplace l'asset d'origine (ou s'ajoute s'il est nouveau).</summary>
-        public static ValidationContext FromProject(Object original, Object draft) => new(
+        public static ValidationContext FromProject(Object original, Object draft) => new ValidationContext(
             Load<ItemData>(original, draft), Load<EnemyData>(original, draft), Load<LootTable>(original, draft),
             Load<BiomeData>(original, draft), Load<RoomData>(original, draft), Load<FloorData>(original, draft),
-            Load<PlayerProgression>(original, draft), ForgeDesignLimits.Instance, Load<NpcData>(original, draft), Load<AttackData>(original, draft));
+            Load<PlayerProgression>(original, draft), ForgeDesignLimits.Instance, Load<NpcData>(original, draft), Load<AttackData>(original, draft))
+            .WithWorkingCopy(original, draft);
 
         static List<T> Load<T>(Object original, Object draft) where T : Object
         {

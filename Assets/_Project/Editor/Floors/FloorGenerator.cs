@@ -8,11 +8,12 @@ namespace TheDungeon.Editor.Floors
     /// <summary>
     /// Assemble un plan d'étage à partir des salles disponibles : une salle de départ au centre,
     /// des salles dont les portes correspondent à celles de leurs voisines, et la salle du boss placée en dernier
-    /// (en fond d'étage). Recherche avec retour arrière, limitée en nombre d'essais.
+    /// (en fond d'étage). Toutes les salles sont du même biome. Recherche avec retour arrière, limitée en nombre d'essais.
     /// </summary>
     public static class FloorGenerator
     {
         const int MaxSteps = 50000;
+        const int MaxDifferentAttempts = 64;
 
         public sealed class Result
         {
@@ -30,9 +31,56 @@ namespace TheDungeon.Editor.Floors
             public bool Success => Error == null;
         }
 
+        /// <summary>
+        /// Plan d'un seul biome (un étage ne mélange pas les biomes) : les biomes présents sont essayés dans un ordre tiré de la graine,
+        /// jusqu'à en trouver un dont les salles permettent un plan complet.
+        /// </summary>
         public static Result Generate(IReadOnlyList<RoomData> pool, int roomCount, Vector2Int gridSize, int seed)
         {
             var random = new System.Random(seed);
+            var biomes = Shuffle(pool.GroupBy(r => r.Biome).OrderBy(g => g.Key != null ? g.Key.name : string.Empty).ToList(), random);
+            if (biomes.Count <= 1)
+                return GenerateBiome(pool, roomCount, gridSize, random);
+            var errors = new List<string>();
+            foreach (var biome in biomes)
+            {
+                var result = GenerateBiome(biome.ToList(), roomCount, gridSize, random);
+                if (result.Success)
+                    return result;
+                errors.Add($"{(biome.Key != null ? biome.Key.DisplayName : "Sans biome")} : {result.Error}");
+            }
+            return Fail("Aucun biome ne permet un plan complet.\n" + string.Join("\n", errors));
+        }
+
+        /// <summary>
+        /// Comme <see cref="Generate"/>, mais un plan identique au plan actuel est écarté : les graines suivantes sont essayées.
+        /// <paramref name="usedSeed"/> est la graine du plan renvoyé ; si le plan reste le même malgré les essais,
+        /// <paramref name="changed"/> est faux (ces salles ne permettent pas d'autre plan).
+        /// </summary>
+        public static Result GenerateDifferent(IReadOnlyList<RoomData> pool, int roomCount, Vector2Int gridSize, int seed,
+            IReadOnlyDictionary<Vector2Int, RoomData> current, out int usedSeed, out bool changed)
+        {
+            usedSeed = seed;
+            changed = false;
+            var result = Generate(pool, roomCount, gridSize, seed);
+            for (var attempt = 1; result.Success && attempt <= MaxDifferentAttempts; attempt++)
+            {
+                if (!SameLayout(result.Layout, current))
+                {
+                    usedSeed = seed + attempt - 1;
+                    changed = true;
+                    return result;
+                }
+                result = Generate(pool, roomCount, gridSize, seed + attempt);
+            }
+            return result;
+        }
+
+        static bool SameLayout(IReadOnlyDictionary<Vector2Int, RoomData> a, IReadOnlyDictionary<Vector2Int, RoomData> b) =>
+            a.Count == b.Count && a.All(entry => b.TryGetValue(entry.Key, out var room) && room == entry.Value);
+
+        static Result GenerateBiome(IReadOnlyList<RoomData> pool, int roomCount, Vector2Int gridSize, System.Random random)
+        {
             var starts = pool.Where(r => r.RoomType == RoomType.Start).ToList();
             var bosses = pool.Where(r => r.RoomType == RoomType.Boss && r.ContainsBoss()).ToList();
             var others = pool.Where(r => r.RoomType != RoomType.Start && r.RoomType != RoomType.Boss).ToList();

@@ -168,6 +168,86 @@ namespace TheDungeon.Editor.Tests
             Assert.AreEqual(result.Layout.Count, FloorGraph.Reachable(result.Layout, start).Count);
         }
 
+        BiomeData Biome(string name)
+        {
+            var biome = TestData.Create<BiomeData>($"BIO_{name}", so => so.FindProperty("displayName").stringValue = name);
+            created.Add(biome);
+            return biome;
+        }
+
+        RoomData RoomIn(BiomeData biome, string name, RoomType type, Doors doors, bool withBoss = false)
+        {
+            var room = Room(name, type, doors, withBoss);
+            var so = new SerializedObject(room);
+            so.FindProperty("biome").objectReferenceValue = biome;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return room;
+        }
+
+        [Test]
+        public void Generator_StaysInOneBiome()
+        {
+            var crypt = Biome("Crypte");
+            var volcano = Biome("Volcan");
+            var pool = new List<RoomData>
+            {
+                RoomIn(crypt, "CryptStart", RoomType.Start, Doors.East),
+                RoomIn(crypt, "CryptBoss", RoomType.Boss, Doors.West, true),
+                RoomIn(volcano, "VolcanoStart", RoomType.Start, Doors.East),
+                RoomIn(volcano, "VolcanoBoss", RoomType.Boss, Doors.West, true)
+            };
+            for (var seed = 0; seed < 20; seed++)
+            {
+                var result = FloorGenerator.Generate(pool, 2, new Vector2Int(6, 6), seed);
+                Assert.IsTrue(result.Success, result.Error);
+                Assert.AreEqual(1, result.Layout.Values.Select(r => r.Biome).Distinct().Count(), "Un étage n'a qu'un biome.");
+            }
+        }
+
+        [Test]
+        public void Generator_AvoidsTheCurrentLayout_OrSaysThereIsNoOther()
+        {
+            var start = Room("Start", RoomType.Start, Doors.East);
+            var firstBoss = Room("BossA", RoomType.Boss, Doors.West, true);
+            var secondBoss = Room("BossB", RoomType.Boss, Doors.West, true);
+            var grid = new Vector2Int(6, 6);
+            var pool = new List<RoomData> { start, firstBoss, secondBoss };
+
+            var first = FloorGenerator.Generate(pool, 2, grid, 0);
+            var other = FloorGenerator.GenerateDifferent(pool, 2, grid, 0, first.Layout, out var usedSeed, out var changed);
+            Assert.IsTrue(changed);
+            Assert.AreNotEqual(first.Layout.Values.Last(), other.Layout.Values.Last(), "L'autre boss est choisi.");
+            Assert.AreEqual(other.Layout.Values.Last(), FloorGenerator.Generate(pool, 2, grid, usedSeed).Layout.Values.Last(), "La graine retenue redonne ce plan.");
+
+            var only = new List<RoomData> { start, firstBoss };
+            var current = FloorGenerator.Generate(only, 2, grid, 0).Layout;
+            FloorGenerator.GenerateDifferent(only, 2, grid, 0, current, out _, out changed);
+            Assert.IsFalse(changed, "Une seule combinaison possible : le plan ne change pas.");
+        }
+
+        [Test]
+        public void FloorMixingBiomes_IsAnError()
+        {
+            var start = RoomIn(Biome("Crypte"), "Start", RoomType.Start, Doors.East);
+            var other = RoomIn(Biome("Volcan"), "Boss", RoomType.Boss, Doors.West, true);
+            var floor = Floor(start, (start, new Vector2Int(0, 0)), (other, new Vector2Int(1, 0)));
+            var issues = new FloorRule().Run(new ValidationContext(new ItemData[0], new EnemyData[0], new LootTable[0], new BiomeData[0],
+                new[] { start, other }, new[] { floor }, new PlayerProgression[0], limits)).ToList();
+            Assert.IsTrue(issues.Any(i => i.Severity == Severity.Error && i.Message.Contains("n'a qu'un biome")));
+        }
+
+        [Test]
+        public void WorkingCopyOfAPlacedRoom_IsConsideredPlaced()
+        {
+            var room = Room("Start", RoomType.Start, Doors.None);
+            var floor = Floor(room, (room, new Vector2Int(0, 0)));
+            var copy = Object.Instantiate(room);
+            created.Add(copy);
+            var context = new ValidationContext(new ItemData[0], new EnemyData[0], new LootTable[0], new BiomeData[0],
+                new[] { copy }, new[] { floor }, new PlayerProgression[0], limits).WithWorkingCopy(room, copy);
+            Assert.IsFalse(new FloorRule().Run(context).Any(i => i.Context == copy && i.Message.Contains("aucun étage")));
+        }
+
         [Test]
         public void Generator_ExplainsMissingBossRoom()
         {

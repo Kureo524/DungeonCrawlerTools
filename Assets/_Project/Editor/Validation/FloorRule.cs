@@ -12,7 +12,7 @@ namespace TheDungeon.Editor.Validation
     {
         public override string Name => "Étages";
         public override string Description =>
-            "Portes compatibles entre salles reliées, toutes les salles atteignables depuis l'entrée, exactement un boss par étage.";
+            "Un seul biome par étage, portes compatibles entre salles reliées, toutes les salles atteignables depuis l'entrée, exactement un boss par étage.";
 
         public override IEnumerable<ValidationIssue> Run(ValidationContext context)
         {
@@ -45,6 +45,10 @@ namespace TheDungeon.Editor.Validation
                         yield return Error($"{where} donne sur « {door.Neighbour.DisplayName} », qui n'a pas de porte {FloorGraph.SideName(FloorData.Opposite(door.Side))} : portes incompatibles.", floor);
                 }
 
+                var floorBiome = FloorGraph.BiomeOf(map.Values);
+                foreach (var foreign in map.Values.Where(room => room.Biome != null && room.Biome != floorBiome))
+                    yield return Error($"« {foreign.DisplayName} » est du biome {foreign.Biome.DisplayName}, alors que l'étage est du biome {floorBiome.DisplayName} : un étage n'a qu'un biome.", floor);
+
                 foreach (var issue in CheckEntranceAndAccess(floor, map))
                     yield return issue;
 
@@ -54,7 +58,7 @@ namespace TheDungeon.Editor.Validation
             }
 
             // Une salle qui n'est sur aucun étage ne sera jamais jouée.
-            var placed = new HashSet<RoomData>(context.Floors.SelectMany(f => f.Rooms).Select(s => s.room).Where(r => r != null));
+            var placed = new HashSet<RoomData>(context.Floors.SelectMany(f => f.Rooms).Select(s => s.room).Where(r => r != null).Select(context.Current));
             foreach (var room in context.Rooms.Where(room => !placed.Contains(room)))
                 yield return Warning("Cette salle n'est placée sur aucun étage (Forge Studio > Étages).", room);
         }

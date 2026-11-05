@@ -66,14 +66,19 @@ namespace TheDungeon.Editor.Floors
             serialized.FindProperty("floorNumber").intValue = FreeNumbers().First();
         }
 
-        /// <summary>Salles utilisables sur cet étage : valides, d'un biome autorisé à cet étage, et absentes des autres étages.</summary>
+        /// <summary>
+        /// Salles utilisables sur cet étage : valides, d'un biome autorisé à cet étage, absentes des autres étages,
+        /// et du biome de l'étage dès qu'une salle y est placée.
+        /// </summary>
         List<RoomData> AvailableRooms()
         {
             var otherFloors = AssetFactory.LoadAll<FloorData>().Where(f => f != Original);
             var elsewhere = otherFloors.SelectMany(f => f.Rooms).Select(s => s.room).Where(r => r != null).ToHashSet();
+            var floorBiome = FloorGraph.BiomeOf(FloorGraph.Map(draft.Rooms).Values);
             return AssetFactory.LoadAll<RoomData>()
                 .Where(r => ValidationCache.IsValid(r) && !elsewhere.Contains(r) && r.Biome != null &&
-                            draft.FloorNumber >= r.Biome.MinFloor && draft.FloorNumber <= r.Biome.MaxFloor)
+                            draft.FloorNumber >= r.Biome.MinFloor && draft.FloorNumber <= r.Biome.MaxFloor &&
+                            (floorBiome == null || r.Biome == floorBiome))
                 .ToList();
         }
 
@@ -111,10 +116,10 @@ namespace TheDungeon.Editor.Floors
             generator.Add(ForgeUI.Label(
                 "Assemble un plan avec les salles disponibles : départ au centre, portes toutes reliées, boss en fond d'étage. " +
                 "Le résultat reste modifiable à la main.", "forge-hint"));
-            seedField = new IntegerField("Graine") { value = Environment.TickCount % 10000, tooltip = "Même graine = même plan. Changez-la pour une autre variante." };
+            seedField = new IntegerField("Graine") { value = Environment.TickCount % 10000, tooltip = "Même graine = même plan. La graine retenue s'affiche ici après la génération." };
             generator.Add(ForgeLists.Row(seedField,
                 ForgeUI.Button("Nouvelle graine", "Tire une graine au hasard.", () => seedField.value = UnityEngine.Random.Range(0, 10000)),
-                ForgeUI.Button("Générer le plan", "Remplace le plan actuel (annulable avec Ctrl+Z).", Generate, "forge-button--primary"),
+                ForgeUI.Button("Générer le plan", "Remplace le plan actuel par un autre plan, dans le biome de l'étage (annulable avec Ctrl+Z). Si la graine donne le plan actuel, les suivantes sont essayées.", Generate, "forge-button--primary"),
                 ForgeUI.Button("Vider le plan", "Retire toutes les salles du plan.", () => Edit(() => FloorEditing.Clear(floor)), "forge-button--danger")));
         }
 
@@ -207,15 +212,22 @@ namespace TheDungeon.Editor.Floors
 
         void Generate()
         {
-            var pool = AvailableRooms().Concat(FloorGraph.Map(draft.Rooms).Values).Distinct().ToList();
-            var result = FloorGenerator.Generate(pool, Limits.roomsPerFloor, Limits.floorGridSize, seedField.value);
+            var current = FloorGraph.Map(draft.Rooms);
+            var pool = AvailableRooms().Concat(current.Values).Distinct().ToList();
+            var result = FloorGenerator.GenerateDifferent(pool, Limits.roomsPerFloor, Limits.floorGridSize, seedField.value, current, out var usedSeed, out var changed);
             if (!result.Success)
             {
                 ForgeDialogs.Inform("Génération impossible", result.Error);
                 return;
             }
+            if (!changed)
+            {
+                ForgeLists.Notify("Ces salles ne permettent pas d'autre plan : ajoutez des salles avec d'autres portes pour varier.");
+                return;
+            }
+            seedField.SetValueWithoutNotify(usedSeed);
             Edit(() => FloorEditing.Replace(floor, result.Layout, result.Entrance));
-            ForgeLists.Notify($"Plan généré : {result.Layout.Count} salles.");
+            ForgeLists.Notify($"Plan généré : {result.Layout.Count} salles (graine {usedSeed}).");
         }
 
         protected override void OnRefresh(FloorData asset)
@@ -242,6 +254,11 @@ namespace TheDungeon.Editor.Floors
             palette.Clear();
             var placed = FloorGraph.Map(draft.Rooms).Values.ToHashSet();
             var rooms = AvailableRooms().OrderBy(r => r.RoomType).ThenBy(r => r.DisplayName).ToList();
+            if (placing != null && !rooms.Contains(placing))
+                placing = null;
+            var floorBiome = FloorGraph.BiomeOf(placed);
+            if (floorBiome != null)
+                palette.Add(ForgeUI.Label($"Biome de l'étage : {ForgeText.Name(floorBiome.DisplayName)}. Videz le plan pour en changer.", "forge-hint"));
             if (rooms.Count == 0)
             {
                 palette.Add(ForgeUI.Label("Aucune salle valide disponible pour cet étage. Créez des salles dans Forge Studio > Salles.", "forge-hint"));
