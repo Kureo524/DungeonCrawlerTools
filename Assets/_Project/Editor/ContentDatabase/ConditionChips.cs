@@ -192,7 +192,7 @@ namespace TheDungeon.Editor.ContentDatabase
                     menu.AddItem($"   {EnemyPatternText.MenuLabel(type)}", false, () => AddCondition(patternPath, chosen));
                 }
             }
-            menu.DropDown(anchor.worldBound, anchor, false);
+            menu.DropDown(anchor.worldBound, anchor, DropdownMenuSizeMode.Content);
         }
 
         void AddCondition(string patternPath, EnemyConditionType type)

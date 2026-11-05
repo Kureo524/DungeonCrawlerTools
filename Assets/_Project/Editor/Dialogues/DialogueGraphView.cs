@@ -585,7 +585,7 @@ namespace TheDungeon.Editor.Dialogues
                          (DialogueSpeaker.Player, "Nouvelle réplique du joueur")
                      })
                 menu.AddItem(label, false, () => CreateLinked(from, choice, speaker, at, left));
-            menu.DropDown(new Rect(viewport.LocalToWorld(viewportPoint), Vector2.zero), viewport, false, false);
+            menu.DropDown(new Rect(viewport.LocalToWorld(viewportPoint), Vector2.zero), viewport, DropdownMenuSizeMode.Content);
         }
 
         void CreateLinked(int from, int choice, DialogueSpeaker speaker, Vector2 at, bool left = false)
@@ -668,7 +668,7 @@ namespace TheDungeon.Editor.Dialogues
                 edit(() => DialogueEditing.DeleteNode(serialized, id));
                 select(npc.StartNode);
             });
-            menu.DropDown(new Rect(viewport.LocalToWorld(viewportPoint), Vector2.zero), viewport, false, false);
+            menu.DropDown(new Rect(viewport.LocalToWorld(viewportPoint), Vector2.zero), viewport, DropdownMenuSizeMode.Content);
         }
 
         void ShowPortMenu(NodeView view, int choice, Vector2 viewportPoint, bool immediate)
@@ -682,7 +682,7 @@ namespace TheDungeon.Editor.Dialogues
             }
             var menu = ForgeDropdowns.Menu();
             menu.AddItem("Retirer le lien (fin de la conversation)", false, Unlink);
-            menu.DropDown(new Rect(viewport.LocalToWorld(viewportPoint), Vector2.zero), viewport, false, false);
+            menu.DropDown(new Rect(viewport.LocalToWorld(viewportPoint), Vector2.zero), viewport, DropdownMenuSizeMode.Content);
         }
 
         void ShowBackgroundMenu(Vector2 viewportPoint)
@@ -694,7 +694,7 @@ namespace TheDungeon.Editor.Dialogues
             menu.AddSeparator(string.Empty);
             menu.AddItem("Recentrer", false, FrameAll);
             menu.AddItem("Réorganiser", false, () => edit(() => DialogueEditing.ClearPositions(serialized)));
-            menu.DropDown(new Rect(viewport.LocalToWorld(viewportPoint), Vector2.zero), viewport, false, false);
+            menu.DropDown(new Rect(viewport.LocalToWorld(viewportPoint), Vector2.zero), viewport, DropdownMenuSizeMode.Content);
         }
 
         #endregion

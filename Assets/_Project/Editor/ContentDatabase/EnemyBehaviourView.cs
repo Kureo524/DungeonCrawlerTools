@@ -417,7 +417,7 @@ namespace TheDungeon.Editor.ContentDatabase
                 var chosen = preset;
                 menu.AddItem($"   {preset.Name} — {preset.Description}", false, () => CreateFromPreset(chosen));
             }
-            menu.DropDown(anchor.worldBound, anchor, false);
+            menu.DropDown(anchor.worldBound, anchor, DropdownMenuSizeMode.Content);
         }
 
         void ShowRulePresets(VisualElement anchor)
@@ -425,7 +425,7 @@ namespace TheDungeon.Editor.ContentDatabase
             var menu = ForgeDropdowns.Menu();
             foreach (var preset in RulePresets.All)
                 menu.AddItem($"{preset.Name} — {preset.Description}", false, () => AddRule(preset));
-            menu.DropDown(anchor.worldBound, anchor, false);
+            menu.DropDown(anchor.worldBound, anchor, DropdownMenuSizeMode.Content);
         }
 
         #endregion

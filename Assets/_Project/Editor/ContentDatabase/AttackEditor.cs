@@ -215,7 +215,7 @@ namespace TheDungeon.Editor.ContentDatabase
                         rebuild();
                     });
                 }
-                menu.DropDown(add.worldBound, add, false);
+                menu.DropDown(add.worldBound, add, DropdownMenuSizeMode.Content);
             };
             add.style.alignSelf = Align.FlexStart;
             container.Add(add);
@@ -688,7 +688,7 @@ namespace TheDungeon.Editor.ContentDatabase
                             rebuild();
                         });
                     }
-                    menu.DropDown(add.worldBound, add, false);
+                    menu.DropDown(add.worldBound, add, DropdownMenuSizeMode.Content);
                 };
                 add.style.alignSelf = Align.FlexStart;
                 container.Add(add);

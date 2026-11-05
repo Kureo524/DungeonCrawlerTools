@@ -72,7 +72,7 @@ namespace TheDungeon.Editor.ContentDatabase
                         return created;
                     }));
                 }
-                menu.DropDown(presets.worldBound, presets, false);
+                menu.DropDown(presets.worldBound, presets, DropdownMenuSizeMode.Content);
             };
             return presets;
         }
