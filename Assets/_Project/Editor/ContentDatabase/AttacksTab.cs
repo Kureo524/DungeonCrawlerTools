@@ -102,7 +102,7 @@ namespace TheDungeon.Editor.ContentDatabase
                   "même si le joueur s'éloigne : elle peut rater. Un ennemi peut remplacer ces réglages pour lui seul."
                 : "Le joueur la déclenche avec sa touche (tir ou compétence d'arme). Dégâts en % de son attaque. Une fois lancée, elle va jusqu'au bout. " +
                   "Dans les étapes, « la cible » est l'ennemi visé (le plus proche dans la visée).");
-            trigger.Add(AttackEditor.Settings(serializedObject.FindProperty("settings"), null, null, attack.User));
+            trigger.Add(AttackSettingsEditor.Settings(serializedObject.FindProperty("settings"), null, null, attack.User));
 
             var chain = ForgeUI.Section("Enchaînement", container,
                 "Les étapes sont jouées dans l'ordre. Chacune décide au moment où elle commence si elle est jouée : selon la situation " +

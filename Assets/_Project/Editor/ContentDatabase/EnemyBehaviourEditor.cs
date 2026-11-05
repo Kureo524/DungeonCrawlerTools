@@ -143,8 +143,8 @@ namespace TheDungeon.Editor.ContentDatabase
             editor.Add(ForgeUI.Label("Déclenchement", "forge-rule-editor__heading"));
             editor.Add(ForgeUI.Label("Valeurs grisées : celles de l'attaque. Cliquez une valeur pour la changer pour cet ennemi seulement ; « ↺ » revient à celle de l'attaque.",
                 "forge-hint"));
-            editor.Add(AttackEditor.Settings(slot.FindPropertyRelative("overrides"),
-                new AttackEditor.Override { Mask = slot.FindPropertyRelative("overridden"), Base = attackData.Settings }, Rebuild));
+            editor.Add(AttackSettingsEditor.Settings(slot.FindPropertyRelative("overrides"),
+                new AttackSettingsEditor.Override { Mask = slot.FindPropertyRelative("overridden"), Base = attackData.Settings }, Rebuild));
 
             AttackWeight(slot);
             AttackSteps(attackData, index);
@@ -194,7 +194,7 @@ namespace TheDungeon.Editor.ContentDatabase
             weightPill.AddToClassList("forge-chip");
             weightPill.AddToClassList("forge-chip--setting");
             weightPill.Add(ForgeUI.Label("poids", "forge-chip__text"));
-            weightPill.Add(AttackEditor.IntField(slot.FindPropertyRelative("weight"), 0, 1000));
+            weightPill.Add(AttackFields.IntField(slot.FindPropertyRelative("weight"), 0, 1000));
             weight.Add(weightPill);
             weight.Add(ForgeUI.Label("Les chances de chaque attaque, dans la situation de l'arène, s'affichent sur les cartes et sous l'arène.", "forge-hint"));
             editor.Add(weight);
@@ -275,9 +275,9 @@ namespace TheDungeon.Editor.ContentDatabase
         static VisualElement PhasePill(SerializedProperty phase, string property, string before, string after, string tooltip, bool isInt)
         {
             var field = isInt
-                ? (VisualElement)AttackEditor.IntField(phase.FindPropertyRelative(property), 0, 1000)
-                : AttackEditor.FloatField(phase.FindPropertyRelative(property), 0f, 100f);
-            return Pill(before, field, after, tooltip);
+                ? (VisualElement)AttackFields.IntField(phase.FindPropertyRelative(property), 0, 1000)
+                : AttackFields.FloatField(phase.FindPropertyRelative(property), 0f, 100f);
+            return AttackFields.Pill(before, field, after, tooltip);
         }
 
         void BuildOtherwiseEditor()
@@ -331,19 +331,7 @@ namespace TheDungeon.Editor.ContentDatabase
                 if (!range.Contains(evt.newValue))
                     field.value = range.Clamp(evt.newValue);
             });
-            return Pill(before, field, after, tooltip);
-        }
-
-        static VisualElement Pill(string before, VisualElement field, string after, string tooltip)
-        {
-            var pill = new VisualElement { tooltip = tooltip };
-            pill.AddToClassList("forge-chip");
-            pill.AddToClassList("forge-chip--setting");
-            pill.Add(ForgeUI.Label(before, "forge-chip__text"));
-            pill.Add(field);
-            if (!string.IsNullOrEmpty(after))
-                pill.Add(ForgeUI.Label(after, "forge-chip__text"));
-            return pill;
+            return AttackFields.Pill(before, field, after, tooltip);
         }
     }
 }
