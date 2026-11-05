@@ -60,6 +60,27 @@ namespace TheDungeon.Editor.Tests
                 new RoomData[0], new FloorData[0], new PlayerProgression[0], limits, others.Append(npc).ToArray())).ToList();
 
         [Test]
+        public void GraphLayout_PlacesAnswersBelowAndSideBySide()
+        {
+            var start = Add("Bonjour.");
+            var left = Add("Gauche.");
+            var right = Add("Droite.");
+            var orphan = Add("Personne n'y mène.");
+            DialogueEditing.AddChoice(serialized, start, "A", left, 4);
+            DialogueEditing.AddChoice(serialized, start, "B", right, 4);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            var positions = DialogueGraphLayout.Positions(npc, _ => 100f);
+
+            Assert.AreEqual(0f, positions[start].y);
+            Assert.AreEqual(100f + DialogueGraphLayout.RowGap, positions[left].y, "Les réponses sont une ligne plus bas.");
+            Assert.AreEqual(positions[left].y, positions[right].y);
+            Assert.AreEqual(DialogueGraphLayout.NodeWidth + DialogueGraphLayout.ColumnGap, positions[right].x - positions[left].x, 0.01f,
+                "Deux réponses côte à côte, sans chevauchement.");
+            Assert.Greater(positions[orphan].y, positions[left].y, "Une réplique que rien n'atteint passe sous l'arbre.");
+        }
+
+        [Test]
         public void FirstNode_BecomesStart_AndIdsAreUnique()
         {
             var a = Add("Bonjour.");

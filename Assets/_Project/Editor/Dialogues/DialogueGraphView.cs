@@ -18,9 +18,7 @@ namespace TheDungeon.Editor.Dialogues
     /// </summary>
     public sealed class DialogueGraphView : VisualElement
     {
-        internal const float NodeWidth = 236f;
-        const float RowGap = 74f;
-        const float ColumnGap = 36f;
+        internal const float NodeWidth = DialogueGraphLayout.NodeWidth;
         const float MinZoom = 0.25f;
         const float MaxZoom = 2f;
         const float GridStep = 24f;
@@ -169,126 +167,15 @@ namespace TheDungeon.Editor.Dialogues
             ? height
             : 70f + Mathf.Ceil(Mathf.Min(140, node.text?.Length ?? 0) / 34f) * 15f + node.choices.Count * 26f;
 
-        /// <summary>
-        /// Positions : celles choisies à la main, sinon un rangement par profondeur depuis le début (une ligne par profondeur,
-        /// chaque réplique sous celles qui y mènent). Une nouvelle réplique se place sous la réplique qui y mène.
-        /// </summary>
+        /// <summary>Range les répliques (voir <see cref="DialogueGraphLayout.Positions"/>) et redessine les liens.</summary>
         void Layout()
         {
-            var positions = AutoLayout();
-            var anyPlaced = npc.Nodes.Any(n => n.placed);
-            if (anyPlaced)
-            {
-                var placedBottom = npc.Nodes.Where(n => n.placed).Select(n => n.graphPosition.y + HeightOf(n)).DefaultIfEmpty(0f).Max();
-                var fixedPositions = new Dictionary<int, Vector2>();
-                foreach (var node in npc.Nodes.Where(n => n.placed))
-                    fixedPositions[node.id] = node.graphPosition;
-                // Les répliques non rangées suivent leur parent déjà placé, sinon passent sous l'arbre.
-                var pending = npc.Nodes.Where(n => !n.placed).ToList();
-                for (var pass = 0; pass < 4 && pending.Count > 0; pass++)
-                {
-                    foreach (var node in pending.ToList())
-                    {
-                        var parent = Parents(node.id).FirstOrDefault(p => fixedPositions.ContainsKey(p.node.id));
-                        if (parent.node == null)
-                            continue;
-                        var outputs = Math.Max(1, parent.node.choices.Count);
-                        var slot = parent.choice < 0 ? 0 : parent.choice;
-                        var origin = fixedPositions[parent.node.id];
-                        fixedPositions[node.id] = new Vector2(origin.x + (slot - (outputs - 1) / 2f) * (NodeWidth + ColumnGap),
-                            origin.y + HeightOf(parent.node) + RowGap);
-                        pending.Remove(node);
-                    }
-                }
-                var offset = 0f;
-                foreach (var node in pending)
-                {
-                    fixedPositions[node.id] = new Vector2(offset, placedBottom + RowGap);
-                    offset += NodeWidth + ColumnGap;
-                }
-                positions = fixedPositions;
-            }
-
+            var positions = DialogueGraphLayout.Positions(npc, HeightOf);
             foreach (var (id, view) in views)
                 if (positions.TryGetValue(id, out var position))
                     view.MoveTo(position);
             edgesLayer.MarkDirtyRepaint();
         }
-
-        Dictionary<int, Vector2> AutoLayout()
-        {
-            var depth = Depths();
-            var orphanRow = depth.Count == 0 ? 0 : depth.Values.Max() + 1;
-            var rows = npc.Nodes.GroupBy(n => depth.TryGetValue(n.id, out var d) ? d : orphanRow).OrderBy(g => g.Key).ToList();
-            var positions = new Dictionary<int, Vector2>();
-            var y = 0f;
-            foreach (var row in rows)
-            {
-                // Chaque réplique vise le centre de celles qui y mènent ; on évite ensuite les chevauchements.
-                var wanted = row.Select(node =>
-                {
-                    var parents = Parents(node.id).Where(p => positions.ContainsKey(p.node.id)).ToList();
-                    var x = parents.Count == 0
-                        ? 0f
-                        : parents.Average(p =>
-                        {
-                            var outputs = Math.Max(1, p.node.choices.Count);
-                            var slot = p.choice < 0 ? 0 : p.choice;
-                            return positions[p.node.id].x + (slot - (outputs - 1) / 2f) * (NodeWidth + ColumnGap);
-                        });
-                    return (node, x);
-                }).OrderBy(entry => entry.x).ToList();
-                var placedX = new List<float>();
-                foreach (var (_, x) in wanted)
-                    placedX.Add(placedX.Count == 0 ? x : Mathf.Max(x, placedX[^1] + NodeWidth + ColumnGap));
-                var shift = wanted.Average(w => w.x) - placedX.Average();
-                for (var i = 0; i < wanted.Count; i++)
-                    positions[wanted[i].node.id] = new Vector2(placedX[i] + shift, y);
-                y += row.Max(HeightOf) + RowGap;
-            }
-            return positions;
-        }
-
-        /// <summary>Profondeur de chaque réplique atteignable (parcours en largeur depuis les débuts).</summary>
-        Dictionary<int, int> Depths()
-        {
-            var depth = new Dictionary<int, int>();
-            var queue = new Queue<int>();
-            foreach (var root in new[] { npc.StartNode }.Concat(npc.Entries.Select(e => e.node)))
-            {
-                if (root < 0 || depth.ContainsKey(root) || npc.FindNode(root) == null)
-                    continue;
-                depth[root] = 0;
-                queue.Enqueue(root);
-            }
-            while (queue.Count > 0)
-            {
-                var node = npc.FindNode(queue.Dequeue());
-                foreach (var target in Targets(node).Select(t => t.target))
-                {
-                    if (target < 0 || depth.ContainsKey(target) || npc.FindNode(target) == null)
-                        continue;
-                    depth[target] = depth[node.id] + 1;
-                    queue.Enqueue(target);
-                }
-            }
-            return depth;
-        }
-
-        /// <summary>Liens sortants : la suite directe (choix -1) quand il n'y a pas de réponse, sinon chaque réponse.</summary>
-        static IEnumerable<(int choice, int target)> Targets(DialogueNode node)
-        {
-            if (node.choices.Count == 0)
-            {
-                yield return (-1, node.next);
-                yield break;
-            }
-            for (var i = 0; i < node.choices.Count; i++)
-                yield return (i, node.choices[i].target);
-        }
-
-        IEnumerable<(DialogueNode node, int choice)> Parents(int id) =>
-            npc.Nodes.SelectMany(n => Targets(n).Where(t => t.target == id).Select(t => (n, t.choice)));
 
         #endregion
 
@@ -716,7 +603,7 @@ namespace TheDungeon.Editor.Dialogues
             drawnLinks.Clear();
             foreach (var view in views.Values)
             {
-                foreach (var (choice, target) in Targets(view.Node))
+                foreach (var (choice, target) in DialogueGraphLayout.Targets(view.Node))
                 {
                     if (target < 0 || !views.TryGetValue(target, out var to))
                         continue;
@@ -802,57 +689,7 @@ namespace TheDungeon.Editor.Dialogues
         {
             if (gesture != Gesture.None || view.panel == null)
                 return;
-            var node = view.Node;
-            card.Clear();
-            var header = new VisualElement { pickingMode = PickingMode.Ignore };
-            header.AddToClassList("forge-dialogue-card__header");
-            var dot = new VisualElement { pickingMode = PickingMode.Ignore };
-            dot.AddToClassList("forge-dialogue-card__dot");
-            dot.style.backgroundColor = SpeakerColor(node.speaker);
-            header.Add(dot);
-            header.Add(CardLabel(DialogueText.Speaker(node.speaker, npc), "forge-dialogue-card__speaker"));
-            header.Add(CardLabel($"#{node.id}", "forge-dialogue-card__id"));
-            foreach (var (text, className) in view.Tags())
-                header.Add(CardLabel(text, $"forge-chip {className}"));
-            card.Add(header);
-
-            card.Add(CardLabel(ForgeText.Quote(node.text), "forge-dialogue-card__text"));
-
-            if (node.consequences.Count > 0)
-            {
-                card.Add(CardLabel("Effets de la réplique", "forge-dialogue-card__title"));
-                var chips = new VisualElement { pickingMode = PickingMode.Ignore };
-                chips.AddToClassList("forge-chat__chips");
-                foreach (var consequence in node.consequences)
-                    chips.Add(CardLabel(DialogueText.Describe(consequence), "forge-chip forge-chip--effect"));
-                card.Add(chips);
-            }
-
-            if (node.choices.Count > 0)
-            {
-                card.Add(CardLabel($"Réponses du joueur ({node.choices.Count})", "forge-dialogue-card__title"));
-                for (var i = 0; i < node.choices.Count; i++)
-                {
-                    var choice = node.choices[i];
-                    var row = new VisualElement { pickingMode = PickingMode.Ignore };
-                    row.AddToClassList("forge-dialogue-card__choice");
-                    row.Add(CardLabel($"{i + 1}. {ForgeText.Quote(choice.text)}", "forge-dialogue-card__choice-text"));
-                    var chips = new VisualElement { pickingMode = PickingMode.Ignore };
-                    chips.AddToClassList("forge-chat__chips");
-                    foreach (var condition in choice.conditions)
-                        chips.Add(CardLabel(DialogueText.Describe(condition), "forge-chip forge-chip--condition"));
-                    foreach (var consequence in choice.consequences)
-                        chips.Add(CardLabel(DialogueText.Describe(consequence), "forge-chip forge-chip--effect"));
-                    chips.Add(CardLabel(choice.target < 0 ? "→ Fin" : $"→ #{choice.target}", "forge-chip forge-chip--target"));
-                    row.Add(chips);
-                    card.Add(row);
-                }
-            }
-            else
-            {
-                card.Add(CardLabel(ForgeText.System(node.next < 0 ? "Fin de la conversation." : $"Suite : réplique #{node.next}."), "forge-dialogue-card__next"));
-            }
-            card.Add(CardLabel("Clic : modifier · Glisser : déplacer · Clic droit : actions", "forge-dialogue-card__hint"));
+            DialogueNodeCard.Fill(card, view, npc, SpeakerColor(view.Node.speaker));
 
             // À droite de la réplique, ou à gauche s'il n'y a pas la place ; toujours dans la zone visible.
             var bounds = view.ChangeCoordinatesTo(viewport, new Rect(Vector2.zero, view.layout.size));
@@ -863,14 +700,6 @@ namespace TheDungeon.Editor.Dialogues
             card.style.left = left;
             card.style.top = Mathf.Clamp(bounds.yMin, 8f, Mathf.Max(8f, viewport.layout.height - 260f));
             card.style.display = DisplayStyle.Flex;
-        }
-
-        static Label CardLabel(string text, string classNames)
-        {
-            var label = new Label(text) { pickingMode = PickingMode.Ignore };
-            foreach (var className in classNames.Split(' '))
-                label.AddToClassList(className);
-            return label;
         }
 
         internal Color SpeakerColor(DialogueSpeaker speaker) => speaker switch
