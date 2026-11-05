@@ -1,3 +1,5 @@
+<img src="Assets/_Project/Editor/Styles/ForgeLogo.png" width="96" alt="Logo de Forge Studio : une enclume et une étincelle">
+
 # Projet Forge : outils de production pour *The Dungeon*
 
 > **In English:** Forge Studio is a suite of Unity 6 editor tools (UI Toolkit, C#) for building the content of a top-down dungeon crawler without writing code: items, enemies and their attack patterns, loot tables, player progression curves, dialogue trees, biomes, rooms and floors. Every change is validated against design rules before it is saved, and the game runs entirely on the data the tools produce. The project and its documentation are in French.

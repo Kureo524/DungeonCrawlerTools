@@ -2270,8 +2270,13 @@
 /* ---------- Navigation ---------- */
 
 .forge-theme .forge-sidebar__mark {
-    border-radius: 10px;
-    background-color: var(--forge-accent-tint);
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("ForgeLogo.png");
+    -unity-background-scale-mode: scale-to-fit;
 }
 
 .forge-theme .forge-nav {

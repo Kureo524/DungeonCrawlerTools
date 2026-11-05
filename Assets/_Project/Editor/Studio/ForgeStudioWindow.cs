@@ -94,7 +94,6 @@ namespace TheDungeon.Editor.Studio
         public static ForgeStudioWindow Open(string sectionId)
         {
             var window = GetWindow<ForgeStudioWindow>();
-            window.titleContent = new GUIContent("Forge Studio");
             window.minSize = new Vector2(900, 560);
             const float width = 1400f;
             const float height = 860f;
@@ -153,6 +152,7 @@ namespace TheDungeon.Editor.Studio
 
         public void CreateGUI()
         {
+            titleContent = new GUIContent("Forge Studio", AssetDatabase.LoadAssetAtPath<Texture2D>($"{DungeonPaths.Root}/Editor/Styles/ForgeLogo.png"));
             var root = rootVisualElement;
             ForgeUI.ApplyStyle(root);
             root.AddToClassList("forge-studio");

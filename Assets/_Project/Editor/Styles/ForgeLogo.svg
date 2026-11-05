@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <title>Forge Studio</title>
+  <!-- Tuile de verre d'encre : aplat sombre et liseré clair, sans dégradé. -->
+  <rect x="6" y="6" width="244" height="244" rx="58" fill="#161a2a"/>
+  <rect x="6" y="6" width="244" height="244" rx="58" fill="none" stroke="#e8eefa" stroke-opacity="0.32" stroke-width="5"/>
+  <!-- Enclume, blanc froid. -->
+  <path fill="#e8eefa" d="M30 112 L92 102 L222 102 L222 136 L190 136 C172 138 164 154 166 176 L192 192 L192 216 L84 216 L84 192 L110 176 C112 160 106 146 88 140 C64 134 42 126 30 112 Z"/>
+  <!-- Étincelle de forge, en étoile de constellation. -->
+  <path fill="#a597c0" d="M160 22 C163 48 170 55 196 58 C170 61 163 68 160 94 C157 68 150 61 124 58 C150 55 157 48 160 22 Z"/>
+</svg>

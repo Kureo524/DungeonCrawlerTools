@@ -44,7 +44,8 @@ namespace TheDungeon.Editor.Studio
 
             var brand = new VisualElement();
             brand.AddToClassList("forge-sidebar__brand");
-            var mark = ForgeUI.Label("F", "forge-sidebar__mark");
+            var mark = new VisualElement { tooltip = "Forge Studio" };
+            mark.AddToClassList("forge-sidebar__mark");
             brand.Add(mark);
             var names = new VisualElement();
             names.Add(ForgeUI.Label("Forge Studio", "forge-sidebar__logo"));
