@@ -140,36 +140,22 @@ namespace TheDungeon.Game
             public int Count;
         }
 
+        /// <summary>État d'une étape en cours : visée, cible, zones annoncées et dégâts (augmentés par une charge).</summary>
+        sealed class StepState
+        {
+            public Vector2 Aim;
+            public Vector2 Target;
+            public List<Vector2> Origins;
+            public List<ZoneMarker> Markers;
+            public int Damage;
+        }
+
         IEnumerator PlayOnce(AttackStep step, ResolvedAttack attack, float tempo, HitCounter counter)
         {
-            var aim = actor.Aim;
-            var target = actor.TargetPoint;
-            var self = (Vector2)actor.Transform.position;
-            var damage = Mathf.RoundToInt(actor.BaseDamage * step.damagePercent / 100f * attack.Settings.damagePercent / 100f * DamageMultiplier);
-
             // Préparation : annonce (clignote, zones au sol, projectile lancé en l'air), déplacement éventuel.
             var windup = Mathf.Max(0f, step.windup) * tempo;
-            var origins = step.action == StepAction.Strike ? EnemyLogic.ZoneOrigins(step, self, aim, target, random) : null;
-            var markers = origins?.Select(o => windup > 0f ? ZoneMarker.Show(step, o, Start(step, aim), windup, false) : null).ToList();
-            if (step.action == StepAction.Strike && step.anchor == ZoneAnchor.Thrown && windup > 0f)
-                foreach (var origin in origins)
-                    ThrownOrb.Launch(self, origin, windup);
-            if (step.action == StepAction.Teleport)
-                stepInvulnerable = true;
-            yield return Wait(windup, t =>
-            {
-                Move(step, aim);
-                actor.Flash(step.action == StepAction.Teleport ? new Color(1f, 1f, 1f, 0.3f) : new Color(1f, 0.8f, 0.3f));
-                if (!step.trackDuringWindup)
-                    return;
-                aim = actor.Aim;
-                target = actor.TargetPoint;
-                if (step.action != StepAction.Strike || step.anchor is ZoneAnchor.Thrown or ZoneAnchor.RandomNearSelf or ZoneAnchor.RandomNearTarget)
-                    return;
-                origins = EnemyLogic.ZoneOrigins(step, actor.Transform.position, aim, target, random);
-                for (var i = 0; i < markers.Count; i++)
-                    markers[i]?.Place(origins[i], Start(step, aim));
-            });
+            var state = Prepare(step, attack, windup);
+            yield return Wait(windup, _ => Windup(step, state));
 
             // Attaque chargée (arme du joueur) : maintenir prolonge la préparation et augmente les dégâts.
             if (step.chargeable && actor.Holding)
@@ -182,28 +168,79 @@ namespace TheDungeon.Game
                     actor.Flash(Color.Lerp(new Color(1f, 0.8f, 0.3f), Color.white, charged / Mathf.Max(0.01f, step.chargeTime)));
                     yield return null;
                 }
-                damage = Mathf.RoundToInt(damage * (1f + step.chargeBonus / 100f * Mathf.Clamp01(charged / Mathf.Max(0.01f, step.chargeTime))));
-                aim = actor.Aim;
+                state.Damage = Mathf.RoundToInt(state.Damage * (1f + step.chargeBonus / 100f * Mathf.Clamp01(charged / Mathf.Max(0.01f, step.chargeTime))));
+                state.Aim = actor.Aim;
             }
 
+            var aim = state.Aim;
             switch (step.action)
             {
                 case StepAction.Strike:
                     var duration = Mathf.Max(0f, step.activeDuration);
                     // Chaque zone vit sa vie (une flaque reste pendant que l'attaque continue), sauf si l'étape est canalisée.
-                    foreach (var origin in origins)
-                        StartCoroutine(Zone(step, origin, aim, damage, duration, counter));
+                    foreach (var origin in state.Origins)
+                        StartCoroutine(Zone(step, origin, aim, state.Damage, duration, counter));
                     if (step.channel && duration > 0f)
                         yield return Wait(duration, _ => Move(step, aim));
                     break;
-                case StepAction.Projectiles:
-                    Projectiles(step, aim, damage, counter);
-                    break;
                 case StepAction.Dash:
-                    yield return Dash(step, aim, damage, counter);
+                    yield return Dash(step, aim, state.Damage, counter);
+                    break;
+                default:
+                    ActInstantly(step, state, counter);
+                    break;
+            }
+
+            // Récupération : immobile. Les projectiles et zones qui touchent pendant ce temps comptent pour cette étape.
+            yield return Wait(Mathf.Max(0f, step.recovery) * tempo, _ => actor.SetVelocity(Vector2.zero));
+        }
+
+        /// <summary>Début de la préparation : visée, dégâts, zones annoncées au sol et projectile lancé en l'air.</summary>
+        StepState Prepare(AttackStep step, ResolvedAttack attack, float windup)
+        {
+            var self = (Vector2)actor.Transform.position;
+            var state = new StepState
+            {
+                Aim = actor.Aim,
+                Target = actor.TargetPoint,
+                Damage = Mathf.RoundToInt(actor.BaseDamage * step.damagePercent / 100f * attack.Settings.damagePercent / 100f * DamageMultiplier)
+            };
+            state.Origins = step.action == StepAction.Strike ? EnemyLogic.ZoneOrigins(step, self, state.Aim, state.Target, random) : null;
+            state.Markers = state.Origins?.Select(o => windup > 0f ? ZoneMarker.Show(step, o, Start(step, state.Aim), windup, false) : null).ToList();
+            if (step.action == StepAction.Strike && step.anchor == ZoneAnchor.Thrown && windup > 0f)
+                foreach (var origin in state.Origins)
+                    ThrownOrb.Launch(self, origin, windup);
+            if (step.action == StepAction.Teleport)
+                stepInvulnerable = true;
+            return state;
+        }
+
+        /// <summary>Chaque image de la préparation : déplacement, clignotement, et visée qui suit la cible si l'étape le demande.</summary>
+        void Windup(AttackStep step, StepState state)
+        {
+            Move(step, state.Aim);
+            actor.Flash(step.action == StepAction.Teleport ? new Color(1f, 1f, 1f, 0.3f) : new Color(1f, 0.8f, 0.3f));
+            if (!step.trackDuringWindup)
+                return;
+            state.Aim = actor.Aim;
+            state.Target = actor.TargetPoint;
+            if (step.action != StepAction.Strike || step.anchor is ZoneAnchor.Thrown or ZoneAnchor.RandomNearSelf or ZoneAnchor.RandomNearTarget)
+                return;
+            state.Origins = EnemyLogic.ZoneOrigins(step, actor.Transform.position, state.Aim, state.Target, random);
+            for (var i = 0; i < state.Markers.Count; i++)
+                state.Markers[i]?.Place(state.Origins[i], Start(step, state.Aim));
+        }
+
+        /// <summary>Actions sans durée : projectiles, téléportation, invocation, renforcement, absorption, changement de phase.</summary>
+        void ActInstantly(AttackStep step, StepState state, HitCounter counter)
+        {
+            switch (step.action)
+            {
+                case StepAction.Projectiles:
+                    Projectiles(step, state.Aim, state.Damage, counter);
                     break;
                 case StepAction.Teleport:
-                    Teleport(step, aim, target);
+                    Teleport(step, state.Aim, state.Target);
                     stepInvulnerable = false;
                     break;
                 case StepAction.Summon:
@@ -219,9 +256,6 @@ namespace TheDungeon.Game
                     actor.SetPhase(step.phase);
                     break;
             }
-
-            // Récupération : immobile. Les projectiles et zones qui touchent pendant ce temps comptent pour cette étape.
-            yield return Wait(Mathf.Max(0f, step.recovery) * tempo, _ => actor.SetVelocity(Vector2.zero));
         }
 
         /// <summary>Orientation de départ de la zone : un balayage commence d'un côté de la visée.</summary>

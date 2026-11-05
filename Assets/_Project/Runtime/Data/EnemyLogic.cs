@@ -283,66 +283,8 @@ namespace TheDungeon.Data
                 played++;
                 var stepHits = 0;
                 for (var r = 0; r < Mathf.Max(1, step.repeat); r++)
-                {
-                    var aim = Direction(enemy, player);
-                    outcome.Aim = aim;
-                    // Déplacement pendant la préparation.
-                    if (step.moveDuring != StepMove.None && step.action != StepAction.Dash)
-                    {
-                        var move = step.moveDuring switch
-                        {
-                            StepMove.AwayFromTarget => -aim,
-                            StepMove.Strafe => new Vector2(-aim.y, aim.x),
-                            _ => aim
-                        };
-                        var travel = step.moveSpeed * Mathf.Max(0.1f, step.windup) * attack.Tempo;
-                        if (step.moveDuring == StepMove.TowardTarget)
-                            travel = Mathf.Min(travel, Mathf.Max(0f, Vector2.Distance(enemy, player) - 0.8f));
-                        enemy += move * travel;
-                        aim = Direction(enemy, player);
-                    }
-                    switch (step.action)
-                    {
-                        case StepAction.Strike:
-                            outcome.Origins = ZoneOrigins(step, enemy, aim, player);
-                            var duration = Mathf.Max(0f, step.activeDuration);
-                            var samples = duration > 0f ? 8 : 1;
-                            var hit = false;
-                            foreach (var origin in outcome.Origins)
-                                for (var t = 0; t < samples && !hit; t++)
-                                    hit = InZone(step, origin, aim, player, 0.3f, duration * t / Mathf.Max(1, samples - 1));
-                            if (step.damagePercent > 0 && hit)
-                                stepHits++;
-                            break;
-                        case StepAction.Projectiles:
-                            // Un cercle clairsemé peut passer à côté : on le compte comme touchant à partir de 8 projectiles.
-                            if (step.damagePercent > 0 && inSight(enemy, player) && (step.pattern != ProjectilePattern.Ring || step.projectiles >= 8))
-                                stepHits++;
-                            break;
-                        case StepAction.Dash:
-                            var direction = step.dashDirection switch
-                            {
-                                DashDirection.AwayFromPlayer => -aim,
-                                DashDirection.Sideways => new Vector2(-aim.y, aim.x),
-                                _ => aim
-                            };
-                            var distance = Vector2.Distance(enemy, player);
-                            var reach = step.dashDirection == DashDirection.TowardPlayer && !step.airborne ? Mathf.Min(step.dashDistance, Mathf.Max(0f, distance - 0.8f)) : step.dashDistance;
-                            if (step.damagePercent > 0 && step.dashDirection == DashDirection.TowardPlayer && step.dashDistance >= distance - 0.8f)
-                                stepHits++;
-                            enemy += direction * reach;
-                            break;
-                        case StepAction.Teleport:
-                            enemy = step.teleportTo switch
-                            {
-                                TeleportTarget.BehindTarget => player + aim * Mathf.Max(1f, step.anchorDistance * 0.5f),
-                                TeleportTarget.NearTarget => player - aim * Mathf.Max(1f, step.anchorDistance * 0.5f),
-                                TeleportTarget.AwayFromTarget => player - aim * Mathf.Max(2f, step.anchorDistance * 2f),
-                                _ => enemy + new Vector2(-aim.y, aim.x) * step.anchorDistance
-                            };
-                            break;
-                    }
-                }
+                    if (SimulateOnce(step, attack.Tempo, ref enemy, player, inSight, ref outcome))
+                        stepHits++;
                 outcome.End = enemy;
                 outcome.Hit = stepHits > 0;
                 previousHit = outcome.Hit;
@@ -351,6 +293,76 @@ namespace TheDungeon.Data
                 outcomes.Add(outcome);
             }
             return outcomes;
+        }
+
+        /// <summary>Une répétition d'une étape : déplacement pendant la préparation, puis l'action. Renvoie vrai si elle touche la cible.</summary>
+        static bool SimulateOnce(AttackStep step, float tempo, ref Vector2 enemy, Vector2 player, Func<Vector2, Vector2, bool> inSight, ref StepOutcome outcome)
+        {
+            var hit = false;
+            var aim = Direction(enemy, player);
+            outcome.Aim = aim;
+            if (step.moveDuring != StepMove.None && step.action != StepAction.Dash)
+            {
+                enemy = MoveDuringWindup(step, tempo, enemy, player, aim);
+                aim = Direction(enemy, player);
+            }
+            switch (step.action)
+            {
+                case StepAction.Strike:
+                    outcome.Origins = ZoneOrigins(step, enemy, aim, player);
+                    var duration = Mathf.Max(0f, step.activeDuration);
+                    var samples = duration > 0f ? 8 : 1;
+                    var inZone = false;
+                    foreach (var origin in outcome.Origins)
+                        for (var t = 0; t < samples && !inZone; t++)
+                            inZone = InZone(step, origin, aim, player, 0.3f, duration * t / Mathf.Max(1, samples - 1));
+                    if (step.damagePercent > 0 && inZone)
+                        hit = true;
+                    break;
+                case StepAction.Projectiles:
+                    // Un cercle clairsemé peut passer à côté : on le compte comme touchant à partir de 8 projectiles.
+                    if (step.damagePercent > 0 && inSight(enemy, player) && (step.pattern != ProjectilePattern.Ring || step.projectiles >= 8))
+                        hit = true;
+                    break;
+                case StepAction.Dash:
+                    var direction = step.dashDirection switch
+                    {
+                        DashDirection.AwayFromPlayer => -aim,
+                        DashDirection.Sideways => new Vector2(-aim.y, aim.x),
+                        _ => aim
+                    };
+                    var distance = Vector2.Distance(enemy, player);
+                    var reach = step.dashDirection == DashDirection.TowardPlayer && !step.airborne ? Mathf.Min(step.dashDistance, Mathf.Max(0f, distance - 0.8f)) : step.dashDistance;
+                    if (step.damagePercent > 0 && step.dashDirection == DashDirection.TowardPlayer && step.dashDistance >= distance - 0.8f)
+                        hit = true;
+                    enemy += direction * reach;
+                    break;
+                case StepAction.Teleport:
+                    enemy = step.teleportTo switch
+                    {
+                        TeleportTarget.BehindTarget => player + aim * Mathf.Max(1f, step.anchorDistance * 0.5f),
+                        TeleportTarget.NearTarget => player - aim * Mathf.Max(1f, step.anchorDistance * 0.5f),
+                        TeleportTarget.AwayFromTarget => player - aim * Mathf.Max(2f, step.anchorDistance * 2f),
+                        _ => enemy + new Vector2(-aim.y, aim.x) * step.anchorDistance
+                    };
+                    break;
+            }
+            return hit;
+        }
+
+        /// <summary>Position de l'attaquant après s'être déplacé pendant la préparation (il s'arrête au contact s'il avance vers la cible).</summary>
+        static Vector2 MoveDuringWindup(AttackStep step, float tempo, Vector2 enemy, Vector2 player, Vector2 aim)
+        {
+            var move = step.moveDuring switch
+            {
+                StepMove.AwayFromTarget => -aim,
+                StepMove.Strafe => new Vector2(-aim.y, aim.x),
+                _ => aim
+            };
+            var travel = step.moveSpeed * Mathf.Max(0.1f, step.windup) * tempo;
+            if (step.moveDuring == StepMove.TowardTarget)
+                travel = Mathf.Min(travel, Mathf.Max(0f, Vector2.Distance(enemy, player) - 0.8f));
+            return enemy + move * travel;
         }
 
         static Vector2 Direction(Vector2 from, Vector2 to) => (to - from).sqrMagnitude > 0.0001f ? (to - from).normalized : Vector2.right;
