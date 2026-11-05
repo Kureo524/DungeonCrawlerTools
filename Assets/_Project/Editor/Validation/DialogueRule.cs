@@ -17,78 +17,88 @@ namespace TheDungeon.Editor.Validation
 
         public override IEnumerable<ValidationIssue> Run(ValidationContext context)
         {
-            var limits = context.Limits;
             var setFlags = new HashSet<string>(context.Npcs.SelectMany(SetFlags));
+            return context.Npcs.SelectMany(npc => Check(npc, context, setFlags));
+        }
 
-            foreach (var npc in context.Npcs)
+        static IEnumerable<ValidationIssue> Check(NpcData npc, ValidationContext context, HashSet<string> setFlags)
+        {
+            var limits = context.Limits;
+            if (npc.Portrait == null)
+                yield return Warning("Le personnage n'a pas de portrait.", npc);
+            var outside = FloorSet.Floors(npc.Floors).Where(f => f > limits.floorCount).ToList();
+            if (outside.Count > 0)
+                yield return Error($"Étage {outside[0]} invalide : le donjon compte {limits.floorCount} étages.", npc);
+            if (npc.Nodes.Count == 0)
             {
-                if (npc.Portrait == null)
-                    yield return Warning("Le personnage n'a pas de portrait.", npc);
-                var outside = FloorSet.Floors(npc.Floors).Where(f => f > limits.floorCount).ToList();
-                if (outside.Count > 0)
-                    yield return Error($"Étage {outside[0]} invalide : le donjon compte {limits.floorCount} étages.", npc);
-                if (npc.Nodes.Count == 0)
-                {
-                    yield return Error("La conversation est vide.", npc);
-                    continue;
-                }
-                if (npc.Nodes.Count > limits.maxDialogueNodes)
-                    yield return Error($"Trop de répliques ({npc.Nodes.Count}, max {limits.maxDialogueNodes}).", npc);
-                if (npc.FindNode(npc.StartNode) == null)
-                    yield return Error("La conversation n'a pas de début valide.", npc);
-                foreach (var duplicate in npc.Nodes.GroupBy(n => n.id).Where(g => g.Count() > 1))
-                    yield return Error($"Plusieurs répliques portent l'identifiant #{duplicate.Key}.", npc);
-
-                for (var e = 0; e < npc.Entries.Count; e++)
-                {
-                    var entry = npc.Entries[e];
-                    if (npc.FindNode(entry.node) == null)
-                        yield return Error($"Le début alternatif n°{e + 1} ne mène à aucune réplique.", npc);
-                    if (entry.conditions.Count == 0)
-                        yield return Warning($"Le début alternatif n°{e + 1} n'a pas de condition : il remplace toujours le début normal.", npc);
-                    foreach (var issue in Conditions(entry.conditions, $"Début alternatif n°{e + 1}", npc, setFlags, limits, context.Progressions))
-                        yield return issue;
-                }
-
-                foreach (var node in npc.Nodes)
-                {
-                    var where = $"Réplique #{node.id}";
-                    if (string.IsNullOrWhiteSpace(node.text))
-                        yield return Error($"{where} : le texte est vide.", npc);
-                    else if (node.text.Length > limits.maxLineLength)
-                        yield return Warning($"{where} : {node.text.Length} caractères, au-delà des {limits.maxLineLength} conseillés (la bulle débordera).", npc);
-                    if (node.next >= 0 && npc.FindNode(node.next) == null)
-                        yield return Error($"{where} : la suite mène à une réplique supprimée (#{node.next}).", npc);
-                    if (node.next == node.id)
-                        yield return Error($"{where} : la réplique mène à elle-même, la conversation tournerait en rond.", npc);
-                    if (node.choices.Count > limits.maxChoicesPerNode)
-                        yield return Error($"{where} : trop de réponses ({node.choices.Count}, max {limits.maxChoicesPerNode}).", npc);
-                    if (node.choices.Count > 0 && node.choices.All(c => c.conditions.Count > 0))
-                        yield return Warning($"{where} : toutes les réponses ont une condition ; si aucune n'est remplie, la conversation est bloquée.", npc);
-                    foreach (var issue in Consequences(node.consequences, where, npc, limits))
-                        yield return issue;
-
-                    for (var c = 0; c < node.choices.Count; c++)
-                    {
-                        var choice = node.choices[c];
-                        var choiceWhere = $"{where}, réponse {c + 1}";
-                        if (string.IsNullOrWhiteSpace(choice.text))
-                            yield return Error($"{choiceWhere} : le texte est vide.", npc);
-                        if (choice.target >= 0 && npc.FindNode(choice.target) == null)
-                            yield return Error($"{choiceWhere} : mène à une réplique supprimée (#{choice.target}).", npc);
-                        foreach (var issue in Conditions(choice.conditions, choiceWhere, npc, setFlags, limits, context.Progressions))
-                            yield return issue;
-                        foreach (var issue in Consequences(choice.consequences, choiceWhere, npc, limits))
-                            yield return issue;
-                    }
-                }
-
-                var reachable = DialogueLogic.ReachableNodes(npc);
-                foreach (var node in npc.Nodes.Where(n => !reachable.Contains(n.id)))
-                    yield return Warning($"Réplique #{node.id} : rien ne permet d'y arriver depuis un début.", npc);
-                if (!npc.Nodes.Any(n => n.choices.Count == 0 && n.next < 0) && !npc.Nodes.Any(n => n.choices.Any(c => c.target < 0)))
-                    yield return Warning("La conversation n'a aucune fin : elle ne peut pas se terminer.", npc);
+                yield return Error("La conversation est vide.", npc);
+                yield break;
             }
+            if (npc.Nodes.Count > limits.maxDialogueNodes)
+                yield return Error($"Trop de répliques ({npc.Nodes.Count}, max {limits.maxDialogueNodes}).", npc);
+            if (npc.FindNode(npc.StartNode) == null)
+                yield return Error("La conversation n'a pas de début valide.", npc);
+            foreach (var duplicate in npc.Nodes.GroupBy(n => n.id).Where(g => g.Count() > 1))
+                yield return Error($"Plusieurs répliques portent l'identifiant #{duplicate.Key}.", npc);
+
+            for (var e = 0; e < npc.Entries.Count; e++)
+            {
+                var entry = npc.Entries[e];
+                if (npc.FindNode(entry.node) == null)
+                    yield return Error($"Le début alternatif n°{e + 1} ne mène à aucune réplique.", npc);
+                if (entry.conditions.Count == 0)
+                    yield return Warning($"Le début alternatif n°{e + 1} n'a pas de condition : il remplace toujours le début normal.", npc);
+                foreach (var issue in Conditions(entry.conditions, $"Début alternatif n°{e + 1}", npc, setFlags, limits, context.Progressions))
+                    yield return issue;
+            }
+
+            foreach (var node in npc.Nodes)
+                foreach (var issue in NodeIssues(npc, node, context, setFlags))
+                    yield return issue;
+
+            var reachable = DialogueLogic.ReachableNodes(npc);
+            foreach (var node in npc.Nodes.Where(n => !reachable.Contains(n.id)))
+                yield return Warning($"Réplique #{node.id} : rien ne permet d'y arriver depuis un début.", npc);
+            if (!npc.Nodes.Any(n => n.choices.Count == 0 && n.next < 0) && !npc.Nodes.Any(n => n.choices.Any(c => c.target < 0)))
+                yield return Warning("La conversation n'a aucune fin : elle ne peut pas se terminer.", npc);
+        }
+
+        /// <summary>Texte, suite, nombre de réponses et effets d'une réplique, puis chacune de ses réponses.</summary>
+        static IEnumerable<ValidationIssue> NodeIssues(NpcData npc, DialogueNode node, ValidationContext context, HashSet<string> setFlags)
+        {
+            var limits = context.Limits;
+            var where = $"Réplique #{node.id}";
+            if (string.IsNullOrWhiteSpace(node.text))
+                yield return Error($"{where} : le texte est vide.", npc);
+            else if (node.text.Length > limits.maxLineLength)
+                yield return Warning($"{where} : {node.text.Length} caractères, au-delà des {limits.maxLineLength} conseillés (la bulle débordera).", npc);
+            if (node.next >= 0 && npc.FindNode(node.next) == null)
+                yield return Error($"{where} : la suite mène à une réplique supprimée (#{node.next}).", npc);
+            if (node.next == node.id)
+                yield return Error($"{where} : la réplique mène à elle-même, la conversation tournerait en rond.", npc);
+            if (node.choices.Count > limits.maxChoicesPerNode)
+                yield return Error($"{where} : trop de réponses ({node.choices.Count}, max {limits.maxChoicesPerNode}).", npc);
+            if (node.choices.Count > 0 && node.choices.All(c => c.conditions.Count > 0))
+                yield return Warning($"{where} : toutes les réponses ont une condition ; si aucune n'est remplie, la conversation est bloquée.", npc);
+            foreach (var issue in Consequences(node.consequences, where, npc, limits))
+                yield return issue;
+
+            for (var c = 0; c < node.choices.Count; c++)
+                foreach (var issue in ChoiceIssues(npc, node.choices[c], $"{where}, réponse {c + 1}", context, setFlags))
+                    yield return issue;
+        }
+
+        static IEnumerable<ValidationIssue> ChoiceIssues(NpcData npc, DialogueChoice choice, string choiceWhere, ValidationContext context, HashSet<string> setFlags)
+        {
+            var limits = context.Limits;
+            if (string.IsNullOrWhiteSpace(choice.text))
+                yield return Error($"{choiceWhere} : le texte est vide.", npc);
+            if (choice.target >= 0 && npc.FindNode(choice.target) == null)
+                yield return Error($"{choiceWhere} : mène à une réplique supprimée (#{choice.target}).", npc);
+            foreach (var issue in Conditions(choice.conditions, choiceWhere, npc, setFlags, limits, context.Progressions))
+                yield return issue;
+            foreach (var issue in Consequences(choice.consequences, choiceWhere, npc, limits))
+                yield return issue;
         }
 
         static IEnumerable<ValidationIssue> Conditions(IEnumerable<DialogueCondition> conditions, string where, NpcData npc,

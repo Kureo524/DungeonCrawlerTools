@@ -42,57 +42,65 @@ namespace TheDungeon.Game
             Fill(box, look.boxBackground);
             Outline(box, look.boxBorder, 2f);
 
-            var textLeft = box.x + 20;
-            if (!narration)
-            {
-                var portrait = new Rect(box.x + 18, box.y + 18, 120, 120);
-                Fill(portrait, new Color(1f, 1f, 1f, 0.05f));
-                Outline(portrait, look.boxBorder, 2f);
-                DrawSprite(new Rect(portrait.x + 10, portrait.y + 10, 100, 100), node.speaker == DialogueSpeaker.Player ? game.Database.player : npc.Portrait);
-                var name = node.speaker == DialogueSpeaker.Player ? "Vous" : npc.DisplayName;
-                var plate = new Rect(box.x + 156, box.y + 16, 220, 26);
-                Fill(plate, node.speaker == DialogueSpeaker.Npc ? npc.Color : look.playerPlate);
-                GUI.Label(plate, $"<b><color=#{ColorUtility.ToHtmlStringRGBA(look.nameText)}>{name}</color></b>", skin.Centered);
-                textLeft = box.x + 160;
-            }
+            var textLeft = narration ? box.x + 20 : DrawSpeaker(box, npc, node, look);
 
             GUI.Label(new Rect(textLeft, box.y + 50, textWidth, textHeight), dialogue.VisibleText, textStyle);
 
             if (dialogue.IsTyping)
                 return;
             if (dialogue.Choices.Count > 0)
-            {
-                var y = box.y + 50 + textHeight + 10;
-                var choiceLabel = new GUIStyle(skin.Choice);
-                for (var i = 0; i < dialogue.Choices.Count; i++)
-                {
-                    // Réponse du joueur : ses couleurs (ou celles du personnage), plus marquées au survol.
-                    var (background, border, color) = look.ChoiceLook(dialogue.Choices[i]);
-                    foreach (var state in new[] { choiceLabel.normal, choiceLabel.hover, choiceLabel.active, choiceLabel.focused })
-                    {
-                        state.background = null;
-                        state.textColor = color;
-                    }
-                    var rect = new Rect(textLeft, y, textWidth, choiceHeights[i]);
-                    var hover = rect.Contains(Event.current.mousePosition);
-                    Fill(rect, hover ? Color.Lerp(background, border, 0.3f) : background);
-                    Outline(rect, hover ? new Color(border.r, border.g, border.b, 1f) : border, 1f);
-                    if (GUI.Button(rect, $"{i + 1}.  {dialogue.Choices[i].text}", choiceLabel))
-                    {
-                        // Choisir passe à la réplique suivante et remplace la liste des réponses : on arrête de la parcourir.
-                        dialogue.Choose(i);
-                        break;
-                    }
-                    y += choiceHeights[i] + 3;
-                }
-            }
+                DrawChoices(dialogue, look, new Rect(textLeft, box.y + 50 + textHeight + 10, textWidth, 0f), choiceHeights);
             else
+                DrawContinue(dialogue, look, box);
+        }
+
+        /// <summary>Portrait et nom de qui parle ; renvoie le bord gauche du texte, décalé par le portrait.</summary>
+        float DrawSpeaker(Rect box, NpcData npc, DialogueNode node, DialogueStyle look)
+        {
+            var portrait = new Rect(box.x + 18, box.y + 18, 120, 120);
+            Fill(portrait, new Color(1f, 1f, 1f, 0.05f));
+            Outline(portrait, look.boxBorder, 2f);
+            DrawSprite(new Rect(portrait.x + 10, portrait.y + 10, 100, 100), node.speaker == DialogueSpeaker.Player ? game.Database.player : npc.Portrait);
+            var name = node.speaker == DialogueSpeaker.Player ? "Vous" : npc.DisplayName;
+            var plate = new Rect(box.x + 156, box.y + 16, 220, 26);
+            Fill(plate, node.speaker == DialogueSpeaker.Npc ? npc.Color : look.playerPlate);
+            GUI.Label(plate, $"<b><color=#{ColorUtility.ToHtmlStringRGBA(look.nameText)}>{name}</color></b>", skin.Centered);
+            return box.x + 160;
+        }
+
+        /// <summary>Réponses du joueur : ses couleurs (ou celles du personnage), plus marquées au survol ; un clic choisit.</summary>
+        void DrawChoices(DialogueRunner dialogue, DialogueStyle look, Rect area, List<float> choiceHeights)
+        {
+            var y = area.y;
+            var choiceLabel = new GUIStyle(skin.Choice);
+            for (var i = 0; i < dialogue.Choices.Count; i++)
             {
-                var hint = new GUIStyle(skin.Small) { alignment = TextAnchor.MiddleRight };
-                hint.normal.textColor = look.boxBorder;
-                if (GUI.Button(new Rect(box.xMax - 260, box.yMax - 34, 240, 24), "▼ Clic ou Entrée pour continuer", hint))
-                    dialogue.Advance();
+                var (background, border, color) = look.ChoiceLook(dialogue.Choices[i]);
+                foreach (var state in new[] { choiceLabel.normal, choiceLabel.hover, choiceLabel.active, choiceLabel.focused })
+                {
+                    state.background = null;
+                    state.textColor = color;
+                }
+                var rect = new Rect(area.x, y, area.width, choiceHeights[i]);
+                var hover = rect.Contains(Event.current.mousePosition);
+                Fill(rect, hover ? Color.Lerp(background, border, 0.3f) : background);
+                Outline(rect, hover ? new Color(border.r, border.g, border.b, 1f) : border, 1f);
+                if (GUI.Button(rect, $"{i + 1}.  {dialogue.Choices[i].text}", choiceLabel))
+                {
+                    // Choisir passe à la réplique suivante et remplace la liste des réponses : on arrête de la parcourir.
+                    dialogue.Choose(i);
+                    break;
+                }
+                y += choiceHeights[i] + 3;
             }
+        }
+
+        void DrawContinue(DialogueRunner dialogue, DialogueStyle look, Rect box)
+        {
+            var hint = new GUIStyle(skin.Small) { alignment = TextAnchor.MiddleRight };
+            hint.normal.textColor = look.boxBorder;
+            if (GUI.Button(new Rect(box.xMax - 260, box.yMax - 34, 240, 24), "▼ Clic ou Entrée pour continuer", hint))
+                dialogue.Advance();
         }
 
         public void DrawInventory()

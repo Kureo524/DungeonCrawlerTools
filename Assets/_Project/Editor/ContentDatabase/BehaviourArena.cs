@@ -195,6 +195,25 @@ namespace TheDungeon.Editor.ContentDatabase
             var scale = Scale;
             var origin = Origin;
 
+            DrawBoard(painter, origin, scale);
+            var enemyAt = ToPixels(EnemyPosition);
+            DrawRanges(painter, data, enemyAt, scale);
+            DrawWall(painter, scale);
+            var playerAt = ToPixels(situation.Player);
+            // Ligne de vue.
+            painter.strokeColor = situation.PlayerInSight ? Sight : Blocked;
+            painter.lineWidth = 1.2f;
+            painter.BeginPath();
+            painter.MoveTo(enemyAt);
+            painter.LineTo(playerAt);
+            painter.Stroke();
+
+            DrawAction(painter, data, enemyAt, playerAt, scale);
+        }
+
+        /// <summary>Sol et grille d'une case.</summary>
+        void DrawBoard(Painter2D painter, Vector2 origin, float scale)
+        {
             painter.fillColor = Floor;
             painter.BeginPath();
             painter.MoveTo(origin);
@@ -218,9 +237,12 @@ namespace TheDungeon.Editor.ContentDatabase
                 painter.LineTo(origin + new Vector2(Columns * scale, y * scale));
             }
             painter.Stroke();
+        }
 
+        /// <summary>Seuils de distance de la règle sélectionnée et portée de l'attaque sélectionnée, autour de l'ennemi.</summary>
+        void DrawRanges(Painter2D painter, EnemyData data, Vector2 enemyAt, float scale)
+        {
             // Seuils de distance de la règle sélectionnée : cercles autour de l'ennemi.
-            var enemyAt = ToPixels(EnemyPosition);
             if (SelectedRule >= 0 && SelectedRule < data.Patterns.Count)
             {
                 painter.strokeColor = Threshold;
@@ -242,8 +264,10 @@ namespace TheDungeon.Editor.ContentDatabase
                 foreach (var radius in new[] { selectedAttack.Settings.minRange, selectedAttack.Settings.maxRange }.Where(r => r > 0f))
                     DashedCircle(painter, enemyAt, radius * scale);
             }
+        }
 
-            // Mur.
+        void DrawWall(Painter2D painter, float scale)
+        {
             var wall = new Rect(ToPixels(situation.WallCorner), WallSize * scale);
             painter.fillColor = Wall;
             painter.BeginPath();
@@ -253,17 +277,6 @@ namespace TheDungeon.Editor.ContentDatabase
             painter.LineTo(new Vector2(wall.xMin, wall.yMax));
             painter.ClosePath();
             painter.Fill();
-
-            // Ligne de vue.
-            var playerAt = ToPixels(situation.Player);
-            painter.strokeColor = situation.PlayerInSight ? Sight : Blocked;
-            painter.lineWidth = 1.2f;
-            painter.BeginPath();
-            painter.MoveTo(enemyAt);
-            painter.LineTo(playerAt);
-            painter.Stroke();
-
-            DrawAction(painter, data, enemyAt, playerAt, scale);
         }
 
         /// <summary>Déplacement (flèche bleue) et attaque (rouge) de ce que l'ennemi ferait ici.</summary>
