@@ -38,9 +38,7 @@ namespace TheDungeon.Editor.Dialogues
         DialogueGraphView graph;
         DialoguePreview preview;
         readonly Dictionary<View, (Button button, VisualElement panel)> views = new();
-        TextField composer;
         DialogueSpeaker composerSpeaker = DialogueSpeaker.Npc;
-        readonly Dictionary<DialogueSpeaker, Button> speakerButtons = new();
 
         public DialoguesTab(IToolHost window) : base(window)
         {
@@ -91,7 +89,6 @@ namespace TheDungeon.Editor.Dialogues
             draft = asset;
             selectedId = asset.StartNode;
             views.Clear();
-            speakerButtons.Clear();
 
             var identity = ForgeUI.Section("Personnage", container);
             identity.Add(ForgeUI.Text("Nom", "displayName", "Nom affiché dans la boîte de dialogue. Le fichier sera nommé NPC_<Nom>."));
@@ -163,7 +160,9 @@ namespace TheDungeon.Editor.Dialogues
             column.AddToClassList("forge-dialogue-layout__chat");
             chat = new ChatView(Select);
             column.Add(chat);
-            column.Add(BuildComposer());
+            var composer = new DialogueComposer(npc, draft, composerSpeaker, () => selectedId, Edit, Select, id => chat.ScrollTo(id));
+            composer.SpeakerChanged += speaker => composerSpeaker = speaker;
+            column.Add(composer);
             layout.Add(column);
 
             var side = new ScrollView();
@@ -259,108 +258,6 @@ namespace TheDungeon.Editor.Dialogues
             OpenDraft(() => DraftSession<NpcData>.CreateFrom(imported));
             UnityEngine.Object.DestroyImmediate(imported);
             ForgeLists.Notify("Discussion importée : vérifiez-la puis validez pour créer le personnage.");
-        }
-
-        /// <summary>Barre de saisie : on écrit la conversation comme dans une messagerie, Entrée pour envoyer.</summary>
-        VisualElement BuildComposer()
-        {
-            var bar = new VisualElement();
-            bar.AddToClassList("forge-composer");
-
-            var speakers = new VisualElement();
-            speakers.AddToClassList("forge-composer__speakers");
-            foreach (var (speaker, label, tooltip) in new[]
-                     {
-                         (DialogueSpeaker.Npc, "PNJ", "La réplique est dite par le personnage et suit la réplique sélectionnée."),
-                         (DialogueSpeaker.Player, "Réponse du joueur", "Ajoute une réponse au choix du joueur sous la réplique sélectionnée."),
-                         (DialogueSpeaker.Narrator, "Narration", "Texte de narration (sans personnage).")
-                     })
-            {
-                var button = ForgeUI.Button(label, tooltip, () => SetComposerSpeaker(speaker), "forge-composer__speaker");
-                speakerButtons[speaker] = button;
-                speakers.Add(button);
-            }
-            bar.Add(speakers);
-
-            var input = new VisualElement();
-            input.AddToClassList("forge-row");
-            composer = new TextField
-            {
-                tooltip = "Tapez la réplique puis Entrée (Maj+Entrée : retour à la ligne). Elle est ajoutée à la suite de la réplique sélectionnée.",
-                multiline = true
-            };
-            composer.AddToClassList("forge-composer__input");
-            composer.AddToClassList("forge-wrap");
-            composer.RegisterCallback<KeyDownEvent>(evt =>
-            {
-                if (evt.keyCode is not (KeyCode.Return or KeyCode.KeypadEnter) || evt.shiftKey)
-                    return;
-                Send();
-                evt.StopPropagation();
-            }, TrickleDown.TrickleDown);
-            input.Add(composer);
-            input.Add(ForgeUI.Button("Envoyer", "Ajoute la réplique (raccourci : Entrée).", Send, "forge-button--primary"));
-            bar.Add(input);
-            bar.Add(ForgeUI.Label("Entrée : envoyer · Changez qui parle avec les boutons ci-dessus · Cliquez une bulle pour écrire la suite à partir d'elle.", "forge-hint"));
-            SetComposerSpeaker(composerSpeaker);
-            return bar;
-        }
-
-        void SetComposerSpeaker(DialogueSpeaker speaker)
-        {
-            composerSpeaker = speaker;
-            foreach (var (candidate, button) in speakerButtons)
-                button.EnableInClassList("forge-composer__speaker--active", candidate == speaker);
-        }
-
-        void Send()
-        {
-            var text = composer.value?.Trim();
-            if (string.IsNullOrEmpty(text))
-            {
-                ForgeLists.Notify("Écrivez d'abord le texte de la réplique.");
-                return;
-            }
-
-            if (composerSpeaker == DialogueSpeaker.Player)
-            {
-                if (draft.FindNode(selectedId) == null)
-                {
-                    ForgeLists.Notify("Sélectionnez la réplique à laquelle le joueur répond.");
-                    return;
-                }
-                var added = -1;
-                Edit(() => added = DialogueEditing.AddChoice(npc, selectedId, text, DialogueEditing.End, Limits.maxChoicesPerNode));
-                if (added < 0)
-                {
-                    ForgeLists.Notify($"Maximum atteint : {Limits.maxChoicesPerNode} réponses par réplique.");
-                    return;
-                }
-                // Le PNJ répondra à cette réponse : on repasse en mode PNJ pour enchaîner naturellement.
-                SetComposerSpeaker(DialogueSpeaker.Npc);
-            }
-            else
-            {
-                if (draft.Nodes.Count >= Limits.maxDialogueNodes)
-                {
-                    ForgeLists.Notify($"Maximum atteint : {Limits.maxDialogueNodes} répliques par personnage.");
-                    return;
-                }
-                var newId = -1;
-                var linked = false;
-                var from = selectedId;
-                Edit(() =>
-                {
-                    newId = DialogueEditing.AddNode(npc, composerSpeaker, text);
-                    linked = DialogueEditing.LinkAfter(npc, from, newId) || npc.FindProperty("startNode").intValue == newId;
-                });
-                if (!linked)
-                    ForgeLists.Notify("Réplique ajoutée mais reliée à rien : choisissez sa place (« Suite » ou une réponse).");
-                Select(newId);
-                chat.ScrollTo(newId);
-            }
-            composer.SetValueWithoutNotify(string.Empty);
-            composer.schedule.Execute(() => composer.Focus());
         }
 
         VisualElement EntryTarget(SerializedProperty node)
