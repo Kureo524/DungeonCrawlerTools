@@ -63,7 +63,7 @@ namespace TheDungeon.Editor.Progression
             return import;
         }
 
-        protected override void InitializeNew(SerializedObject draft) => ProgressionEditing.Reset(draft, Limits);
+        protected override void InitializeNew(SerializedObject draft) => ProgressionDefaults.Reset(draft, Limits);
 
         protected override void BuildDetails(VisualElement container, SerializedObject serialized, PlayerProgression draft)
         {

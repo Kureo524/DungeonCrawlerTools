@@ -102,7 +102,7 @@ namespace TheDungeon.Editor.Progression
             var row = Row();
             row.AddToClassList("forge-reward-row");
             row.Add(LevelField(property, reward));
-            row.Add(EnumDropdown<RewardType>("Type", property.FindPropertyRelative("type"), ProgressionEditing.RewardTypeLabel,
+            row.Add(EnumDropdown<RewardType>("Type", property.FindPropertyRelative("type"), ProgressionLabels.RewardTypeLabel,
                 "Points d'attributs, compétence ou mécanique débloquée ou améliorée, ou note.", _ => Rebuild()));
             row.Add(RewardValueField(property, reward));
             row.Add(SmallButton("×", "Supprimer la récompense (Ctrl+Z pour annuler).", () =>
@@ -208,8 +208,8 @@ namespace TheDungeon.Editor.Progression
         public static VisualElement RewardPill(PlayerProgression draft, LevelReward reward) => reward.type switch
         {
             RewardType.AttributePoints => Pill("forge-pill--points", $"+{reward.amount} point(s) d'attribut"),
-            RewardType.UnlockSkill or RewardType.UpgradeSkill => Pill("forge-pill--skill", ProgressionEditing.RewardTypeLabel(reward.type) + " : " + (draft.FindSkill(reward.skillId)?.displayName ?? "■■■")),
-            RewardType.UnlockMechanic or RewardType.UpgradeMechanic => Pill("forge-pill--mechanic", ProgressionEditing.RewardTypeLabel(reward.type) + " : " + (draft.FindMechanic(reward.mechanicId)?.displayName ?? "■■■")),
+            RewardType.UnlockSkill or RewardType.UpgradeSkill => Pill("forge-pill--skill", ProgressionLabels.RewardTypeLabel(reward.type) + " : " + (draft.FindSkill(reward.skillId)?.displayName ?? "■■■")),
+            RewardType.UnlockMechanic or RewardType.UpgradeMechanic => Pill("forge-pill--mechanic", ProgressionLabels.RewardTypeLabel(reward.type) + " : " + (draft.FindMechanic(reward.mechanicId)?.displayName ?? "■■■")),
             _ => Pill("forge-pill--note", string.IsNullOrWhiteSpace(reward.note) ? "Note vide" : reward.note)
         };
 

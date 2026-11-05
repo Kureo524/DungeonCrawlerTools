@@ -116,7 +116,7 @@ namespace TheDungeon.Editor.Tests
         {
             var progression = TestData.Create<PlayerProgression>("PRG_Player", so =>
             {
-                ProgressionEditing.Reset(so, limits);
+                ProgressionDefaults.Reset(so, limits);
                 ProgressionEditing.SetValues(so, 0, Enumerable.Range(0, limits.maxLevel).Select(i => i == 5 ? 100f : 100f + i * 10).ToList());
             });
 
@@ -131,7 +131,7 @@ namespace TheDungeon.Editor.Tests
         {
             var progression = TestData.Create<PlayerProgression>("PRG_Player", so =>
             {
-                ProgressionEditing.Reset(so, limits);
+                ProgressionDefaults.Reset(so, limits);
                 ProgressionEditing.RemoveStat(so, 3);
             });
 
@@ -146,7 +146,7 @@ namespace TheDungeon.Editor.Tests
         {
             var progression = TestData.Create<PlayerProgression>("PRG_Player", so =>
             {
-                ProgressionEditing.Reset(so, limits);
+                ProgressionDefaults.Reset(so, limits);
                 var skill = ProgressionEditing.Skill("Ruée", SkillEffect.DashCooldown, Color.white, 10f, 20f);
                 ProgressionEditing.AddSkill(so, skill);
                 ProgressionEditing.AddReward(so, new LevelReward { level = 4, type = RewardType.UpgradeSkill, skillId = skill.id });
@@ -164,7 +164,7 @@ namespace TheDungeon.Editor.Tests
         {
             var progression = TestData.Create<PlayerProgression>("PRG_Player", so =>
             {
-                ProgressionEditing.Reset(so, limits);
+                ProgressionDefaults.Reset(so, limits);
                 var attack = so.FindProperty("stats").GetArrayElementAtIndex(1).FindPropertyRelative("id").stringValue;
                 ProgressionEditing.AddMechanic(so, ProgressionEditing.Mechanic("Frappe", MechanicAction.Projectile, MechanicInput.Primary, Color.white, attack, 5f));
             });
@@ -181,12 +181,12 @@ namespace TheDungeon.Editor.Tests
         {
             var longer = TestData.Create<PlayerProgression>("PRG_Player", so =>
             {
-                ProgressionEditing.Reset(so, limits);
+                ProgressionDefaults.Reset(so, limits);
                 ProgressionEditing.SetLevelCount(so, 40);
             });
             var single = TestData.Create<PlayerProgression>("PRG_Player", so =>
             {
-                ProgressionEditing.Reset(so, limits);
+                ProgressionDefaults.Reset(so, limits);
                 ProgressionEditing.SetLevelCount(so, 1);
             });
 
@@ -204,7 +204,7 @@ namespace TheDungeon.Editor.Tests
         {
             var progression = TestData.Create<PlayerProgression>("PRG_Player", so =>
             {
-                ProgressionEditing.Reset(so, limits);
+                ProgressionDefaults.Reset(so, limits);
                 so.FindProperty("attributes").arraySize = 0;
                 so.ApplyModifiedProperties();
             });
@@ -219,7 +219,7 @@ namespace TheDungeon.Editor.Tests
         public void DefaultProgression_IsValid()
 
         {
-            var progression = TestData.Create<PlayerProgression>("PRG_Player", so => ProgressionEditing.Reset(so, limits));
+            var progression = TestData.Create<PlayerProgression>("PRG_Player", so => ProgressionDefaults.Reset(so, limits));
 
             var issues = new ProgressionRule().Run(Context(progressions: new[] { progression })).ToList();
 

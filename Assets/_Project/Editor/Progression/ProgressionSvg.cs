@@ -56,7 +56,7 @@ namespace TheDungeon.Editor.Progression
                 svg.AppendLine($"  <g id=\"stat-{s}\" class=\"forge-stat\" data-stat-index=\"{s}\" data-stat-name=\"{X(stat.displayName)}\" " +
                                $"data-plot=\"{N(plot.x)} {N(plot.y)} {N(plot.width)} {N(plot.height)}\" data-y-min=\"{N(yMin)}\" data-y-max=\"{N(yMax)}\">");
                 svg.AppendLine($"    <text x=\"24\" y=\"{N(top + 22)}\" font-size=\"15\" font-weight=\"bold\" fill=\"{color}\">{X(stat.displayName)}" +
-                               $"<tspan font-size=\"11\" font-weight=\"normal\" fill=\"#6b6b70\">  {X(ProgressionEditing.RoleLabel(stat.role))}</tspan></text>");
+                               $"<tspan font-size=\"11\" font-weight=\"normal\" fill=\"#6b6b70\">  {X(ProgressionLabels.RoleLabel(stat.role))}</tspan></text>");
                 for (var g = 0; g <= 4; g++)
                 {
                     var y = plot.yMax - plot.height * g / 4f;

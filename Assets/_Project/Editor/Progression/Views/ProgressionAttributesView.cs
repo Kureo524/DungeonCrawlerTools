@@ -161,7 +161,7 @@ namespace TheDungeon.Editor.Progression
         VisualElement SkillCard(SerializedProperty property, int index)
         {
             var card = Card(property, "Nom affiché au joueur.", out var header);
-            header.Add(EnumDropdown<SkillEffect>("Effet", property.FindPropertyRelative("effect"), ProgressionEditing.SkillEffectLabel,
+            header.Add(EnumDropdown<SkillEffect>("Effet", property.FindPropertyRelative("effect"), ProgressionLabels.SkillEffectLabel,
                 "Ce que fait la compétence en jeu. « Aucun » : la description seule est montrée au joueur."));
             header.Add(SmallButton("Supprimer", "Supprime la compétence et ses récompenses (Ctrl+Z pour annuler).", () =>
             {

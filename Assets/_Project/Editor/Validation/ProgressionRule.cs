@@ -43,9 +43,9 @@ namespace TheDungeon.Editor.Validation
                 yield return Error($"Trop de stats ({stats.Count}, maximum {limits.maxProgressionStats}).", progression);
 
             foreach (var role in RequiredRoles.Where(r => stats.All(s => s.role != r)))
-                yield return Error($"Aucune stat n'a le rôle « {ProgressionEditing.RoleLabel(role)} » : le jeu en a besoin.", progression);
+                yield return Error($"Aucune stat n'a le rôle « {ProgressionLabels.RoleLabel(role)} » : le jeu en a besoin.", progression);
             foreach (var group in stats.Where(s => s.role != StatRole.None).GroupBy(s => s.role).Where(g => g.Count() > 1))
-                yield return Error($"Plusieurs stats ont le rôle « {ProgressionEditing.RoleLabel(group.Key)} » : {string.Join(", ", group.Select(s => s.displayName))}.", progression);
+                yield return Error($"Plusieurs stats ont le rôle « {ProgressionLabels.RoleLabel(group.Key)} » : {string.Join(", ", group.Select(s => s.displayName))}.", progression);
             foreach (var group in stats.Where(s => !string.IsNullOrWhiteSpace(s.displayName)).GroupBy(s => s.displayName.Trim()).Where(g => g.Count() > 1))
                 yield return Error($"Deux stats portent le même nom : « {group.Key} ».", progression);
             if (stats.FirstOrDefault(s => s.role == StatRole.MaxHealth) is { visibility: StatVisibility.Hidden } health)
@@ -68,7 +68,7 @@ namespace TheDungeon.Editor.Validation
                 var bounds = ProgressionEditing.Bounds(stat.role, limits);
                 if (bounds.HasValue && (stat.min < bounds.Value.min || stat.max > bounds.Value.max))
                     yield return Error($"{name} : les bornes doivent rester entre {bounds.Value.min} et {bounds.Value.max} " +
-                                       $"(limites de l'équipe technique pour « {ProgressionEditing.RoleLabel(stat.role)} »).", progression);
+                                       $"(limites de l'équipe technique pour « {ProgressionLabels.RoleLabel(stat.role)} »).", progression);
 
                 var outside = stat.values.Select((v, i) => (v, i)).Where(p => p.v < stat.min || p.v > stat.max).Select(p => p.i + 1).ToList();
                 if (outside.Count > 0)
@@ -149,7 +149,7 @@ namespace TheDungeon.Editor.Validation
         {
             var mechanics = progression.Mechanics;
             foreach (var group in mechanics.GroupBy(m => m.input).Where(g => g.Count() > 1))
-                yield return Error($"Plusieurs mécaniques utilisent la touche « {ProgressionEditing.InputLabel(group.Key)} » : " +
+                yield return Error($"Plusieurs mécaniques utilisent la touche « {ProgressionLabels.InputLabel(group.Key)} » : " +
                                    $"{string.Join(", ", group.Select(m => m.displayName))}.", progression);
             foreach (var group in mechanics.Where(m => !string.IsNullOrWhiteSpace(m.displayName)).GroupBy(m => m.displayName.Trim()).Where(g => g.Count() > 1))
                 yield return Error($"Deux mécaniques portent le même nom : « {group.Key} ».", progression);
@@ -163,7 +163,7 @@ namespace TheDungeon.Editor.Validation
                     yield return Error("Une mécanique n'a pas de nom.", progression);
                 if (mechanic.cooldown < 0f)
                     yield return Error($"{name} a une recharge négative.", progression);
-                var (power, count, duration) = ProgressionEditing.ActionFields(mechanic.action);
+                var (power, count, duration) = ProgressionLabels.ActionFields(mechanic.action);
                 if (power != null && mechanic.power <= 0f)
                     yield return Error($"{name} : « {power} » doit être positif.", progression);
                 if (count != null && mechanic.count < 1)

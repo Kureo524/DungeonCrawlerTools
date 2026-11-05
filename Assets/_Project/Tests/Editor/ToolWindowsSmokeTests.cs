@@ -90,7 +90,7 @@ namespace TheDungeon.Editor.Tests
             var created = new System.Collections.Generic.List<Object>();
             try
             {
-                Commit<TheDungeon.Data.PlayerProgression>("Zz Smoke Progression", so => ProgressionEditing.Reset(so, ForgeDesignLimits.Instance), created);
+                Commit<TheDungeon.Data.PlayerProgression>("Zz Smoke Progression", so => ProgressionDefaults.Reset(so, ForgeDesignLimits.Instance), created);
                 AssertBuilds(w =>
                 {
                     var root = new ProgressionTab(w).Build();

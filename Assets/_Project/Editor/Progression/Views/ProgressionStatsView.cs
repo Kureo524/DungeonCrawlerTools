@@ -111,7 +111,7 @@ namespace TheDungeon.Editor.Progression
                 var stat = Draft.Stats[index];
                 dot.style.backgroundColor = stat.color;
                 name.text = stat.displayName;
-                meta.text = stat.resource ? $"Jauge, +{stat.regenPerSecond:0.#}/s" : ProgressionEditing.RoleLabel(stat.role);
+                meta.text = stat.resource ? $"Jauge, +{stat.regenPerSecond:0.#}/s" : ProgressionLabels.RoleLabel(stat.role);
                 spark.SetData(stat.values, stat.color);
             });
             return row;
@@ -245,7 +245,7 @@ namespace TheDungeon.Editor.Progression
             name.AddToClassList("forge-stat-card__name");
             name.BindProperty(property.FindPropertyRelative("displayName"));
             header.Add(name);
-            header.Add(EnumDropdown<StatRole>("Rôle", property.FindPropertyRelative("role"), ProgressionEditing.RoleLabel,
+            header.Add(EnumDropdown<StatRole>("Rôle", property.FindPropertyRelative("role"), ProgressionLabels.RoleLabel,
                 "Ce que le jeu fait de la stat. Les rôles ont des bornes fixées par l'équipe technique.", role => OnRoleChanged(index, role)));
             header.Add(SmallButton("▲", "Monter la stat dans la liste.", () => Move(index, -1), index > 0));
             header.Add(SmallButton("▼", "Descendre la stat dans la liste.", () => Move(index, 1), index < Draft.Stats.Count - 1));
@@ -257,10 +257,10 @@ namespace TheDungeon.Editor.Progression
         VisualElement StatDisplay(SerializedProperty property, ProgressionStat stat)
         {
             var display = Row();
-            var format = EnumDropdown<StatFormat>("Présentation", property.FindPropertyRelative("format"), ProgressionEditing.FormatLabel,
+            var format = EnumDropdown<StatFormat>("Présentation", property.FindPropertyRelative("format"), ProgressionLabels.FormatLabel,
                 "Nombre (12), barre qui se remplit, ou pourcentage (12 %).");
             format.SetEnabled(stat.visibility != StatVisibility.Hidden);
-            display.Add(EnumDropdown<StatVisibility>("Affichage joueur", property.FindPropertyRelative("visibility"), ProgressionEditing.VisibilityLabel,
+            display.Add(EnumDropdown<StatVisibility>("Affichage joueur", property.FindPropertyRelative("visibility"), ProgressionLabels.VisibilityLabel,
                 "Masquée, toujours à l'écran (HUD) ou seulement dans la fiche du personnage (inventaire).",
                 visibility => format.SetEnabled(visibility != StatVisibility.Hidden)));
             display.Add(format);
@@ -282,7 +282,7 @@ namespace TheDungeon.Editor.Progression
             max.BindProperty(property.FindPropertyRelative("max"));
             bounds.Add(min);
             bounds.Add(max);
-            bounds.Add(EnumDropdown<StatGrowth>("Évolution", property.FindPropertyRelative("growth"), ProgressionEditing.GrowthLabel,
+            bounds.Add(EnumDropdown<StatGrowth>("Évolution", property.FindPropertyRelative("growth"), ProgressionLabels.GrowthLabel,
                 "Contrôle du Validator : une valeur qui baisse (ou stagne) est signalée en rouge."));
             return bounds;
         }
@@ -336,7 +336,7 @@ namespace TheDungeon.Editor.Progression
         {
             var stat = Draft.Stats[index];
             if (stat.role != StatRole.None && !ForgeDialogs.Confirm("Supprimer une stat utilisée par le jeu",
-                    $"« {stat.displayName} » joue le rôle « {ProgressionEditing.RoleLabel(stat.role)} ». Sans elle, la progression ne pourra pas être validée " +
+                    $"« {stat.displayName} » joue le rôle « {ProgressionLabels.RoleLabel(stat.role)} ». Sans elle, la progression ne pourra pas être validée " +
                     "tant qu'une autre stat ne reprend pas ce rôle.", "Supprimer", "Annuler"))
                 return;
             ProgressionEditing.RemoveStat(Serialized, index);

@@ -48,7 +48,7 @@ namespace TheDungeon.Editor.Progression
                 State.OpenMechanic = open ? -1 : index;
                 Rebuild();
             }, out var name, out var meta, out var dot);
-            var key = ForgeUI.Label(ProgressionEditing.InputLabel(draft.Mechanics[index].input), "forge-key");
+            var key = ForgeUI.Label(ProgressionLabels.InputLabel(draft.Mechanics[index].input), "forge-key");
             acc.Q(className: "forge-acc__head").Insert(3, key);
             AddRefresher(() =>
             {
@@ -57,7 +57,7 @@ namespace TheDungeon.Editor.Progression
                 var mechanic = Draft.Mechanics[index];
                 name.text = mechanic.displayName;
                 dot.style.backgroundColor = mechanic.color;
-                key.text = ProgressionEditing.InputLabel(mechanic.input);
+                key.text = ProgressionLabels.InputLabel(mechanic.input);
                 var unlock = Enumerable.Range(1, Draft.MaxLevel).FirstOrDefault(l => ProgressionEditing.RankAt(Draft, mechanic, l) > 0);
                 meta.text = ProgressionEditing.Describe(Draft, mechanic, 1) + (unlock == 0 ? " · jamais débloquée" : unlock == 1 ? string.Empty : $" · niveau {unlock}");
             });
@@ -105,7 +105,7 @@ namespace TheDungeon.Editor.Progression
             cost.Add(Bound(new FloatField("Recharge (s)") { tooltip = "Secondes avant de pouvoir la réutiliser." }, property.FindPropertyRelative("cooldown")));
             card.Add(cost);
 
-            var labels = ProgressionEditing.ActionFields(mechanic.action);
+            var labels = ProgressionLabels.ActionFields(mechanic.action);
             var settings = Row();
             if (labels.power != null)
                 settings.Add(Bound(new FloatField(labels.power), property.FindPropertyRelative("power")));
@@ -130,7 +130,7 @@ namespace TheDungeon.Editor.Progression
         /// <summary>Action (qui remet les réglages par défaut), touche et suppression.</summary>
         void AddMechanicHeader(VisualElement header, SerializedProperty property, int index)
         {
-            header.Add(EnumDropdown<MechanicAction>("Action", property.FindPropertyRelative("action"), ProgressionEditing.ActionLabel,
+            header.Add(EnumDropdown<MechanicAction>("Action", property.FindPropertyRelative("action"), ProgressionLabels.ActionLabel,
                 "Ce que fait la mécanique. Changer d'action remet ses réglages par défaut.", action =>
                 {
                     Serialized.Update();
@@ -140,7 +140,7 @@ namespace TheDungeon.Editor.Progression
                     Serialized.ApplyModifiedProperties();
                     Rebuild();
                 }));
-            header.Add(EnumDropdown<MechanicInput>("Touche", property.FindPropertyRelative("input"), ProgressionEditing.InputLabel,
+            header.Add(EnumDropdown<MechanicInput>("Touche", property.FindPropertyRelative("input"), ProgressionLabels.InputLabel,
                 "Touche qui la déclenche. Les clics peuvent être maintenus (tir continu)."));
             header.Add(SmallButton("Supprimer", "Supprime la mécanique et ses récompenses (Ctrl+Z pour annuler).", () =>
             {

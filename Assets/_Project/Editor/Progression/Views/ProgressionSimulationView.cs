@@ -204,7 +204,7 @@ namespace TheDungeon.Editor.Progression
                 var title = new VisualElement();
                 title.AddToClassList("forge-row");
                 title.Add(ForgeUI.Label($"<b>{action.Mechanic.displayName}</b>" + (action.Rank > 1 ? $"  rang {action.Rank}" : string.Empty)));
-                title.Add(ForgeUI.Label(ProgressionEditing.InputLabel(action.Mechanic.input), "forge-key"));
+                title.Add(ForgeUI.Label(ProgressionLabels.InputLabel(action.Mechanic.input), "forge-key"));
                 text.Add(title);
                 var detail = action.Available
                     ? string.Join(" · ", new[] { action.Summary }.Concat(action.Details))

@@ -25,7 +25,7 @@ namespace TheDungeon.Editor.Tests
         static PlayerProgression Progression() => TestData.Create<PlayerProgression>("PRG_Player", so =>
         {
             var limits = ScriptableObject.CreateInstance<ForgeDesignLimits>();
-            ProgressionEditing.Reset(so, limits);
+            ProgressionDefaults.Reset(so, limits);
             TestData.Destroy(limits);
             ProgressionEditing.SetValues(so, 0, Enumerable.Range(0, 20).Select(i => 100f + i * 10).ToList());
             ProgressionEditing.SetValues(so, 1, Enumerable.Range(0, 20).Select(i => 10f + i).ToList());

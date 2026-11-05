@@ -23,7 +23,7 @@ namespace TheDungeon.Editor.Tests
         [TearDown]
         public void TearDown() => TestData.Destroy(limits);
 
-        PlayerProgression Default() => TestData.Create<PlayerProgression>("PRG_Test", so => ProgressionEditing.Reset(so, limits));
+        PlayerProgression Default() => TestData.Create<PlayerProgression>("PRG_Test", so => ProgressionDefaults.Reset(so, limits));
 
         static double Evaluate(string text) => Formula.Parse(text).EvaluateLevels(1, 0, 0)[0];
 
@@ -313,7 +313,7 @@ namespace TheDungeon.Editor.Tests
         {
             var progression = TestData.Create<PlayerProgression>("PRG_Test", so =>
             {
-                ProgressionEditing.Reset(so, limits);
+                ProgressionDefaults.Reset(so, limits);
                 ProgressionEditing.SetLevelCount(so, 5);
             });
 
@@ -324,7 +324,7 @@ namespace TheDungeon.Editor.Tests
 
             var longer = TestData.Create<PlayerProgression>("PRG_Test", so =>
             {
-                ProgressionEditing.Reset(so, limits);
+                ProgressionDefaults.Reset(so, limits);
                 ProgressionEditing.SetLevelCount(so, 30);
             });
             var health = longer.Find(StatRole.MaxHealth);
@@ -340,7 +340,7 @@ namespace TheDungeon.Editor.Tests
         {
             var progression = TestData.Create<PlayerProgression>("PRG_Test", so =>
             {
-                ProgressionEditing.Reset(so, limits);
+                ProgressionDefaults.Reset(so, limits);
                 ProgressionEditing.RemoveStat(so, 0);
             });
 
@@ -354,7 +354,7 @@ namespace TheDungeon.Editor.Tests
         {
             var progression = TestData.Create<PlayerProgression>("PRG_Test", so =>
             {
-                ProgressionEditing.Reset(so, limits);
+                ProgressionDefaults.Reset(so, limits);
                 ProgressionEditing.AddStat(so, new ProgressionStat { displayName = "Chance critique", format = StatFormat.Percent, min = 0, max = 50 }, "Linéaire", 5, 24);
             });
             var state = new GameState(progression);

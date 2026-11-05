@@ -148,7 +148,7 @@ namespace TheDungeon.Editor.Progression
             {
                 var index = i;
                 var mechanic = draft.Mechanics[i];
-                var row = MiniRow(mechanic.color, mechanic.displayName, ProgressionEditing.InputLabel(mechanic.input));
+                var row = MiniRow(mechanic.color, mechanic.displayName, ProgressionLabels.InputLabel(mechanic.input));
                 row.RegisterCallback<ClickEvent>(_ =>
                 {
                     State.OpenMechanic = index;

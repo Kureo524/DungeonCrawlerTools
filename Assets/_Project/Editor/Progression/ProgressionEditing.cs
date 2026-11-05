@@ -12,77 +12,6 @@ namespace TheDungeon.Editor.Progression
     /// <summary>Modifications d'une progression via SerializedObject (annulables avec Ctrl+Z), partagées par l'outil et les tests.</summary>
     public static class ProgressionEditing
     {
-        /// <summary>Progression de départ : PV, dégâts, défense et XP, courbes générées avec les presets intégrés.</summary>
-        public static void Reset(SerializedObject serializedObject, ForgeDesignLimits limits)
-        {
-            serializedObject.FindProperty("levelCount").intValue = limits.maxLevel;
-            serializedObject.FindProperty("stats").arraySize = 0;
-            serializedObject.FindProperty("attributes").arraySize = 0;
-            serializedObject.FindProperty("skills").arraySize = 0;
-            serializedObject.FindProperty("mechanics").arraySize = 0;
-            serializedObject.FindProperty("rewards").arraySize = 0;
-            serializedObject.ApplyModifiedProperties();
-
-            var health = Role(StatRole.MaxHealth, limits, "PV max", ChartColors.Hex("#dc4048"), StatVisibility.Hud, StatFormat.Bar);
-            var damage = Role(StatRole.Damage, limits, "ATQ", ChartColors.Hex("#f2994a"), StatVisibility.Hud, StatFormat.Number);
-            var defense = Role(StatRole.Defense, limits, "DÉF", ChartColors.Hex("#8c9bab"), StatVisibility.Hud, StatFormat.Number);
-            var xp = Role(StatRole.XpToNext, limits, "XP", ChartColors.Hex("#4d99ff"), StatVisibility.Hud, StatFormat.Bar);
-            xp.growth = StatGrowth.AlwaysIncreases;
-            AddStat(serializedObject, health, "Exponentielle", 50, 430);
-            AddStat(serializedObject, damage, "Exponentielle", 5, 30);
-            AddStat(serializedObject, defense, "Linéaire", 0, 10);
-            AddStat(serializedObject, xp, "Exponentielle", 100, 7000);
-            var energy = new ProgressionStat
-            {
-                displayName = "Énergie",
-                color = ChartColors.Hex("#5fc8d8"),
-                visibility = StatVisibility.Hud,
-                format = StatFormat.Bar,
-                min = 0f,
-                max = 300f,
-                resource = true,
-                regenPerSecond = 20f
-            };
-            AddStat(serializedObject, energy, "Linéaire", 100, 200);
-
-            // Attributs à la Elden Ring : un point par niveau, gains réduits au-delà de 5 points.
-            AddAttribute(serializedObject, Attribute("Vigueur", "Plus de points de vie.", health.color, (health.id, 15f, 5)));
-            AddAttribute(serializedObject, Attribute("Force", "Des tirs plus puissants.", damage.color, (damage.id, 2f, 5)));
-            AddAttribute(serializedObject, Attribute("Endurance", "Encaisse mieux les coups.", defense.color, (defense.id, 1f, 0)));
-            SetAttributePoints(serializedObject, 1, 2, 1);
-
-            var lynx = Skill("Œil de lynx", SkillEffect.CriticalChance, ChartColors.Hex("#e8c547"), 5f, 10f, 15f);
-            var multi = Skill("Tir multiple", SkillEffect.ExtraProjectiles, ChartColors.Hex("#b07cf0"), 1f, 2f);
-            var breath = Skill("Second souffle", SkillEffect.Regeneration, ChartColors.Hex("#4fc98a"), 1f, 2f);
-            foreach (var skill in new[] { lynx, multi, breath })
-                AddSkill(serializedObject, skill);
-            AddReward(serializedObject, new LevelReward { level = 3, type = RewardType.UnlockSkill, skillId = lynx.id });
-            AddReward(serializedObject, new LevelReward { level = 5, type = RewardType.UnlockSkill, skillId = multi.id });
-            AddReward(serializedObject, new LevelReward { level = 8, type = RewardType.UnlockSkill, skillId = breath.id });
-            AddReward(serializedObject, new LevelReward { level = 10, type = RewardType.UpgradeSkill, skillId = lynx.id });
-            AddReward(serializedObject, new LevelReward { level = 15, type = RewardType.UpgradeSkill, skillId = multi.id });
-            AddReward(serializedObject, new LevelReward { level = 16, type = RewardType.UpgradeSkill, skillId = lynx.id });
-            AddReward(serializedObject, new LevelReward { level = 18, type = RewardType.UpgradeSkill, skillId = breath.id });
-
-            // Mécaniques : tir et esquive dès le début, onde de choc et bouclier débloqués en route.
-            var shot = Mechanic("Tir", MechanicAction.Projectile, MechanicInput.Primary, ChartColors.Hex("#f2c14e"));
-            var dodge = Mechanic("Esquive", MechanicAction.Dash, MechanicInput.Dash, ChartColors.Hex("#8c9bab"), energy.id, 25f);
-            dodge.upgrades.Add(new MechanicUpgrade { cost = -5f, cooldown = -0.1f });
-            var nova = Mechanic("Onde de choc", MechanicAction.Nova, MechanicInput.Secondary, ChartColors.Hex("#e86a4a"), energy.id, 50f);
-            nova.unlockedAtStart = false;
-            nova.upgrades.Add(new MechanicUpgrade { power = 20f, count = 4 });
-            var shield = Mechanic("Bouclier", MechanicAction.Shield, MechanicInput.Ability1, ChartColors.Hex("#7fb7ff"), energy.id, 60f);
-            shield.unlockedAtStart = false;
-            foreach (var mechanic in new[] { shot, dodge, nova, shield })
-                AddMechanic(serializedObject, mechanic);
-            AddReward(serializedObject, new LevelReward { level = 4, type = RewardType.UnlockMechanic, mechanicId = nova.id });
-            AddReward(serializedObject, new LevelReward { level = 6, type = RewardType.UnlockMechanic, mechanicId = shield.id });
-            AddReward(serializedObject, new LevelReward { level = 7, type = RewardType.UpgradeMechanic, mechanicId = dodge.id });
-            AddReward(serializedObject, new LevelReward { level = 12, type = RewardType.UpgradeMechanic, mechanicId = nova.id });
-            SortRewards(serializedObject);
-        }
-
-
         public static ProgressionAttribute Attribute(string name, string description, Color color, params (string statId, float perPoint, int softCap)[] bonuses) => new()
         {
             displayName = name,
@@ -389,39 +318,6 @@ namespace TheDungeon.Editor.Progression
             return $"{action} · {cost} · recharge {v.Cooldown:0.##} s";
         }
 
-        /// <summary>Réglages utiles pour une action : libellés de « puissance », « nombre » et « durée » (null = réglage inutilisé).</summary>
-        public static (string power, string count, string duration) ActionFields(MechanicAction action) => action switch
-        {
-            MechanicAction.Projectile => ("Dégâts (% de l'ATQ)", "Projectiles par tir", null),
-            MechanicAction.Nova => ("Dégâts (% de l'ATQ)", "Projectiles autour", null),
-            MechanicAction.Dash => ("Distance (cases)", null, "Durée (s)"),
-            MechanicAction.Heal => ("PV rendus", null, null),
-            MechanicAction.Shield => (null, null, "Invincibilité (s)"),
-            MechanicAction.WeaponSkill => (null, null, null),
-            _ => ("Vitesse en plus (%)", null, "Durée (s)")
-        };
-
-        public static string ActionLabel(MechanicAction action) => action switch
-        {
-            MechanicAction.Projectile => "Attaque : projectile visé (ou attaque de l'arme)",
-            MechanicAction.WeaponSkill => "Attaque : compétence de l'arme",
-            MechanicAction.Nova => "Attaque : onde tout autour",
-            MechanicAction.Dash => "Mouvement : ruée",
-            MechanicAction.Heal => "Soin",
-            MechanicAction.Shield => "Défense : bouclier",
-            _ => "Mouvement : sprint"
-        };
-
-        public static string InputLabel(MechanicInput input) => input switch
-        {
-            MechanicInput.Primary => "Clic gauche (gâchette droite)",
-            MechanicInput.Secondary => "Clic droit (gâchette gauche)",
-            MechanicInput.Dash => "Espace / Maj (B)",
-            MechanicInput.Ability1 => "Touche 1 (LB)",
-            MechanicInput.Ability2 => "Touche 2 (RB)",
-            _ => "Touche 3 (X)"
-        };
-
         public static void MoveStat(SerializedObject serializedObject, int index, int offset)
         {
             serializedObject.Update();
@@ -466,7 +362,6 @@ namespace TheDungeon.Editor.Progression
             serializedObject.ApplyModifiedProperties();
         }
 
-
         /// <summary>
         /// Valeurs d'une formule pour chaque niveau, arrondies aux décimales de la stat et ramenées dans ses bornes.
         /// <paramref name="clamped"/> compte les niveaux ramenés dans les bornes. Lève <see cref="FormulaException"/> si un résultat n'est pas un nombre.
@@ -503,58 +398,5 @@ namespace TheDungeon.Editor.Progression
                 ? Enumerable.Empty<int>()
                 : Enumerable.Range(1, Math.Max(0, values.Count - 1))
                     .Where(i => growth == StatGrowth.AlwaysIncreases ? values[i] <= values[i - 1] : values[i] < values[i - 1]);
-
-        public static string RoleLabel(StatRole role) => role switch
-        {
-            StatRole.MaxHealth => "PV max",
-            StatRole.Damage => "Dégâts",
-            StatRole.Defense => "Défense",
-            StatRole.Speed => "Vitesse",
-            StatRole.XpToNext => "XP pour le niveau suivant",
-            _ => "Aucun (stat libre)"
-        };
-
-        public static string VisibilityLabel(StatVisibility visibility) => visibility switch
-        {
-            StatVisibility.Hud => "À l'écran (HUD)",
-            StatVisibility.CharacterSheet => "Fiche du personnage",
-            _ => "Masquée"
-        };
-
-        public static string FormatLabel(StatFormat format) => format switch
-        {
-            StatFormat.Bar => "Barre",
-            StatFormat.Percent => "Pourcentage",
-            _ => "Nombre"
-        };
-
-        public static string SkillEffectLabel(SkillEffect effect) => effect switch
-        {
-            SkillEffect.ExtraProjectiles => "Projectiles en plus",
-            SkillEffect.CriticalChance => "Coups critiques (+ %)",
-            SkillEffect.FireRate => "Cadence de tir (+ %)",
-            SkillEffect.DashCooldown => "Recharge de l'esquive (- %)",
-            SkillEffect.Regeneration => "Régénération (PV/s)",
-            _ => "Aucun (description seulement)"
-        };
-
-        public static string RewardTypeLabel(RewardType type) => type switch
-        {
-            RewardType.UnlockSkill => "Débloquer une compétence",
-            RewardType.UpgradeSkill => "Améliorer une compétence",
-            RewardType.Note => "Note (texte libre)",
-            RewardType.UnlockMechanic => "Débloquer une mécanique",
-            RewardType.UpgradeMechanic => "Améliorer une mécanique",
-
-            _ => "Points d'attributs"
-        };
-
-        public static string GrowthLabel(StatGrowth growth) => growth switch
-
-        {
-            StatGrowth.NeverDecreases => "Ne baisse jamais",
-            StatGrowth.AlwaysIncreases => "Augmente à chaque niveau",
-            _ => "Libre"
-        };
     }
 }
