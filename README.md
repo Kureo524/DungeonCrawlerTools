@@ -1,5 +1,7 @@
 # Projet Forge : outils de production pour *The Dungeon*
 
+> **In English:** Forge Studio is a suite of Unity 6 editor tools (UI Toolkit, C#) for building the content of a top-down dungeon crawler without writing code: items, enemies and their attack patterns, loot tables, player progression curves, dialogue trees, biomes, rooms and floors. Every change is validated against design rules before it is saved, and the game runs entirely on the data the tools produce. The project and its documentation are in French.
+
 Workshop B3 (La Horde). Outils intégrés à l'éditeur **Unity** pour produire le contenu du dungeon crawler *The Dungeon* (objets, ennemis, butin, salles, progression) vite et sans erreur, sans écrire de code.
 
 ## Ouvrir le projet
@@ -44,7 +46,6 @@ Le jeu est un dungeon crawler en vue du dessus, construit **entièrement à part
 | Mécanique secondaire (ex : onde de choc) | Clic droit | Gâchette gauche |
 | Esquive | Espace / Maj | B |
 | Mécaniques débloquées en route | 1, 2, 3 | LB, RB, X |
-
 | Interagir (coffre, PNJ, boutique, feu de camp, portail) | E | A |
 | Consommable | F | Y |
 | Inventaire / Pause | I / Échap | Select / Start |
@@ -56,7 +57,6 @@ Déroulement :
 4. Les PNJ de l'étage attendent dans les salles calmes et jouent leurs dialogues, avec conditions et effets appliqués à la partie.
 5. Le boss de l'étage vaincu ouvre un **portail** vers l'étage suivant. Après le dernier étage, c'est la victoire.
 
-
 ## Organisation du projet
 ```
 Assets/_Project/
@@ -66,9 +66,13 @@ Assets/_Project/
 ├─ Editor/         Code des outils (assembly TheDungeon.Editor, éditeur uniquement, absent du build)
 │  ├─ Studio/      Fenêtre Forge Studio, tableau de bord, limites
 │  ├─ Common/      Socle partagé : copie de travail, sélecteurs, nommage, limites, graphiques (Charts/)
-│  ├─ ContentDatabase/
+│  ├─ ContentDatabase/  Objets, ennemis (comportement, arène de test), attaques, tables de butin
+│  ├─ Progression/ Courbes, générateur par formule, simulation (une vue par catégorie dans Views/)
+│  ├─ Dialogues/   Messagerie, arbre, aperçu jouable
 │  ├─ Biomes/
 │  ├─ RoomEditor/
+│  ├─ Floors/      Plans d'étage et générateur
+│  ├─ Play/        Lancement du jeu depuis les outils
 │  ├─ Validation/  Règles de cohérence (une classe par règle)
 │  ├─ Help/        Textes de l'onglet Help (Markdown, modifiables sans recompiler)
 │  └─ Styles/      Feuille de style commune (USS)
@@ -76,7 +80,7 @@ Assets/_Project/
 ├─ Data/           Contenu produit par les outils (rangé automatiquement)
 ├─ Settings/       ForgeDesignLimits.asset (limites fixées par les développeurs)
 └─ Tests/Editor/   Tests automatiques (EditMode)
-Docs/              Documentation du projet (journal, document de rendu)
+Docs/              Journal de développement
 ```
 
 ## Lancer les tests
