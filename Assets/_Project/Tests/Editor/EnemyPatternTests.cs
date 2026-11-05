@@ -65,6 +65,30 @@ namespace TheDungeon.Editor.Tests
         }
 
         [Test]
+        public void BehaviourEditing_AddsUpToTheLimit()
+        {
+            var enemy = TestData.Create<EnemyData>("ENM_Test");
+            var attack = TestData.Create<AttackData>("ATK_Test");
+            try
+            {
+                var so = new UnityEditor.SerializedObject(enemy);
+                Assert.AreEqual(0, EnemyBehaviourEditing.AddPhase(so, 2));
+                Assert.AreEqual(1, EnemyBehaviourEditing.AddPhase(so, 2));
+                Assert.AreEqual(-1, EnemyBehaviourEditing.AddPhase(so, 2), "Au maximum, rien n'est ajouté.");
+                Assert.AreEqual("Phase 2", enemy.Phases[1].name);
+
+                Assert.AreEqual(0, EnemyBehaviourEditing.AddAttack(so, attack, 1));
+                Assert.AreEqual(-1, EnemyBehaviourEditing.AddAttack(so, attack, 1));
+                Assert.AreEqual(attack, enemy.Attacks[0].attack);
+                Assert.AreEqual(100, enemy.Attacks[0].weight);
+            }
+            finally
+            {
+                TestData.Destroy(enemy, attack);
+            }
+        }
+
+        [Test]
         public void NoPatternMet_FallsBackToDefaultBehaviour()
         {
             var patterns = new List<EnemyPattern> { Pattern("Caché", Condition(EnemyConditionType.PlayerHidden)) };
