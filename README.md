@@ -91,3 +91,5 @@ Unity -batchmode -projectPath . -runTests -testPlatform EditMode -testResults re
 
 ## Crédits
 Sprites (objets, ennemis, biomes, portraits de PNJ) : *Dungeon Crawl Stone Soup* tiles (licence **CC0**, domaine public), via [OpenGameArt](https://opengameart.org/content/dungeon-crawl-32x32-tiles). Licence complète : `Assets/_Project/Art/LICENSE_DungeonCrawl_CC0.txt`.
+
+Polices de l'interface (`Assets/_Project/Editor/Styles/Fonts/`) : *Gothic A1*, *IBM Plex Mono* et *Barlow Condensed*, sous licence **SIL Open Font License 1.1**. Textes des licences : `ThirdPartyLicenses/`.
