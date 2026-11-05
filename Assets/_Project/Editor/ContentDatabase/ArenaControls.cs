@@ -44,55 +44,75 @@ namespace TheDungeon.Editor.ContentDatabase
             builtSignature = signature;
             root.Clear();
 
-            var limits = ForgeDesignLimits.Instance;
             foreach (var type in types)
             {
-                switch (type)
-                {
-                    case EnemyConditionType.PlayerHealthBelow:
-                        root.Add(Slider("PV du joueur (%)", 0, 100, Mathf.RoundToInt(situation.PlayerHealth * 100f), v => situation.PlayerHealth = v / 100f));
-                        break;
-                    case EnemyConditionType.OwnHealthBelow:
-                        root.Add(Slider("PV de l'ennemi (%)", 0, 100, Mathf.RoundToInt(situation.OwnHealth * 100f), v => situation.OwnHealth = v / 100f));
-                        break;
-                    case EnemyConditionType.PlayerLevelAtLeast:
-                        root.Add(Slider("Niveau du joueur", 1, limits.maxLevelCap, situation.PlayerLevel, v => situation.PlayerLevel = v));
-                        break;
-                    case EnemyConditionType.FloorIn:
-                        root.Add(Slider("Étage", 1, limits.floorCount, situation.Floor, v => situation.Floor = v));
-                        break;
-                    case EnemyConditionType.AlliesAtMost:
-                        root.Add(Slider("Alliés restants", 0, limits.maxEnemiesPerRoom, situation.Allies, v => situation.Allies = v));
-                        break;
-                    case EnemyConditionType.PhaseIs:
-                        root.Add(Slider("Phase de l'ennemi", 0, Mathf.Max(1, data.Phases.Count), situation.Phase, v => situation.Phase = v));
-                        break;
-                    case EnemyConditionType.FightLongerThan:
-                        root.Add(Slider("Durée du combat (s)", 0, 300, Mathf.RoundToInt(situation.FightTime), v => situation.FightTime = v));
-                        break;
-                    case EnemyConditionType.BiomeIs:
-                        var biomes = AssetFactory.LoadAll<BiomeData>();
-                        var names = new List<string> { "Autre" }.Concat(biomes.Select(b => ForgeText.NameOrRedacted(b.DisplayName))).ToList();
-                        var biome = new DropdownField("Biome", names, Mathf.Max(0, biomes.IndexOf(situation.Biome) + 1));
-                        biome.RegisterValueChangedCallback(evt =>
-                        {
-                            var index = names.IndexOf(evt.newValue);
-                            situation.Biome = index > 0 ? biomes[index - 1] : null;
-                            changed();
-                        });
-                        root.Add(biome);
-                        break;
-                    case EnemyConditionType.RoomTypeIs:
-                        var roomType = new EnumField("Type de salle", situation.RoomType);
-                        roomType.RegisterValueChangedCallback(evt =>
-                        {
-                            situation.RoomType = (RoomType)evt.newValue;
-                            changed();
-                        });
-                        root.Add(roomType);
-                        break;
-                }
+                var control = ConditionControl(type, data);
+                if (control != null)
+                    root.Add(control);
             }
+            AddMechanicControls(mechanics);
+            AddFlagControls(flags);
+            if (root.childCount == 0)
+                root.Add(ForgeUI.Label("Les réglages des autres conditions (PV, niveau, biome, mécaniques…) apparaissent ici dès qu'une règle les utilise.",
+                    "forge-hint"));
+        }
+
+        /// <summary>Réglage d'une condition (PV, niveau, étage, alliés, phase, durée, biome, type de salle), ou null si elle se règle dans l'arène.</summary>
+        VisualElement ConditionControl(EnemyConditionType type, EnemyData data)
+        {
+            var limits = ForgeDesignLimits.Instance;
+            switch (type)
+            {
+                case EnemyConditionType.PlayerHealthBelow:
+                    return Slider("PV du joueur (%)", 0, 100, Mathf.RoundToInt(situation.PlayerHealth * 100f), v => situation.PlayerHealth = v / 100f);
+                case EnemyConditionType.OwnHealthBelow:
+                    return Slider("PV de l'ennemi (%)", 0, 100, Mathf.RoundToInt(situation.OwnHealth * 100f), v => situation.OwnHealth = v / 100f);
+                case EnemyConditionType.PlayerLevelAtLeast:
+                    return Slider("Niveau du joueur", 1, limits.maxLevelCap, situation.PlayerLevel, v => situation.PlayerLevel = v);
+                case EnemyConditionType.FloorIn:
+                    return Slider("Étage", 1, limits.floorCount, situation.Floor, v => situation.Floor = v);
+                case EnemyConditionType.AlliesAtMost:
+                    return Slider("Alliés restants", 0, limits.maxEnemiesPerRoom, situation.Allies, v => situation.Allies = v);
+                case EnemyConditionType.PhaseIs:
+                    return Slider("Phase de l'ennemi", 0, Mathf.Max(1, data.Phases.Count), situation.Phase, v => situation.Phase = v);
+                case EnemyConditionType.FightLongerThan:
+                    return Slider("Durée du combat (s)", 0, 300, Mathf.RoundToInt(situation.FightTime), v => situation.FightTime = v);
+                case EnemyConditionType.BiomeIs:
+                    return BiomeControl();
+                case EnemyConditionType.RoomTypeIs:
+                    return RoomTypeControl();
+            }
+            return null;
+        }
+
+        DropdownField BiomeControl()
+        {
+            var biomes = AssetFactory.LoadAll<BiomeData>();
+            var names = new List<string> { "Autre" }.Concat(biomes.Select(b => ForgeText.NameOrRedacted(b.DisplayName))).ToList();
+            var biome = new DropdownField("Biome", names, Mathf.Max(0, biomes.IndexOf(situation.Biome) + 1));
+            biome.RegisterValueChangedCallback(evt =>
+            {
+                var index = names.IndexOf(evt.newValue);
+                situation.Biome = index > 0 ? biomes[index - 1] : null;
+                changed();
+            });
+            return biome;
+        }
+
+        EnumField RoomTypeControl()
+        {
+            var roomType = new EnumField("Type de salle", situation.RoomType);
+            roomType.RegisterValueChangedCallback(evt =>
+            {
+                situation.RoomType = (RoomType)evt.newValue;
+                changed();
+            });
+            return roomType;
+        }
+
+        /// <summary>Rang de chaque mécanique du joueur testée par une condition.</summary>
+        void AddMechanicControls(IEnumerable<string> mechanics)
+        {
             var progression = TheDungeon.Editor.Play.GameLauncher.ActiveProgression;
             foreach (var id in mechanics)
             {
@@ -102,6 +122,11 @@ namespace TheDungeon.Editor.ContentDatabase
                 var key = id;
                 root.Add(Slider($"{mechanic.displayName} (rang)", 0, mechanic.MaxRank, situation.MechanicLevel(id), v => situation.Mechanics[key] = v));
             }
+        }
+
+        /// <summary>Marqueurs testés par une condition, à cocher.</summary>
+        void AddFlagControls(IEnumerable<string> flags)
+        {
             foreach (var flag in flags)
             {
                 var key = flag;
@@ -116,9 +141,6 @@ namespace TheDungeon.Editor.ContentDatabase
                 });
                 root.Add(toggle);
             }
-            if (root.childCount == 0)
-                root.Add(ForgeUI.Label("Les réglages des autres conditions (PV, niveau, biome, mécaniques…) apparaissent ici dès qu'une règle les utilise.",
-                    "forge-hint"));
         }
 
         SliderInt Slider(string label, int min, int max, int value, Action<int> apply)

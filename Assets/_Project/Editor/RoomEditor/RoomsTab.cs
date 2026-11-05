@@ -119,7 +119,28 @@ namespace TheDungeon.Editor.RoomEditor
             var properties = new VisualElement();
             properties.AddToClassList("forge-room-properties");
             columns.Add(properties);
+            var biomePicker = BuildIdentity(properties, serializedObject);
+            BuildShape(properties, asset);
+            container.Add(NpcList(serializedObject));
+            container.Add(TagList(serializedObject));
+            properties.Add(PlayButton());
+            var (zoom, unreachable) = BuildTools(properties);
+            BuildEditor(columns, serializedObject, asset, zoom, unreachable);
 
+            palette.SetBiome(asset.Biome);
+            biomePicker.TrackPropertyValue(serializedObject.FindProperty("biome"), _ => palette.SetBiome(draft.Biome));
+            Undo.undoRedoPerformed -= OnUndoRedo;
+            Undo.undoRedoPerformed += OnUndoRedo;
+            if (!closingHooked)
+            {
+                closingHooked = true;
+                Window.Closing += () => Undo.undoRedoPerformed -= OnUndoRedo;
+            }
+        }
+
+        /// <summary>Nom, biome, type, difficulté et soin au feu de camp.</summary>
+        AssetPicker<BiomeData> BuildIdentity(VisualElement properties, SerializedObject serializedObject)
+        {
             var identity = ForgeUI.Section("Salle", properties);
             identity.Add(ForgeUI.Text("Nom", "displayName", "Nom de la salle. Le fichier sera nommé RM_<Nom> automatiquement."));
             var biomePicker = new AssetPicker<BiomeData>("Biome", serializedObject.FindProperty("biome"),
@@ -146,8 +167,12 @@ namespace TheDungeon.Editor.RoomEditor
             healOverride.RegisterValueChangedCallback(e => heal.SetEnabled(e.newValue));
             identity.Add(healOverride);
             identity.Add(heal);
+            return biomePicker;
+        }
 
-
+        /// <summary>Dimensions et entrées (une case à cocher par côté).</summary>
+        void BuildShape(VisualElement properties, RoomData asset)
+        {
             var shape = ForgeUI.Section("Dimensions et entrées", properties);
             widthSlider = new SliderInt("Largeur", Limits.roomWidth.min, Limits.roomWidth.max)
                 { showInputField = true, value = asset.Width, tooltip = $"Largeur en cases ({Limits.roomWidth}). Le contenu existant est conservé." };
@@ -167,8 +192,11 @@ namespace TheDungeon.Editor.RoomEditor
             doorGrid.Add(ForgeLists.Row(DoorToggle(Doors.West, "Ouest"), DoorToggle(Doors.East, "Est")));
             doorGrid.Add(DoorToggle(Doors.South, "Sud"));
             shape.Add(doorGrid);
+        }
 
-            container.Add(ForgeLists.Array(serializedObject, "npcs", "Personnages",
+        /// <summary>Personnages posés dans la salle avec le pinceau « Personnages ».</summary>
+        VisualElement NpcList(SerializedObject serializedObject) =>
+            ForgeLists.Array(serializedObject, "npcs", "Personnages",
                 "Personnages posés dans la salle avec le pinceau « Personnages » de la palette.", 8,
                 (element, _) =>
                 {
@@ -190,9 +218,10 @@ namespace TheDungeon.Editor.RoomEditor
                 {
                     ForgeLists.Notify("Choisissez un personnage dans la palette (groupe « Personnages »), puis cliquez sur une case.");
                     return false;
-                }));
+                });
 
-            container.Add(ForgeLists.Array(serializedObject, "tags", "Tags", "Mots-clés libres pour retrouver et filtrer les salles.", 6,
+        VisualElement TagList(SerializedObject serializedObject) =>
+            ForgeLists.Array(serializedObject, "tags", "Tags", "Mots-clés libres pour retrouver et filtrer les salles.", 6,
                 (element, _) =>
                 {
                     var tag = new TextField { tooltip = "Mot-clé (ex : piège, embuscade, trésor caché)." };
@@ -203,15 +232,18 @@ namespace TheDungeon.Editor.RoomEditor
                 {
                     element.stringValue = string.Empty;
                     return true;
-                }));
+                });
 
-            var test = ForgeUI.Button("▶  Tester cette salle", "Lance le jeu dans cette salle seule (version enregistrée) : ennemis, coffres, décors.", () =>
+        Button PlayButton() =>
+            ForgeUI.Button("▶  Tester cette salle", "Lance le jeu dans cette salle seule (version enregistrée) : ennemis, coffres, décors.", () =>
             {
                 if (ConfirmPlaySavedVersion())
                     TheDungeon.Editor.Play.GameLauncher.PlayRoom(Original);
             }, "forge-play-button");
-            properties.Add(test);
 
+        /// <summary>Actions rapides : murs sur le contour, réinitialisation, zoom et zones inaccessibles.</summary>
+        (SliderInt zoom, Toggle unreachable) BuildTools(VisualElement properties)
+        {
             var tools = ForgeUI.Section("Actions rapides", properties);
             tools.Add(ForgeUI.Button("Murs sur le contour", "Remet un mur sur tout le contour, entrées comprises restées ouvertes.", () => Apply(() => RoomEditing.WallBorder(room))));
             tools.Add(ForgeUI.Button("Tout réinitialiser", "Sol partout, murs sur le contour, aucun élément posé.", () =>
@@ -223,7 +255,12 @@ namespace TheDungeon.Editor.RoomEditor
             tools.Add(zoom);
             var unreachable = new Toggle("Montrer les zones inaccessibles") { value = true, tooltip = "Teinte en rouge le sol qu'on ne peut pas atteindre depuis les entrées." };
             tools.Add(unreachable);
+            return (zoom, unreachable);
+        }
 
+        /// <summary>Palette du biome et grille à peindre.</summary>
+        void BuildEditor(VisualElement columns, SerializedObject serializedObject, RoomData asset, SliderInt zoom, Toggle unreachable)
+        {
             var editor = new VisualElement();
             editor.AddToClassList("forge-room-editor");
             columns.Add(editor);
@@ -245,16 +282,6 @@ namespace TheDungeon.Editor.RoomEditor
                 canvas.ShowUnreachable = evt.newValue;
                 canvas.Redraw();
             });
-
-            palette.SetBiome(asset.Biome);
-            biomePicker.TrackPropertyValue(serializedObject.FindProperty("biome"), _ => palette.SetBiome(draft.Biome));
-            Undo.undoRedoPerformed -= OnUndoRedo;
-            Undo.undoRedoPerformed += OnUndoRedo;
-            if (!closingHooked)
-            {
-                closingHooked = true;
-                Window.Closing += () => Undo.undoRedoPerformed -= OnUndoRedo;
-            }
         }
 
         Toggle DoorToggle(Doors side, string label)

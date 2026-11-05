@@ -87,6 +87,14 @@ namespace TheDungeon.Editor.Floors
             stats.AddToClassList("forge-card-grid");
             container.Add(stats);
 
+            BuildSettings(container);
+            BuildGenerator(container);
+            BuildEditor(container, serializedObject, asset);
+        }
+
+        /// <summary>Numéro de l'étage, entrée et soin au feu de camp.</summary>
+        void BuildSettings(VisualElement container)
+        {
             var settings = ForgeUI.Section("Étage", container);
             settings.Add(ForgeUI.Slider("Numéro", "floorNumber", new IntRange(1, Limits.floorCount),
                 "Profondeur de l'étage. Détermine les biomes et les salles autorisés."));
@@ -94,8 +102,11 @@ namespace TheDungeon.Editor.Floors
             settings.Add(entranceLabel);
             settings.Add(ForgeUI.Slider("Soin au feu de camp (%)", "campfireHealPercent", new IntRange(0, 100),
                 "PV rendus en se reposant à un feu de camp, en % des PV max (0 = aucun soin). Règle de tout l'étage ; une salle peut avoir la sienne (outil Salles)."));
+        }
 
-
+        /// <summary>Génération automatique du plan à partir d'une graine.</summary>
+        void BuildGenerator(VisualElement container)
+        {
             var generator = ForgeUI.Section("Génération automatique", container);
             generator.Add(ForgeUI.Label(
                 "Assemble un plan avec les salles disponibles : départ au centre, portes toutes reliées, boss en fond d'étage. " +
@@ -105,7 +116,11 @@ namespace TheDungeon.Editor.Floors
                 ForgeUI.Button("Nouvelle graine", "Tire une graine au hasard.", () => seedField.value = UnityEngine.Random.Range(0, 10000)),
                 ForgeUI.Button("Générer le plan", "Remplace le plan actuel (annulable avec Ctrl+Z).", Generate, "forge-button--primary"),
                 ForgeUI.Button("Vider le plan", "Retire toutes les salles du plan.", () => Edit(() => FloorEditing.Clear(floor)), "forge-button--danger")));
+        }
 
+        /// <summary>Bouton de test, puis salles disponibles et plan.</summary>
+        void BuildEditor(VisualElement container, SerializedObject serializedObject, FloorData asset)
+        {
             var test = ForgeUI.Button("▶  Tester cet étage", "Lance le jeu directement sur cet étage (version enregistrée).", () =>
             {
                 if (ConfirmPlaySavedVersion())
@@ -117,7 +132,13 @@ namespace TheDungeon.Editor.Floors
             var editor = new VisualElement();
             editor.AddToClassList("forge-room-editor");
             container.Add(editor);
+            editor.Add(BuildRoomSide());
+            editor.Add(BuildPlan(serializedObject, asset));
+        }
 
+        /// <summary>Salles disponibles à placer et actions sur la salle sélectionnée.</summary>
+        VisualElement BuildRoomSide()
+        {
             var left = new VisualElement();
             left.AddToClassList("forge-floor-side");
             left.Add(ForgeUI.Label(ForgeText.WindowRich("Salles disponibles"), "forge-palette__title"));
@@ -144,8 +165,12 @@ namespace TheDungeon.Editor.Floors
             left.Add(entranceButton);
             left.Add(removeButton);
             left.Add(openButton);
-            editor.Add(left);
+            return left;
+        }
 
+        /// <summary>Plan de l'étage, zoom et légende des portes.</summary>
+        VisualElement BuildPlan(SerializedObject serializedObject, FloorData asset)
+        {
             var right = new VisualElement();
             right.style.flexGrow = 1;
             var zoom = new SliderInt("Zoom", 60, 140) { value = 96, tooltip = "Taille des salles à l'écran." };
@@ -167,7 +192,7 @@ namespace TheDungeon.Editor.Floors
                 ("Porte dans le vide / incompatible", ChartColors.Critical),
                 ("Inaccessible depuis l'entrée", ChartColors.Warning)
             }));
-            editor.Add(right);
+            return right;
         }
 
         void Edit(Action operation)

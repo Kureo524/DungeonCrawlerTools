@@ -46,13 +46,27 @@ namespace TheDungeon.Editor.Biomes
 
         protected override void BuildDetails(VisualElement container, SerializedObject serializedObject, BiomeData biome)
         {
+            BuildIdentity(container);
+            BuildVisuals(container, serializedObject);
+            BuildEnemies(container, serializedObject);
+            BuildProps(container, serializedObject);
+            BuildLoot(container, serializedObject);
+        }
+
+        /// <summary>Nom, couleur et étages où le biome peut apparaître.</summary>
+        void BuildIdentity(VisualElement container)
+        {
             var identity = ForgeUI.Section("Identité", container);
             identity.Add(ForgeUI.Text("Nom", "displayName", "Nom du biome. Le fichier sera nommé BIO_<Nom> automatiquement."));
             identity.Add(new ColorField("Couleur") { showAlpha = false, bindingPath = "color", tooltip = "Couleur du biome dans les listes et sur le plan des étages." });
             var floors = new IntRange(1, Limits.floorCount);
             identity.Add(ForgeUI.Slider("Étage minimum", "minFloor", floors, "Premier étage où le biome peut apparaître."));
             identity.Add(ForgeUI.Slider("Étage maximum", "maxFloor", floors, "Dernier étage où le biome peut apparaître."));
+        }
 
+        /// <summary>Murs, trous, variantes de sol et aperçu des tuiles.</summary>
+        void BuildVisuals(VisualElement container, SerializedObject serializedObject)
+        {
             var visuals = ForgeUI.Section("Visuels", container);
             visuals.Add(new SpriteField("Mur", serializedObject.FindProperty("wallSprite"), "Biomes", "Sprite des murs de toutes les salles du biome."));
             visuals.Add(new SpriteField("Trou", serializedObject.FindProperty("pitSprite"), "Biomes", "Sprite des trous (eau, lave, vide…)."));
@@ -63,7 +77,11 @@ namespace TheDungeon.Editor.Biomes
             tilePreview = new VisualElement();
             tilePreview.AddToClassList("forge-tile-preview");
             visuals.Add(tilePreview);
+        }
 
+        /// <summary>Ennemis autorisés, leur poids d'apparition et la répartition qui en découle.</summary>
+        void BuildEnemies(VisualElement container, SerializedObject serializedObject)
+        {
             container.Add(ForgeLists.Array(serializedObject, "enemies", "Ennemis du biome",
                 "Seuls ces ennemis pourront être placés dans les salles du biome. Ajoutez au moins un boss pour pouvoir créer une salle de boss.",
                 Limits.maxBiomeEnemies,
@@ -86,7 +104,11 @@ namespace TheDungeon.Editor.Biomes
             var spawnSection = ForgeUI.Section("Répartition des apparitions", container);
             spawnShare = new DonutChart("Part de chaque ennemi dans les apparitions");
             spawnSection.Add(spawnShare);
+        }
 
+        /// <summary>Décors proposés dans la palette de l'éditeur de salles.</summary>
+        void BuildProps(VisualElement container, SerializedObject serializedObject)
+        {
             container.Add(ForgeLists.Array(serializedObject, "props", "Décors du biome", "Décors disponibles dans la palette de l'éditeur de salles.",
                 Limits.maxBiomeProps,
                 (element, _) =>
@@ -107,7 +129,11 @@ namespace TheDungeon.Editor.Biomes
                     element.FindPropertyRelative("blocksMovement").boolValue = true;
                     return true;
                 }));
+        }
 
+        /// <summary>Tables des coffres, bonus par rareté et aperçu du butin.</summary>
+        void BuildLoot(VisualElement container, SerializedObject serializedObject)
+        {
             container.Add(ForgeLists.Array(serializedObject, "chestLootTables", "Tables de butin des coffres",
                 "Tables que les coffres des salles de ce biome peuvent utiliser.", Limits.maxBiomeLootTables,
                 (element, _) => new AssetPicker<LootTable>("", element, "Table de butin utilisable par les coffres."),
