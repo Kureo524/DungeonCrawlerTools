@@ -7,6 +7,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using static TheDungeon.Editor.ContentDatabase.ArenaSituation;
 
 namespace TheDungeon.Editor.ContentDatabase
 {
@@ -19,8 +20,6 @@ namespace TheDungeon.Editor.ContentDatabase
     {
         const int Rows = 8;
         const int MaxColumns = 32;
-        static readonly Vector2 EnemyPosition = new(4f, 4f);
-        static readonly Vector2 WallSize = new(1f, 2.5f);
 
         static readonly Color Floor = new(0.07f, 0.08f, 0.12f, 1f);
         static readonly Color Grid = new(1f, 1f, 1f, 0.04f);
@@ -32,31 +31,8 @@ namespace TheDungeon.Editor.ContentDatabase
         static readonly Color ShotColor = new(1f, 0.45f, 0.38f, 1f);
 
         /// <summary>Situation de test, gardée d'un ennemi à l'autre.</summary>
-        sealed class Situation : IEnemySituation
-        {
-            public Vector2 Player = new(9f, 4f);
-            public Vector2 WallCorner = new(6.5f, 1f);
-            public float PlayerDistance => Vector2.Distance(Player, EnemyPosition);
-            public bool PlayerInSight => !SegmentHitsRect(EnemyPosition, Player, new Rect(WallCorner, WallSize));
-            public float PlayerHealth { get; set; } = 1f;
-            public float OwnHealth { get; set; } = 1f;
-            public int PlayerLevel { get; set; } = 1;
-            public int Floor { get; set; } = 1;
-            public BiomeData Biome { get; set; }
-            public RoomType RoomType { get; set; } = RoomType.Combat;
-            public int Allies { get; set; } = 2;
-            public float FightTime { get; set; }
-            public int Phase { get; set; }
-            public readonly Dictionary<string, int> Mechanics = new();
-            public readonly HashSet<string> Flags = new();
-            public int MechanicLevel(string mechanicId) => mechanicId != null && Mechanics.TryGetValue(mechanicId, out var rank) ? rank : 0;
-            public bool HasFlag(string flag) => Flags.Contains(flag);
-        }
-
-        static readonly Situation situation = new();
-        List<ResolvedAttack> resolved = new();
-        List<EnemyLogic.StepOutcome> outcomes = new();
-        int shownAttack = -1;
+        static readonly ArenaSituation situation = new();
+        ArenaEvaluation evaluation = ArenaEvaluation.None;
 
         readonly Func<EnemyData> enemy;
         readonly Action<int, float[]> activeChanged;
@@ -64,8 +40,7 @@ namespace TheDungeon.Editor.ContentDatabase
         readonly Image enemyIcon;
         readonly Image playerIcon;
         readonly Label status;
-        readonly VisualElement controls;
-        string controlsSignature;
+        readonly ArenaControls controls;
         int active = -1;
         int activeAttack = -1;
         float[] chances = Array.Empty<float>();
@@ -103,9 +78,10 @@ namespace TheDungeon.Editor.ContentDatabase
 
             status = ForgeUI.Label(string.Empty, "forge-arena__status");
             Add(status);
-            controls = new VisualElement();
-            controls.AddToClassList("forge-arena__controls");
-            Add(controls);
+            var controlsRoot = new VisualElement();
+            controlsRoot.AddToClassList("forge-arena__controls");
+            Add(controlsRoot);
+            controls = new ArenaControls(situation, controlsRoot, Refresh);
         }
 
         #region Coordonnées
@@ -116,33 +92,6 @@ namespace TheDungeon.Editor.ContentDatabase
         Vector2 Origin => canvas.contentRect.center - new Vector2(Columns, Rows) * Scale / 2f;
         Vector2 ToPixels(Vector2 cases) => Origin + cases * Scale;
         Vector2 ToCases(Vector2 pixels) => (pixels - Origin) / Scale;
-
-        static bool SegmentHitsRect(Vector2 a, Vector2 b, Rect rect)
-        {
-            // Liang-Barsky : le segment a-b entre-t-il dans le rectangle ?
-            var t0 = 0f;
-            var t1 = 1f;
-            var d = b - a;
-            float[] p = { -d.x, d.x, -d.y, d.y };
-            float[] q = { a.x - rect.xMin, rect.xMax - a.x, a.y - rect.yMin, rect.yMax - a.y };
-            for (var i = 0; i < 4; i++)
-            {
-                if (Mathf.Approximately(p[i], 0f))
-                {
-                    if (q[i] < 0f)
-                        return false;
-                    continue;
-                }
-                var t = q[i] / p[i];
-                if (p[i] < 0f)
-                    t0 = Mathf.Max(t0, t);
-                else
-                    t1 = Mathf.Min(t1, t);
-                if (t0 > t1)
-                    return false;
-            }
-            return true;
-        }
 
         #endregion
 
@@ -209,64 +158,16 @@ namespace TheDungeon.Editor.ContentDatabase
             if (data == null)
                 return;
             enemyIcon.sprite = data.Sprite;
-            RebuildControls(data);
-            resolved = data.Attacks.Select(a => a.Resolve()).ToList();
-            var next = EnemyLogic.ActivePattern(data.Patterns, situation);
-            // Toutes les attaques sont supposées rechargées : chances de chacune d'être lancée ici, d'après les poids.
-            var nextChances = EnemyLogic.AttackChances(data.Attacks, resolved, situation);
-            var nextAttack = EnemyLogic.ChooseAttack(data.Attacks, resolved, situation);
-            if (next != active || nextAttack != activeAttack || !nextChances.SequenceEqual(chances))
+            controls.Rebuild(data);
+            evaluation = ArenaEvaluation.Evaluate(data, situation, SelectedAttack);
+            if (evaluation.ActivePattern != active || evaluation.ActiveAttack != activeAttack || !evaluation.Chances.SequenceEqual(chances))
             {
-                active = next;
-                activeAttack = nextAttack;
-                chances = nextChances;
+                active = evaluation.ActivePattern;
+                activeAttack = evaluation.ActiveAttack;
+                chances = evaluation.Chances;
                 activeChanged?.Invoke(active, chances);
             }
-            var where = $"distance {situation.PlayerDistance:0.0} cases · {(situation.PlayerInSight ? "joueur en vue" : "joueur caché par le mur")}";
-            string move;
-            if (active >= 0)
-            {
-                var name = data.Patterns[active].name;
-                move = $"<b>{ForgeText.Name(string.IsNullOrWhiteSpace(name) ? $"Règle {active + 1}" : name)}</b> : {EnemyPatternText.Action(data.Patterns[active])}";
-            }
-            else
-                move = $"<b>Sinon</b> : {EnemyPatternText.Label(data.Behaviour).ToLowerInvariant()}";
-
-            // Attaque déroulée : celle sélectionnée dans la liste (même si elle ne serait pas lancée ici, pour voir où elle porterait),
-            // sinon la plus probable.
-            var selectedValid = SelectedAttack >= 0 && SelectedAttack < resolved.Count;
-            shownAttack = selectedValid ? SelectedAttack : activeAttack;
-            var shownPossible = shownAttack >= 0 && shownAttack < chances.Length && chances[shownAttack] > 0f;
-            outcomes = shownAttack >= 0 && resolved[shownAttack] != null
-                ? EnemyLogic.Simulate(resolved[shownAttack], situation, EnemyPosition, situation.Player,
-                    (a, b) => !SegmentHitsRect(a, b, new Rect(situation.WallCorner, WallSize)))
-                : new List<EnemyLogic.StepOutcome>();
-            string attack;
-            if (data.Attacks.Count == 0)
-                attack = "selon son comportement de base";
-            else if (activeAttack < 0)
-            {
-                var reasons = data.Attacks.Select((a, i) => $"{ForgeText.Name(a.Name)} : {EnemyLogic.WhyNot(a, resolved[i], situation)}");
-                attack = $"aucune <color=#8a8a9c>({string.Join(" · ", reasons)})</color>";
-            }
-            else
-                attack = string.Join("  ·  ", Enumerable.Range(0, chances.Length).Where(i => chances[i] > 0f).OrderByDescending(i => chances[i])
-                    .Select(i => $"<b>{chances[i]:P0}</b> {ForgeText.Name(data.Attacks[i].Name)}"));
-            if (shownAttack >= 0 && resolved[shownAttack] != null)
-            {
-                var steps = resolved[shownAttack].Steps;
-                var parts = outcomes.Select((o, i) =>
-                {
-                    var name = ForgeText.NameOrRedacted(steps[i].name);
-                    var color = !o.Played ? "#8a8a9c" : o.Hit ? "#e0606a" : "#a3a6b6";
-                    return $"<color={color}>{i + 1}. {name} : {o.Reason}</color>";
-                });
-                var prefix = shownPossible
-                    ? $"\n   {ForgeText.Name(data.Attacks[shownAttack].Name)} ({chances[shownAttack]:P0}) : "
-                    : $"\n   Si {ForgeText.Name(data.Attacks[shownAttack].Name)} était lancée ici : ";
-                attack += prefix + string.Join("  →  ", parts);
-            }
-            status.text = $"<color=#9ebd85>▶</color> Déplacement {move}   <color=#8a8a9c>{where}</color>\n<color=#e0606a>⚔</color> Attaque : {attack}";
+            status.text = evaluation.Describe(data, situation);
             PlaceIcons();
             canvas.MarkDirtyRepaint();
         }
@@ -334,7 +235,7 @@ namespace TheDungeon.Editor.ContentDatabase
             }
 
             // Portée de déclenchement de l'attaque sélectionnée : anneau pointillé entre la distance minimale et maximale.
-            if (SelectedAttack >= 0 && SelectedAttack < resolved.Count && resolved[SelectedAttack] is { } selectedAttack)
+            if (SelectedAttack >= 0 && SelectedAttack < evaluation.Resolved.Count && evaluation.Resolved[SelectedAttack] is { } selectedAttack)
             {
                 painter.strokeColor = new Color(1f, 0.45f, 0.38f, 0.45f);
                 painter.lineWidth = 1.5f;
@@ -382,10 +283,10 @@ namespace TheDungeon.Editor.ContentDatabase
 
             // Attaque lancée ici : l'enchaînement simulé (l'ennemi ne se déplace pas pendant une attaque).
             // Sinon : son déplacement, et en aperçu l'attaque sélectionnée telle qu'elle porterait d'ici.
-            if (outcomes.Count > 0)
+            if (evaluation.Outcomes.Count > 0)
             {
-                DrawOutcomes(painter, data, scale);
-                if (shownAttack >= 0 && shownAttack < chances.Length && chances[shownAttack] > 0f)
+                DrawOutcomes(painter, scale);
+                if (evaluation.ShownPossible)
                     return;
             }
             ProjectilePattern? basePattern = data.Attacks.Count > 0 ? null : data.Behaviour switch
@@ -437,9 +338,10 @@ namespace TheDungeon.Editor.ContentDatabase
         }
 
         /// <summary>Étapes simulées : zones (rouge si elles touchent), projectiles, ruées ; les étapes sautées ne sont pas dessinées.</summary>
-        void DrawOutcomes(Painter2D painter, EnemyData data, float scale)
+        void DrawOutcomes(Painter2D painter, float scale)
         {
-            var steps = resolved[shownAttack].Steps;
+            var steps = evaluation.Resolved[evaluation.ShownAttack].Steps;
+            var outcomes = evaluation.Outcomes;
             for (var i = 0; i < outcomes.Count; i++)
             {
                 var outcome = outcomes[i];
@@ -533,114 +435,6 @@ namespace TheDungeon.Editor.ContentDatabase
                 painter.Arc(from + direction * Mathf.Lerp(scale * 0.9f, length, t), scale * Mathf.Lerp(0.07f, 0.15f, t), Angle.Degrees(0f), Angle.Degrees(360f));
                 painter.Fill();
             }
-        }
-
-        #endregion
-
-        #region Réglages utiles
-
-        /// <summary>
-        /// Réglages de test des conditions utilisées par les règles de l'ennemi (la distance et la ligne de vue se règlent dans l'arène).
-        /// Reconstruits seulement quand l'ensemble des conditions utilisées change, pour ne pas perdre la saisie en cours.
-        /// </summary>
-        void RebuildControls(EnemyData data)
-        {
-            var conditions = data.Patterns.SelectMany(p => p.conditions).Concat(data.Attacks.SelectMany(a => a.conditions)).ToList();
-            var types = conditions.Select(c => c.type).Distinct().OrderBy(t => t).ToList();
-            var mechanics = conditions.Where(c => c.type == EnemyConditionType.MechanicAtLeast && !string.IsNullOrEmpty(c.flag)).Select(c => c.flag).Distinct().ToList();
-            var flags = conditions.Where(c => c.type == EnemyConditionType.FlagSet && !string.IsNullOrEmpty(c.flag)).Select(c => c.flag).Distinct().ToList();
-            var signature = string.Join(",", types) + "|" + string.Join(",", mechanics) + "|" + string.Join(",", flags);
-            if (signature == controlsSignature)
-                return;
-            controlsSignature = signature;
-            controls.Clear();
-
-            var limits = ForgeDesignLimits.Instance;
-            foreach (var type in types)
-            {
-                switch (type)
-                {
-                    case EnemyConditionType.PlayerHealthBelow:
-                        controls.Add(Slider("PV du joueur (%)", 0, 100, Mathf.RoundToInt(situation.PlayerHealth * 100f), v => situation.PlayerHealth = v / 100f));
-                        break;
-                    case EnemyConditionType.OwnHealthBelow:
-                        controls.Add(Slider("PV de l'ennemi (%)", 0, 100, Mathf.RoundToInt(situation.OwnHealth * 100f), v => situation.OwnHealth = v / 100f));
-                        break;
-                    case EnemyConditionType.PlayerLevelAtLeast:
-                        controls.Add(Slider("Niveau du joueur", 1, limits.maxLevelCap, situation.PlayerLevel, v => situation.PlayerLevel = v));
-                        break;
-                    case EnemyConditionType.FloorIn:
-                        controls.Add(Slider("Étage", 1, limits.floorCount, situation.Floor, v => situation.Floor = v));
-                        break;
-                    case EnemyConditionType.AlliesAtMost:
-                        controls.Add(Slider("Alliés restants", 0, limits.maxEnemiesPerRoom, situation.Allies, v => situation.Allies = v));
-                        break;
-                    case EnemyConditionType.PhaseIs:
-                        controls.Add(Slider("Phase de l'ennemi", 0, Mathf.Max(1, data.Phases.Count), situation.Phase, v => situation.Phase = v));
-                        break;
-                    case EnemyConditionType.FightLongerThan:
-                        controls.Add(Slider("Durée du combat (s)", 0, 300, Mathf.RoundToInt(situation.FightTime), v => situation.FightTime = v));
-                        break;
-                    case EnemyConditionType.BiomeIs:
-                        var biomes = AssetFactory.LoadAll<BiomeData>();
-                        var names = new List<string> { "Autre" }.Concat(biomes.Select(b => ForgeText.NameOrRedacted(b.DisplayName))).ToList();
-                        var biome = new DropdownField("Biome", names, Mathf.Max(0, biomes.IndexOf(situation.Biome) + 1));
-                        biome.RegisterValueChangedCallback(evt =>
-                        {
-                            var index = names.IndexOf(evt.newValue);
-                            situation.Biome = index > 0 ? biomes[index - 1] : null;
-                            Refresh();
-                        });
-                        controls.Add(biome);
-                        break;
-                    case EnemyConditionType.RoomTypeIs:
-                        var roomType = new EnumField("Type de salle", situation.RoomType);
-                        roomType.RegisterValueChangedCallback(evt =>
-                        {
-                            situation.RoomType = (RoomType)evt.newValue;
-                            Refresh();
-                        });
-                        controls.Add(roomType);
-                        break;
-                }
-            }
-            var progression = TheDungeon.Editor.Play.GameLauncher.ActiveProgression;
-            foreach (var id in mechanics)
-            {
-                var mechanic = progression?.Mechanics.FirstOrDefault(m => m.id == id);
-                if (mechanic == null)
-                    continue;
-                var key = id;
-                controls.Add(Slider($"{mechanic.displayName} (rang)", 0, mechanic.MaxRank, situation.MechanicLevel(id), v => situation.Mechanics[key] = v));
-            }
-            foreach (var flag in flags)
-            {
-                var key = flag;
-                var toggle = new Toggle($"Marqueur {ForgeText.Name(flag)}") { value = situation.HasFlag(flag) };
-                toggle.RegisterValueChangedCallback(evt =>
-                {
-                    if (evt.newValue)
-                        situation.Flags.Add(key);
-                    else
-                        situation.Flags.Remove(key);
-                    Refresh();
-                });
-                controls.Add(toggle);
-            }
-            if (controls.childCount == 0)
-                controls.Add(ForgeUI.Label("Les réglages des autres conditions (PV, niveau, biome, mécaniques…) apparaissent ici dès qu'une règle les utilise.",
-                    "forge-hint"));
-        }
-
-        SliderInt Slider(string label, int min, int max, int value, Action<int> apply)
-        {
-            var slider = new SliderInt(label, min, max) { value = value, showInputField = true };
-            slider.RegisterValueChangedCallback(evt =>
-            {
-                apply(evt.newValue);
-                Refresh();
-            });
-            return slider;
         }
 
         #endregion

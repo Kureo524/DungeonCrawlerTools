@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using TheDungeon.Data;
 using TheDungeon.Editor.Common;
+using TheDungeon.Editor.ContentDatabase;
 using TheDungeon.Editor.Validation;
 using UnityEngine;
 
@@ -48,6 +49,19 @@ namespace TheDungeon.Editor.Tests
             situation.OwnHealth = 1f;
             situation.PlayerDistance = 8f;
             Assert.AreEqual(2, EnemyLogic.ActivePattern(patterns, situation), "Sans condition : toujours joué.");
+        }
+
+        [Test]
+        public void Arena_WallHidesThePlayer()
+        {
+            // Mur de x 6,5 à 7,5 et de y 3 à 5,5 ; l'ennemi est en (4, 4).
+            var situation = new ArenaSituation { WallCorner = new Vector2(6.5f, 3f), Player = new Vector2(9f, 4f) };
+            Assert.IsFalse(situation.PlayerInSight, "Le mur est entre l'ennemi et le joueur.");
+            situation.Player = new Vector2(9f, 8f);
+            Assert.IsTrue(situation.PlayerInSight, "La ligne de vue passe au-dessus du mur.");
+            situation.Player = new Vector2(6f, 4f);
+            Assert.IsTrue(situation.PlayerInSight, "Le joueur est devant le mur.");
+            Assert.AreEqual(2f, situation.PlayerDistance, 0.001f);
         }
 
         [Test]
